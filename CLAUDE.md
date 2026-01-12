@@ -52,8 +52,10 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 - Fallback to regex-based translation when AI unavailable
 
 **Query System (GQL)**
-- Commands: NAVIGATE, SEARCH, ZOOM, PAN, LIST, SELECT
+- Commands: NAVIGATE, SEARCH, ZOOM, PAN, LIST, SELECT, FILTER, HIGHLIGHT, CLEAR
 - SELECT with WHERE, ORDER BY, LIMIT, FROM track, INTERSECT, WITHIN
+- FILTER dims/hides features by attributes (type, strand, etc.)
+- HIGHLIGHT draws semi-transparent overlay on genomic regions
 - Query history with localStorage persistence (max 50)
 - Save/load named queries
 - Export/import .gql files
@@ -83,7 +85,6 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
 ### 🔲 Not Yet Implemented
 
-- **Filter/Highlight commands** - GQL parses but returns TODO
 - **BigWig support** - Binary format, needs WASM
 - **BAM support** - Indexed reads, complex
 - **FASTA support** - Sequence display at high zoom
@@ -183,6 +184,11 @@ PAN LEFT 10kb | PAN RIGHT 1000bp
 # Search
 SEARCH GENE TP53
 LIST GENES | LIST VARIANTS
+
+# Filter & Highlight
+FILTER type=exon strand=+     # Dim non-matching features
+HIGHLIGHT chr17:7670000-7675000  # Highlight a region
+CLEAR filters | CLEAR highlights | CLEAR all
 
 # Queries
 SELECT GENES FROM my-track WHERE strand = '+' ORDER BY length DESC LIMIT 10

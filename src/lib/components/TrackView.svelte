@@ -88,7 +88,71 @@
 		} else {
 			drawPlaceholder(ctx, width, height, rulerHeight);
 		}
+
+		// Draw highlights on top
+		drawHighlights(ctx, width, height, rulerHeight);
 	});
+
+	/**
+	 * Draw highlight regions as semi-transparent overlays
+	 */
+	function drawHighlights(
+		ctx: CanvasRenderingContext2D,
+		width: number,
+		height: number,
+		rulerHeight: number
+	): void {
+		const visibleHighlights = viewport.getVisibleHighlights();
+		if (visibleHighlights.length === 0) return;
+
+		for (const highlight of visibleHighlights) {
+			// Calculate x positions
+			const startX = (highlight.start - viewport.current.start) * pixelsPerBase;
+			const endX = (highlight.end - viewport.current.start) * pixelsPerBase;
+			const highlightWidth = endX - startX;
+
+			// Skip if completely off-screen
+			if (endX < 0 || startX > width) continue;
+
+			// Clamp to visible area
+			const clampedStartX = Math.max(0, startX);
+			const clampedEndX = Math.min(width, endX);
+			const clampedWidth = clampedEndX - clampedStartX;
+
+			if (clampedWidth <= 0) continue;
+
+			// Draw highlight overlay (semi-transparent)
+			const color = highlight.color || 'rgba(255, 221, 51, 0.25)'; // Default yellow
+			ctx.fillStyle = color;
+			ctx.fillRect(clampedStartX, rulerHeight, clampedWidth, height - rulerHeight);
+
+			// Draw highlight borders
+			ctx.strokeStyle = highlight.color?.replace(/[\d.]+\)$/, '0.6)') || 'rgba(255, 221, 51, 0.6)';
+			ctx.lineWidth = 2;
+			ctx.beginPath();
+			if (startX >= 0) {
+				ctx.moveTo(clampedStartX, rulerHeight);
+				ctx.lineTo(clampedStartX, height);
+			}
+			if (endX <= width) {
+				ctx.moveTo(clampedEndX, rulerHeight);
+				ctx.lineTo(clampedEndX, height);
+			}
+			ctx.stroke();
+
+			// Draw label if provided
+			if (highlight.label) {
+				const labelX = clampedStartX + clampedWidth / 2;
+				ctx.fillStyle = '#ffffff';
+				ctx.font = 'bold 11px Inter, sans-serif';
+				ctx.textAlign = 'center';
+				ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+				ctx.shadowBlur = 3;
+				ctx.fillText(highlight.label, labelX, rulerHeight + 16);
+				ctx.shadowBlur = 0;
+			}
+		}
+	}
 
 	function renderTracksWithRegistry(
 		ctx: CanvasRenderingContext2D,

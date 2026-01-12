@@ -3,8 +3,32 @@
  * Uses the track type registry for parsing and rendering
  */
 
-import type { LoadedTrack } from '$lib/types/tracks';
+import type { LoadedTrack, GenomicFeature as TrackFeature } from '$lib/types/tracks';
 import type { GenomicFeature } from '$lib/types/genome';
+
+/**
+ * Filter criteria for features
+ */
+export interface FilterCriteria {
+	field: string;
+	operator: '=' | '!=' | '>' | '<' | '>=' | '<=' | 'contains' | 'matches';
+	value: string | number | boolean;
+}
+
+/**
+ * Active filters per track (null = show all, empty array = show none)
+ */
+export interface TrackFilters {
+	[trackId: string]: FilterCriteria[];
+}
+
+/**
+ * Global filter (applies to all tracks)
+ */
+export interface GlobalFilter {
+	criteria: FilterCriteria[];
+	mode: 'hide' | 'dim'; // hide = don't render, dim = render with low opacity
+}
 import { getTrackTypeByExtension, getSupportedExtensions } from '$lib/services/trackRegistry';
 import { initializeTrackTypes } from '$lib/services/trackTypes';
 import { saveSession, loadSession, type TrackMetadata } from '$lib/services/persistence';
@@ -39,6 +63,10 @@ let tracks = $state<LoadedTrack[]>([]);
 let isLoading = $state(false);
 let loadError = $state<string | null>(null);
 let renderVersion = $state(0);  // Increment to force re-render
+
+// Filter state
+let trackFilters = $state<TrackFilters>({});
+let globalFilter = $state<GlobalFilter | null>(null);
 
 // Track counter for unique IDs
 let trackIdCounter = 0;
@@ -180,6 +208,187 @@ function invalidateRender(): void {
 	renderVersion++;
 }
 
+// ============================================================
+// FILTER FUNCTIONS
+// ============================================================
+
+/**
+ * Set filter for a specific track
+ */
+function setTrackFilter(trackId: string, criteria: FilterCriteria[]): void {
+	trackFilters = { ...trackFilters, [trackId]: criteria };
+	invalidateRender();
+}
+
+/**
+ * Clear filter for a specific track
+ */
+function clearTrackFilter(trackId: string): void {
+	const { [trackId]: _, ...rest } = trackFilters;
+	trackFilters = rest;
+	invalidateRender();
+}
+
+/**
+ * Set global filter (applies to all tracks)
+ */
+function setGlobalFilter(criteria: FilterCriteria[], mode: 'hide' | 'dim' = 'dim'): void {
+	globalFilter = { criteria, mode };
+	invalidateRender();
+}
+
+/**
+ * Clear global filter
+ */
+function clearGlobalFilter(): void {
+	globalFilter = null;
+	invalidateRender();
+}
+
+/**
+ * Clear all filters (track-specific and global)
+ */
+function clearAllFilters(): void {
+	trackFilters = {};
+	globalFilter = null;
+	invalidateRender();
+}
+
+/**
+ * Check if a feature matches filter criteria
+ */
+function featureMatchesCriteria(feature: TrackFeature, criteria: FilterCriteria[]): boolean {
+	if (criteria.length === 0) return true;
+
+	return criteria.every(criterion => {
+		// Get the value from the feature
+		let featureValue: unknown;
+
+		// Check common fields first
+		if (criterion.field in feature) {
+			featureValue = (feature as unknown as Record<string, unknown>)[criterion.field];
+		}
+		// Check nested fields like featureType, geneId, etc.
+		else if ('featureType' in feature && criterion.field === 'type') {
+			featureValue = (feature as { featureType?: string }).featureType;
+		}
+		// Check in attributes/info if available
+		else if ('attributes' in feature) {
+			featureValue = (feature as { attributes?: Record<string, string> }).attributes?.[criterion.field];
+		}
+		else if ('info' in feature) {
+			featureValue = (feature as { info?: Record<string, string> }).info?.[criterion.field];
+		}
+
+		if (featureValue === undefined) return false;
+
+		const strValue = String(featureValue).toLowerCase();
+		const criterionValue = String(criterion.value).toLowerCase();
+
+		switch (criterion.operator) {
+			case '=':
+				return strValue === criterionValue;
+			case '!=':
+				return strValue !== criterionValue;
+			case '>':
+				return Number(featureValue) > Number(criterion.value);
+			case '<':
+				return Number(featureValue) < Number(criterion.value);
+			case '>=':
+				return Number(featureValue) >= Number(criterion.value);
+			case '<=':
+				return Number(featureValue) <= Number(criterion.value);
+			case 'contains':
+				return strValue.includes(criterionValue);
+			case 'matches':
+				try {
+					return new RegExp(String(criterion.value), 'i').test(String(featureValue));
+				} catch {
+					return false;
+				}
+			default:
+				return true;
+		}
+	});
+}
+
+/**
+ * Get filtered features for a track
+ * Returns { visible: features to render normally, dimmed: features to render dimmed }
+ */
+function getFilteredFeatures(track: LoadedTrack): {
+	visible: TrackFeature[];
+	dimmed: TrackFeature[];
+} {
+	const trackCriteria = trackFilters[track.id];
+	const hasTrackFilter = trackCriteria && trackCriteria.length > 0;
+	const hasGlobalFilter = globalFilter && globalFilter.criteria.length > 0;
+
+	// No filters - all visible
+	if (!hasTrackFilter && !hasGlobalFilter) {
+		return { visible: track.features, dimmed: [] };
+	}
+
+	const visible: TrackFeature[] = [];
+	const dimmed: TrackFeature[] = [];
+
+	for (const feature of track.features) {
+		let matchesTrack = true;
+		let matchesGlobal = true;
+
+		// Check track-specific filter
+		if (hasTrackFilter) {
+			matchesTrack = featureMatchesCriteria(feature, trackCriteria);
+		}
+
+		// Check global filter
+		if (hasGlobalFilter) {
+			matchesGlobal = featureMatchesCriteria(feature, globalFilter!.criteria);
+		}
+
+		// Feature must match BOTH filters to be fully visible
+		if (matchesTrack && matchesGlobal) {
+			visible.push(feature);
+		} else if (globalFilter?.mode === 'dim') {
+			// Dim mode - show non-matching features with reduced opacity
+			dimmed.push(feature);
+		}
+		// hide mode - non-matching features are not included at all
+	}
+
+	return { visible, dimmed };
+}
+
+/**
+ * Check if any filters are active
+ */
+function hasActiveFilters(): boolean {
+	return Object.keys(trackFilters).length > 0 || globalFilter !== null;
+}
+
+/**
+ * Get human-readable description of active filters
+ */
+function getActiveFilterDescription(): string {
+	const parts: string[] = [];
+
+	if (globalFilter) {
+		const desc = globalFilter.criteria
+			.map(c => `${c.field}${c.operator}${c.value}`)
+			.join(' AND ');
+		parts.push(`Global: ${desc} (${globalFilter.mode})`);
+	}
+
+	for (const [trackId, criteria] of Object.entries(trackFilters)) {
+		const track = tracks.find(t => t.id === trackId);
+		const trackName = track?.name || trackId;
+		const desc = criteria.map(c => `${c.field}${c.operator}${c.value}`).join(' AND ');
+		parts.push(`${trackName}: ${desc}`);
+	}
+
+	return parts.join('; ') || 'No filters';
+}
+
 // Track file names for session restore
 const trackFileNames = new Map<string, string>();
 
@@ -236,6 +445,8 @@ export function useTracks() {
 		get error() { return loadError; },
 		get renderVersion() { return renderVersion; },
 		get chromosomeMismatchWarning() { return chromosomeMismatchWarning; },
+		get globalFilter() { return globalFilter; },
+		get trackFilters() { return trackFilters; },
 		addTrackFromFile,
 		removeTrack,
 		toggleTrackVisibility,
@@ -248,5 +459,14 @@ export function useTracks() {
 		persistSession,
 		getSavedSession,
 		getTrackMetadata,
+		// Filter methods
+		setTrackFilter,
+		clearTrackFilter,
+		setGlobalFilter,
+		clearGlobalFilter,
+		clearAllFilters,
+		getFilteredFeatures,
+		hasActiveFilters,
+		getActiveFilterDescription,
 	};
 }

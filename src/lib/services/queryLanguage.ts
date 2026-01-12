@@ -12,6 +12,7 @@
  */
 
 import { useViewport } from '$lib/stores/viewport.svelte';
+import { useTracks, type FilterCriteria } from '$lib/stores/tracks.svelte';
 import { parseCoordinate } from '$lib/types/genome';
 import type { LoadedTrack, GeneModelFeature, VariantFeature } from '$lib/types/tracks';
 
@@ -24,6 +25,7 @@ export type QueryCommand =
 	| 'pan'
 	| 'filter'
 	| 'highlight'
+	| 'clear'
 	| 'list'
 	| 'find'
 	| 'show'
@@ -204,6 +206,21 @@ export function parseQuery(input: string): ParsedQuery {
 				};
 			}
 			return { command: 'highlight', raw, params: {}, valid: false, error: 'Invalid coordinates' };
+		}
+
+		case 'clear': {
+			const target = parts[1]?.toLowerCase();
+			if (target === 'filters' || target === 'filter') {
+				return { command: 'clear', raw, params: { target: 'filters' }, valid: true };
+			}
+			if (target === 'highlights' || target === 'highlight') {
+				return { command: 'clear', raw, params: { target: 'highlights' }, valid: true };
+			}
+			if (target === 'all') {
+				return { command: 'clear', raw, params: { target: 'all' }, valid: true };
+			}
+			// Default: clear all
+			return { command: 'clear', raw, params: { target: 'all' }, valid: true };
 		}
 
 		case 'list':
@@ -470,21 +487,96 @@ export function executeQuery(query: ParsedQuery): QueryResult {
 		}
 
 		case 'filter': {
-			// TODO: Implement track filtering
+			// Apply filter using tracks store
+			const tracksStore = useTracks();
+
+			const filters = query.params as Record<string, string>;
+			const criteria: FilterCriteria[] = [];
+
+			for (const [field, value] of Object.entries(filters)) {
+				// Parse operators in value (e.g., ">100", "!=exon")
+				let operator: '=' | '!=' | '>' | '<' | '>=' | '<=' | 'contains' | 'matches' = '=';
+				let actualValue: string | number | boolean = value;
+
+				if (value.startsWith('>=')) {
+					operator = '>=';
+					actualValue = value.slice(2);
+				} else if (value.startsWith('<=')) {
+					operator = '<=';
+					actualValue = value.slice(2);
+				} else if (value.startsWith('!=')) {
+					operator = '!=';
+					actualValue = value.slice(2);
+				} else if (value.startsWith('>')) {
+					operator = '>';
+					actualValue = value.slice(1);
+				} else if (value.startsWith('<')) {
+					operator = '<';
+					actualValue = value.slice(1);
+				} else if (value.startsWith('~')) {
+					operator = 'matches';
+					actualValue = value.slice(1);
+				} else if (value.startsWith('*')) {
+					operator = 'contains';
+					actualValue = value.slice(1);
+				}
+
+				// Try to parse as number
+				if (!isNaN(Number(actualValue))) {
+					actualValue = Number(actualValue);
+				}
+
+				criteria.push({ field, operator, value: actualValue });
+			}
+
+			// Apply as global filter with 'dim' mode
+			tracksStore.setGlobalFilter(criteria, 'dim');
+
+			const filterDesc = criteria.map(c => `${c.field}${c.operator}${c.value}`).join(', ');
 			return {
-				success: false,
+				success: true,
 				query,
-				message: 'Filter not yet implemented',
+				message: `Filter applied: ${filterDesc}`,
 				timestamp
 			};
 		}
 
 		case 'highlight': {
-			// TODO: Implement region highlighting
+			const { chromosome, start, end } = query.params as { chromosome: string; start: number; end: number };
+
+			// Add highlight region
+			viewport.addHighlight(chromosome, start, end, {
+				label: `${chromosome}:${start.toLocaleString()}-${end.toLocaleString()}`
+			});
+
+			// Navigate to the highlighted region
+			const padding = Math.round((end - start) * 0.2);
+			viewport.navigateTo(chromosome, Math.max(0, start - padding), end + padding);
+
 			return {
-				success: false,
+				success: true,
 				query,
-				message: 'Highlight not yet implemented',
+				message: `Highlighted ${chromosome}:${start.toLocaleString()}-${end.toLocaleString()}`,
+				timestamp
+			};
+		}
+
+		case 'clear': {
+			const { target } = query.params as { target: 'filters' | 'highlights' | 'all' };
+			const tracksStore = useTracks();
+
+			if (target === 'filters' || target === 'all') {
+				tracksStore.clearAllFilters();
+			}
+			if (target === 'highlights' || target === 'all') {
+				viewport.clearAllHighlights();
+			}
+
+			const cleared = target === 'all' ? 'filters and highlights' : target;
+			return {
+				success: true,
+				query,
+				message: `Cleared ${cleared}`,
 				timestamp
 			};
 		}
@@ -1228,6 +1320,82 @@ export function translateNaturalLanguage(input: string): ParsedQuery | null {
 	}
 
 	// ============================================================
+	// FILTER PATTERNS
+	// ============================================================
+
+	// "show only exons", "filter to exons" - strip trailing 's' for singular
+	const filterOnlyMatch = lower.match(/(?:show\s+only|filter\s+(?:to|by))\s+(\w+?)s?$/);
+	if (filterOnlyMatch) {
+		const featureType = filterOnlyMatch[1].replace(/s$/, ''); // Remove plural
+		return parseQuery(`filter type=${featureType}`);
+	}
+
+	// "only show exons" - need separate pattern to not conflict with "only show genes" -> list genes
+	const onlyShowMatch = lower.match(/^only\s+show\s+(\w+?)s?$/);
+	if (onlyShowMatch) {
+		const featureType = onlyShowMatch[1];
+		// Don't match "only show genes" or "only show variants" as those are list commands
+		if (featureType !== 'gene' && featureType !== 'variant') {
+			return parseQuery(`filter type=${featureType}`);
+		}
+	}
+
+	// "filter by type=exon", "filter strand=+"
+	const filterByMatch = lower.match(/filter\s+(?:by\s+)?(\w+)\s*[=:]\s*(\S+)/);
+	if (filterByMatch) {
+		return parseQuery(`filter ${filterByMatch[1]}=${filterByMatch[2]}`);
+	}
+
+	// "show plus strand", "show minus strand"
+	const showStrandMatch = lower.match(/show\s+(plus|\+|minus|-|forward|reverse)\s+strand/);
+	if (showStrandMatch) {
+		const strand = showStrandMatch[1].match(/plus|\+|forward/) ? '+' : '-';
+		return parseQuery(`filter strand=${strand}`);
+	}
+
+	// "filter to plus/minus strand" - separate pattern
+	const filterStrandMatch = lower.match(/filter\s+to\s+(plus|\+|minus|-|forward|reverse)\s+strand/);
+	if (filterStrandMatch) {
+		const strand = filterStrandMatch[1].match(/plus|\+|forward/) ? '+' : '-';
+		return parseQuery(`filter strand=${strand}`);
+	}
+
+	// "clear filters", "remove filters", "reset filters"
+	if (lower.match(/(?:clear|remove|reset)\s+filters?/)) {
+		return parseQuery('clear filters');
+	}
+
+	// ============================================================
+	// HIGHLIGHT PATTERNS
+	// ============================================================
+
+	// "highlight region chr17:1000-2000", "mark chr17:1000-2000"
+	const highlightRegionMatch = lower.match(/(?:highlight|mark|show)\s+(?:region\s+)?(chr[\w]+:\d+-\d+)/i);
+	if (highlightRegionMatch) {
+		return parseQuery(`highlight ${highlightRegionMatch[1]}`);
+	}
+
+	// "highlight GENE" - highlight the gene region
+	const highlightGeneMatch = lower.match(/^(?:highlight|mark)\s+([a-z0-9]+)$/i);
+	if (highlightGeneMatch) {
+		const geneName = highlightGeneMatch[1].toUpperCase();
+		const gene = KNOWN_GENES[geneName];
+		if (gene) {
+			return parseQuery(`highlight ${gene.chr}:${gene.start}-${gene.end}`);
+		}
+	}
+
+	// "clear highlights", "remove highlights"
+	if (lower.match(/(?:clear|remove|reset)\s+highlights?/)) {
+		return parseQuery('clear highlights');
+	}
+
+	// "clear all" or just "clear"
+	if (lower === 'clear' || lower === 'clear all' || lower === 'reset') {
+		return parseQuery('clear all');
+	}
+
+	// ============================================================
 	// GENE/COORDINATE SEARCH (more generic - check LAST)
 	// ============================================================
 
@@ -1310,12 +1478,17 @@ export function getCommandHelp(): Array<{ command: string; syntax: string; descr
 		{
 			command: 'filter',
 			syntax: 'filter type=exon strand=+',
-			description: 'Filter visible features (coming soon)'
+			description: 'Filter features by attributes (dims non-matching)'
 		},
 		{
 			command: 'highlight',
 			syntax: 'highlight chr1:1000-2000',
-			description: 'Highlight a region (coming soon)'
+			description: 'Highlight a genomic region'
+		},
+		{
+			command: 'clear',
+			syntax: 'clear [filters|highlights|all]',
+			description: 'Clear active filters or highlights'
 		}
 	];
 }

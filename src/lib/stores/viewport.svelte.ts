@@ -7,6 +7,19 @@ import type { Viewport } from '$lib/types/genome';
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
 
+/**
+ * A highlighted region on the canvas
+ */
+export interface HighlightRegion {
+	id: string;
+	chromosome: string;
+	start: number;
+	end: number;
+	color?: string;      // Default: semi-transparent yellow
+	label?: string;      // Optional label to display
+	persistent?: boolean; // If true, survives clear() calls
+}
+
 // Default viewport: shows a region of chromosome 1
 const DEFAULT_VIEWPORT: Viewport = {
 	chromosome: 'chr1',
@@ -16,6 +29,10 @@ const DEFAULT_VIEWPORT: Viewport = {
 
 // Reactive viewport state
 let viewport = $state<Viewport>({ ...DEFAULT_VIEWPORT });
+
+// Highlight state
+let highlights = $state<HighlightRegion[]>([]);
+let highlightIdCounter = 0;
 
 // Track whether we've initialized from URL
 let initialized = false;
@@ -156,12 +173,96 @@ function reset(): void {
 	setViewport({ ...DEFAULT_VIEWPORT });
 }
 
+// ============================================================
+// HIGHLIGHT FUNCTIONS
+// ============================================================
+
+/**
+ * Add a highlight region
+ */
+function addHighlight(
+	chromosome: string,
+	start: number,
+	end: number,
+	options?: { color?: string; label?: string; persistent?: boolean }
+): string {
+	const id = `highlight_${++highlightIdCounter}`;
+	const region: HighlightRegion = {
+		id,
+		chromosome,
+		start,
+		end,
+		color: options?.color,
+		label: options?.label,
+		persistent: options?.persistent ?? false
+	};
+	highlights = [...highlights, region];
+	return id;
+}
+
+/**
+ * Remove a specific highlight by ID
+ */
+function removeHighlight(id: string): void {
+	highlights = highlights.filter(h => h.id !== id);
+}
+
+/**
+ * Clear all non-persistent highlights
+ */
+function clearHighlights(): void {
+	highlights = highlights.filter(h => h.persistent);
+}
+
+/**
+ * Clear ALL highlights including persistent ones
+ */
+function clearAllHighlights(): void {
+	highlights = [];
+}
+
+/**
+ * Get highlights visible in current viewport
+ */
+function getVisibleHighlights(): HighlightRegion[] {
+	return highlights.filter(h =>
+		h.chromosome === viewport.chromosome &&
+		h.start < viewport.end &&
+		h.end > viewport.start
+	);
+}
+
+/**
+ * Check if there are any active highlights
+ */
+function hasHighlights(): boolean {
+	return highlights.length > 0;
+}
+
+/**
+ * Navigate to a highlight and optionally zoom to fit it
+ */
+function goToHighlight(id: string, padding: number = 0.1): void {
+	const highlight = highlights.find(h => h.id === id);
+	if (!highlight) return;
+
+	const width = highlight.end - highlight.start;
+	const paddingBp = Math.round(width * padding);
+
+	navigateTo(
+		highlight.chromosome,
+		Math.max(0, highlight.start - paddingBp),
+		highlight.end + paddingBp
+	);
+}
+
 // Export as a reactive store object
 export function useViewport() {
 	return {
 		get current() { return viewport; },
 		get width() { return viewportWidth; },
 		get center() { return viewportCenter; },
+		get highlights() { return highlights; },
 		setViewport,
 		navigateTo,
 		pan,
@@ -169,6 +270,14 @@ export function useViewport() {
 		zoomIn,
 		zoomOut,
 		reset,
-		initializeFromURL
+		initializeFromURL,
+		// Highlight methods
+		addHighlight,
+		removeHighlight,
+		clearHighlights,
+		clearAllHighlights,
+		getVisibleHighlights,
+		hasHighlights,
+		goToHighlight
 	};
 }

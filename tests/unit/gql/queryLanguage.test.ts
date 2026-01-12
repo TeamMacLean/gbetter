@@ -726,4 +726,206 @@ describe('Helper functions', () => {
 			expect(genes).toContain('EGFR');
 		});
 	});
+
+	describe('filter command', () => {
+		it('parses filter with single criterion', () => {
+			const result = parseQuery('filter type=exon');
+			expect(result.valid).toBe(true);
+			expect(result.command).toBe('filter');
+			expect(result.params).toMatchObject({ type: 'exon' });
+		});
+
+		it('parses filter with multiple criteria', () => {
+			const result = parseQuery('filter type=exon strand=+');
+			expect(result.valid).toBe(true);
+			expect(result.command).toBe('filter');
+			expect(result.params).toMatchObject({
+				type: 'exon',
+				strand: '+',
+			});
+		});
+
+		it('parses filter with numeric comparison', () => {
+			const result = parseQuery('filter score=>100');
+			expect(result.valid).toBe(true);
+			expect(result.params).toMatchObject({ score: '>100' });
+		});
+
+		it('reports error for empty filter', () => {
+			const result = parseQuery('filter');
+			expect(result.valid).toBe(false);
+			expect(result.error).toContain('No filter criteria');
+		});
+	});
+
+	describe('highlight command', () => {
+		it('parses highlight with coordinates', () => {
+			const result = parseQuery('highlight chr17:7670000-7675000');
+			expect(result.valid).toBe(true);
+			expect(result.command).toBe('highlight');
+			expect(result.params).toMatchObject({
+				chromosome: 'chr17',
+				start: 7669999, // 1-based to 0-based
+				end: 7675000,
+			});
+		});
+
+		it('parses highlight with full coordinate format', () => {
+			const result = parseQuery('highlight chr1:1000-2000');
+			expect(result.valid).toBe(true);
+			expect(result.params).toMatchObject({
+				chromosome: 'chr1',
+				start: 999,
+				end: 2000,
+			});
+		});
+
+		it('reports error for invalid coordinates', () => {
+			const result = parseQuery('highlight invalid');
+			expect(result.valid).toBe(false);
+			expect(result.error).toContain('Invalid coordinates');
+		});
+	});
+
+	describe('clear command', () => {
+		it('parses clear filters', () => {
+			const result = parseQuery('clear filters');
+			expect(result.valid).toBe(true);
+			expect(result.command).toBe('clear');
+			expect(result.params).toMatchObject({ target: 'filters' });
+		});
+
+		it('parses clear highlights', () => {
+			const result = parseQuery('clear highlights');
+			expect(result.valid).toBe(true);
+			expect(result.command).toBe('clear');
+			expect(result.params).toMatchObject({ target: 'highlights' });
+		});
+
+		it('parses clear all', () => {
+			const result = parseQuery('clear all');
+			expect(result.valid).toBe(true);
+			expect(result.command).toBe('clear');
+			expect(result.params).toMatchObject({ target: 'all' });
+		});
+
+		it('defaults to clear all without argument', () => {
+			const result = parseQuery('clear');
+			expect(result.valid).toBe(true);
+			expect(result.params).toMatchObject({ target: 'all' });
+		});
+
+		it('handles singular forms', () => {
+			const filterResult = parseQuery('clear filter');
+			expect(filterResult.params).toMatchObject({ target: 'filters' });
+
+			const highlightResult = parseQuery('clear highlight');
+			expect(highlightResult.params).toMatchObject({ target: 'highlights' });
+		});
+	});
+});
+
+describe('GQL Natural Language - Filter/Highlight', () => {
+	describe('filter patterns', () => {
+		it('translates "show only exons"', () => {
+			const result = translateNaturalLanguage('show only exons');
+			expect(result?.command).toBe('filter');
+			expect(result?.params).toMatchObject({ type: 'exon' });
+		});
+
+		it('translates "filter to exon"', () => {
+			const result = translateNaturalLanguage('filter to exon');
+			expect(result?.command).toBe('filter');
+		});
+
+		it('translates "only show exons"', () => {
+			const result = translateNaturalLanguage('only show exons');
+			expect(result?.command).toBe('filter');
+			expect(result?.params).toMatchObject({ type: 'exon' });
+		});
+
+		it('translates "show plus strand"', () => {
+			const result = translateNaturalLanguage('show plus strand');
+			expect(result?.command).toBe('filter');
+			expect(result?.params).toMatchObject({ strand: '+' });
+		});
+
+		it('translates "filter to minus strand"', () => {
+			const result = translateNaturalLanguage('filter to minus strand');
+			expect(result?.command).toBe('filter');
+			expect(result?.params).toMatchObject({ strand: '-' });
+		});
+
+		it('translates "clear filters"', () => {
+			const result = translateNaturalLanguage('clear filters');
+			expect(result?.command).toBe('clear');
+			expect(result?.params).toMatchObject({ target: 'filters' });
+		});
+
+		it('translates "reset filters"', () => {
+			const result = translateNaturalLanguage('reset filters');
+			expect(result?.command).toBe('clear');
+			expect(result?.params).toMatchObject({ target: 'filters' });
+		});
+	});
+
+	describe('highlight patterns', () => {
+		it('translates "highlight chr17:1000-2000"', () => {
+			const result = translateNaturalLanguage('highlight chr17:1000-2000');
+			expect(result?.command).toBe('highlight');
+			expect(result?.params).toMatchObject({
+				chromosome: 'chr17',
+			});
+		});
+
+		it('translates "mark chr1:5000-6000"', () => {
+			const result = translateNaturalLanguage('mark chr1:5000-6000');
+			expect(result?.command).toBe('highlight');
+		});
+
+		it('translates "highlight region chr17:1000-2000"', () => {
+			const result = translateNaturalLanguage('highlight region chr17:1000-2000');
+			expect(result?.command).toBe('highlight');
+		});
+
+		it('translates "highlight TP53" for known gene', () => {
+			const result = translateNaturalLanguage('highlight TP53');
+			expect(result?.command).toBe('highlight');
+			expect(result?.params).toMatchObject({
+				chromosome: 'chr17',
+			});
+		});
+
+		it('translates "clear highlights"', () => {
+			const result = translateNaturalLanguage('clear highlights');
+			expect(result?.command).toBe('clear');
+			expect(result?.params).toMatchObject({ target: 'highlights' });
+		});
+
+		it('translates "remove highlights"', () => {
+			const result = translateNaturalLanguage('remove highlights');
+			expect(result?.command).toBe('clear');
+			expect(result?.params).toMatchObject({ target: 'highlights' });
+		});
+	});
+
+	describe('clear patterns', () => {
+		it('translates "clear"', () => {
+			const result = translateNaturalLanguage('clear');
+			expect(result?.command).toBe('clear');
+			expect(result?.params).toMatchObject({ target: 'all' });
+		});
+
+		it('translates "clear all"', () => {
+			const result = translateNaturalLanguage('clear all');
+			expect(result?.command).toBe('clear');
+			expect(result?.params).toMatchObject({ target: 'all' });
+		});
+
+		it('translates "reset"', () => {
+			const result = translateNaturalLanguage('reset');
+			expect(result?.command).toBe('clear');
+			expect(result?.params).toMatchObject({ target: 'all' });
+		});
+	});
 });
