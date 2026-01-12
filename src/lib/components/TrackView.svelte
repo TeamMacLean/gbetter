@@ -189,16 +189,22 @@
 			ctx.textAlign = 'center';
 			ctx.fillText(badge, width - badgeWidth / 2 - 8, currentY + 11);
 
-			// Create render context and call the track type's renderer
+			// Get filtered features to determine which should be dimmed
+			const { dimmed } = tracks.getFilteredFeatures(track);
+			const dimmedIds = new Set(dimmed.map(f => f.id));
+
+			// Create render context with dimmed IDs for smart rendering
 			const renderCtx = createRenderContext(
 				ctx,
 				viewport.current,
 				width,
 				currentY,
 				track.height,
-				track.color
+				track.color,
+				dimmedIds.size > 0 ? dimmedIds : undefined
 			);
 
+			// Render all features - renderer handles dimming internally
 			trackType.render(track.features, renderCtx);
 
 			// Draw bottom border

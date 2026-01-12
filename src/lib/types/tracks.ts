@@ -40,6 +40,8 @@ export interface RenderContext {
 	// Computed helpers
 	basesPerPixel: number;
 	toPixelX: (pos: number) => number;
+	// Filter support: IDs of features to render dimmed (25% opacity)
+	dimmedIds?: Set<string>;
 }
 
 /**
@@ -145,7 +147,8 @@ export function createRenderContext(
 	canvasWidth: number,
 	trackY: number,
 	trackHeight: number,
-	color: string
+	color: string,
+	dimmedIds?: Set<string>
 ): RenderContext {
 	const pixelsPerBase = canvasWidth / (viewport.end - viewport.start);
 	const basesPerPixel = (viewport.end - viewport.start) / canvasWidth;
@@ -160,5 +163,6 @@ export function createRenderContext(
 		color,
 		basesPerPixel,
 		toPixelX: (pos: number) => (pos - viewport.start) * pixelsPerBase,
+		dimmedIds,
 	};
 }

@@ -264,19 +264,23 @@ function featureMatchesCriteria(feature: TrackFeature, criteria: FilterCriteria[
 		// Get the value from the feature
 		let featureValue: unknown;
 
-		// Check common fields first
-		if (criterion.field in feature) {
-			featureValue = (feature as unknown as Record<string, unknown>)[criterion.field];
-		}
-		// Check nested fields like featureType, geneId, etc.
-		else if ('featureType' in feature && criterion.field === 'type') {
+		// For 'type' field, check featureType first (GFF features use featureType)
+		if (criterion.field === 'type' && 'featureType' in feature) {
 			featureValue = (feature as { featureType?: string }).featureType;
 		}
-		// Check in attributes/info if available
-		else if ('attributes' in feature) {
+		// Check direct field on feature (only if value is not undefined)
+		else if (criterion.field in feature) {
+			const val = (feature as unknown as Record<string, unknown>)[criterion.field];
+			if (val !== undefined) {
+				featureValue = val;
+			}
+		}
+
+		// If still undefined, check in attributes/info
+		if (featureValue === undefined && 'attributes' in feature) {
 			featureValue = (feature as { attributes?: Record<string, string> }).attributes?.[criterion.field];
 		}
-		else if ('info' in feature) {
+		if (featureValue === undefined && 'info' in feature) {
 			featureValue = (feature as { info?: Record<string, string> }).info?.[criterion.field];
 		}
 

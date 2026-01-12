@@ -256,7 +256,7 @@ function parseGff3(content: string): ParseResult<GeneModelFeature> {
 }
 
 function renderGeneModels(features: GeneModelFeature[], ctx: RenderContext): void {
-	const { ctx: c, viewport, toPixelX, trackY, trackHeight, basesPerPixel } = ctx;
+	const { ctx: c, viewport, toPixelX, trackY, trackHeight, basesPerPixel, dimmedIds } = ctx;
 	const theme = currentTheme;
 
 	// Get top-level features (genes or transcripts without parents)
@@ -299,7 +299,7 @@ function renderGeneModels(features: GeneModelFeature[], ctx: RenderContext): voi
 		const baseY = trackY + theme.labelHeight + rowIdx * (theme.rowHeight + theme.labelHeight);
 
 		for (const gene of displayRows[rowIdx]) {
-			renderGeneOrTranscript(c, gene, viewport, toPixelX, baseY, basesPerPixel);
+			renderGeneOrTranscript(c, gene, viewport, toPixelX, baseY, basesPerPixel, dimmedIds);
 		}
 	}
 
@@ -494,12 +494,17 @@ function renderGeneOrTranscript(
 	viewport: Viewport,
 	toPixelX: (pos: number) => number,
 	baseY: number,
-	_basesPerPixel: number
+	_basesPerPixel: number,
+	dimmedIds?: Set<string>,
+	skipLabel?: boolean
 ): void {
 	const theme = currentTheme;
 	const x = toPixelX(feature.start);
 	const endX = toPixelX(feature.end);
 	const width = Math.max(1, endX - x);
+
+	// Helper to check if a feature should be dimmed
+	const isDimmed = (f: GeneModelFeature) => dimmedIds?.has(f.id) ?? false;
 
 	// Get children grouped by type
 	const exons = feature.children.filter(ch => ch.featureType === 'exon');
@@ -514,9 +519,10 @@ function renderGeneOrTranscript(
 	const transcripts = feature.children.filter(ch => ch.featureType === 'mRNA');
 	if (transcripts.length > 0) {
 		const transcript = transcripts[0];
-		renderGeneOrTranscript(c, transcript, viewport, toPixelX, baseY, _basesPerPixel);
+		// Pass skipLabel=true to prevent transcript from drawing its own label
+		renderGeneOrTranscript(c, transcript, viewport, toPixelX, baseY, _basesPerPixel, dimmedIds, true);
 
-		// Draw gene label above
+		// Draw gene label above (only the gene label, not transcript)
 		if (feature.name && width > 20) {
 			c.fillStyle = theme.label;
 			c.font = '600 10px Inter, system-ui, sans-serif';
@@ -549,18 +555,68 @@ function renderGeneOrTranscript(
 		drawIntronConnector(c, x, x + width, centerY, theme.exonHeight);
 	}
 
-	// If we have CDS and exons, draw UTR regions (exons not covered by CDS)
+	// Helper to apply dimming for a feature
+	const withDimming = (f: GeneModelFeature, draw: () => void) => {
+		if (isDimmed(f)) {
+			c.save();
+			c.globalAlpha = 0.25;
+			draw();
+			c.restore();
+		} else {
+			draw();
+		}
+	};
+
+	// If we have CDS and exons, draw with filter-aware layering
 	if (cdss.length > 0 && exons.length > 0) {
-		// Draw exons as UTRs first (shorter height)
-		for (const exon of exons) {
+		// Separate dimmed and visible features
+		const dimmedExons = exons.filter(isDimmed);
+		const visibleExons = exons.filter(e => !isDimmed(e));
+		const dimmedCds = cdss.filter(isDimmed);
+		const visibleCds = cdss.filter(c => !isDimmed(c));
+
+		// FIRST PASS: Draw all dimmed features (behind)
+		c.save();
+		c.globalAlpha = 0.25;
+
+		// Dimmed exons as UTR style
+		for (const exon of dimmedExons) {
 			const ex = toPixelX(exon.start);
 			const ew = Math.max(1, toPixelX(exon.end) - ex);
 			const ey = centerY - theme.utrHeight / 2;
 			drawPill(c, ex, ey, ew, theme.utrHeight, theme.utr, false);
 		}
 
-		// Draw CDS on top (taller, more prominent) with inner chevrons
-		for (const cds of cdss) {
+		// Dimmed CDS
+		for (const cds of dimmedCds) {
+			const cx = toPixelX(cds.start);
+			const cw = Math.max(1, toPixelX(cds.end) - cx);
+			const cy = centerY - theme.cdsHeight / 2;
+			drawPill(c, cx, cy, cw, theme.cdsHeight, theme.cds);
+			drawInnerChevrons(c, cx, cy, cw, theme.cdsHeight, strand);
+		}
+
+		c.restore();
+
+		// SECOND PASS: Draw visible features on top
+		// Visible exons - draw as proper exons (not UTR style) when CDS is dimmed
+		for (const exon of visibleExons) {
+			const ex = toPixelX(exon.start);
+			const ew = Math.max(1, toPixelX(exon.end) - ex);
+			// Use full exon style if CDS is being filtered out
+			if (dimmedCds.length > 0 && visibleCds.length === 0) {
+				const ey = centerY - theme.exonHeight / 2;
+				drawPill(c, ex, ey, ew, theme.exonHeight, theme.exon);
+				drawInnerChevrons(c, ex, ey, ew, theme.exonHeight, strand);
+			} else {
+				// Normal UTR style when both visible
+				const ey = centerY - theme.utrHeight / 2;
+				drawPill(c, ex, ey, ew, theme.utrHeight, theme.utr, false);
+			}
+		}
+
+		// Visible CDS on top
+		for (const cds of visibleCds) {
 			const cx = toPixelX(cds.start);
 			const cw = Math.max(1, toPixelX(cds.end) - cx);
 			const cy = centerY - theme.cdsHeight / 2;
@@ -570,37 +626,45 @@ function renderGeneOrTranscript(
 	} else if (exons.length > 0) {
 		// Just exons with inner chevrons
 		for (const exon of exons) {
-			const ex = toPixelX(exon.start);
-			const ew = Math.max(1, toPixelX(exon.end) - ex);
-			const ey = centerY - theme.exonHeight / 2;
-			drawPill(c, ex, ey, ew, theme.exonHeight, theme.exon);
-			drawInnerChevrons(c, ex, ey, ew, theme.exonHeight, strand);
+			withDimming(exon, () => {
+				const ex = toPixelX(exon.start);
+				const ew = Math.max(1, toPixelX(exon.end) - ex);
+				const ey = centerY - theme.exonHeight / 2;
+				drawPill(c, ex, ey, ew, theme.exonHeight, theme.exon);
+				drawInnerChevrons(c, ex, ey, ew, theme.exonHeight, strand);
+			});
 		}
 	} else if (cdss.length > 0) {
 		// Just CDS with inner chevrons
 		for (const cds of cdss) {
-			const cx = toPixelX(cds.start);
-			const cw = Math.max(1, toPixelX(cds.end) - cx);
-			const cy = centerY - theme.cdsHeight / 2;
-			drawPill(c, cx, cy, cw, theme.cdsHeight, theme.cds);
-			drawInnerChevrons(c, cx, cy, cw, theme.cdsHeight, strand);
+			withDimming(cds, () => {
+				const cx = toPixelX(cds.start);
+				const cw = Math.max(1, toPixelX(cds.end) - cx);
+				const cy = centerY - theme.cdsHeight / 2;
+				drawPill(c, cx, cy, cw, theme.cdsHeight, theme.cds);
+				drawInnerChevrons(c, cx, cy, cw, theme.cdsHeight, strand);
+			});
 		}
 	} else if (utrs.length > 0) {
 		// Just UTRs
 		for (const utr of utrs) {
-			const ux = toPixelX(utr.start);
-			const uw = Math.max(1, toPixelX(utr.end) - ux);
-			drawPill(c, ux, centerY - theme.utrHeight / 2, uw, theme.utrHeight, theme.utr);
+			withDimming(utr, () => {
+				const ux = toPixelX(utr.start);
+				const uw = Math.max(1, toPixelX(utr.end) - ux);
+				drawPill(c, ux, centerY - theme.utrHeight / 2, uw, theme.utrHeight, theme.utr);
+			});
 		}
 	} else {
-		// No children - draw as single pill with chevrons
-		const gy = centerY - theme.exonHeight / 2;
-		drawPill(c, x, gy, width, theme.exonHeight, theme.gene);
-		drawInnerChevrons(c, x, gy, width, theme.exonHeight, strand);
+		// No children - draw as single pill with chevrons (check parent feature)
+		withDimming(feature, () => {
+			const gy = centerY - theme.exonHeight / 2;
+			drawPill(c, x, gy, width, theme.exonHeight, theme.gene);
+			drawInnerChevrons(c, x, gy, width, theme.exonHeight, strand);
+		});
 	}
 
-	// Draw label with modern typography and subtle background
-	if (feature.name && width > 25) {
+	// Draw label with modern typography and subtle background (skip if parent handles it)
+	if (feature.name && width > 25 && !skipLabel) {
 		c.font = '600 10px Inter, system-ui, sans-serif';
 		c.textAlign = 'left';
 

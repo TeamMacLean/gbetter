@@ -1,0 +1,26 @@
+##gff-version 3
+##sequence-region chr1 1000 30000
+# Test file with mRNA as top-level (no gene parent)
+# This simulates data where gene features are missing
+
+# mRNA 1: Direct mRNA without gene parent
+chr1	test	mRNA	1000	8000	.	+	.	ID=MRNA1;Name=DirectTranscript1
+chr1	test	exon	1000	2000	.	+	.	ID=MRNA1.exon1;Parent=MRNA1
+chr1	test	exon	4000	5000	.	+	.	ID=MRNA1.exon2;Parent=MRNA1
+chr1	test	exon	7000	8000	.	+	.	ID=MRNA1.exon3;Parent=MRNA1
+chr1	test	CDS	1200	2000	.	+	0	ID=MRNA1.cds1;Parent=MRNA1
+chr1	test	CDS	4000	5000	.	+	0	ID=MRNA1.cds2;Parent=MRNA1
+chr1	test	CDS	7000	7800	.	+	0	ID=MRNA1.cds3;Parent=MRNA1
+
+# mRNA 2: Another direct mRNA
+chr1	test	mRNA	12000	20000	.	-	.	ID=MRNA2;Name=DirectTranscript2
+chr1	test	exon	12000	13000	.	-	.	ID=MRNA2.exon1;Parent=MRNA2
+chr1	test	exon	15000	16000	.	-	.	ID=MRNA2.exon2;Parent=MRNA2
+chr1	test	exon	19000	20000	.	-	.	ID=MRNA2.exon3;Parent=MRNA2
+chr1	test	CDS	12200	13000	.	-	0	ID=MRNA2.cds1;Parent=MRNA2
+chr1	test	CDS	15000	16000	.	-	0	ID=MRNA2.cds2;Parent=MRNA2
+chr1	test	CDS	19000	19800	.	-	0	ID=MRNA2.cds3;Parent=MRNA2
+
+# Exon-only features (no mRNA or gene parent) - rare but possible
+chr1	test	exon	25000	26000	.	+	.	ID=OrphanExon1;Name=OrphanExon
+chr1	test	exon	28000	29000	.	+	.	ID=OrphanExon2;Name=OrphanExon2

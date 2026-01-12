@@ -1,0 +1,51 @@
+##gff-version 3
+##sequence-region chr1 1000 50000
+# Test file for filter functionality
+# Contains genes with exons, CDS, and UTR regions
+
+# Gene 1: Simple gene with exons and CDS
+chr1	test	gene	1000	10000	.	+	.	ID=GENE1;Name=TestGene1
+chr1	test	mRNA	1000	10000	.	+	.	ID=GENE1.1;Parent=GENE1;Name=TestGene1-201
+chr1	test	five_prime_UTR	1000	1200	.	+	.	ID=GENE1.1.utr5;Parent=GENE1.1
+chr1	test	exon	1000	2000	.	+	.	ID=GENE1.1.exon1;Parent=GENE1.1
+chr1	test	exon	3000	4000	.	+	.	ID=GENE1.1.exon2;Parent=GENE1.1
+chr1	test	exon	5000	6000	.	+	.	ID=GENE1.1.exon3;Parent=GENE1.1
+chr1	test	exon	8000	10000	.	+	.	ID=GENE1.1.exon4;Parent=GENE1.1
+chr1	test	CDS	1200	2000	.	+	0	ID=GENE1.1.cds1;Parent=GENE1.1
+chr1	test	CDS	3000	4000	.	+	0	ID=GENE1.1.cds2;Parent=GENE1.1
+chr1	test	CDS	5000	6000	.	+	0	ID=GENE1.1.cds3;Parent=GENE1.1
+chr1	test	CDS	8000	9500	.	+	0	ID=GENE1.1.cds4;Parent=GENE1.1
+chr1	test	three_prime_UTR	9500	10000	.	+	.	ID=GENE1.1.utr3;Parent=GENE1.1
+
+# Gene 2: Minus strand gene
+chr1	test	gene	15000	25000	.	-	.	ID=GENE2;Name=TestGene2
+chr1	test	mRNA	15000	25000	.	-	.	ID=GENE2.1;Parent=GENE2;Name=TestGene2-201
+chr1	test	three_prime_UTR	15000	15500	.	-	.	ID=GENE2.1.utr3;Parent=GENE2.1
+chr1	test	exon	15000	16000	.	-	.	ID=GENE2.1.exon1;Parent=GENE2.1
+chr1	test	exon	18000	19000	.	-	.	ID=GENE2.1.exon2;Parent=GENE2.1
+chr1	test	exon	21000	22000	.	-	.	ID=GENE2.1.exon3;Parent=GENE2.1
+chr1	test	exon	24000	25000	.	-	.	ID=GENE2.1.exon4;Parent=GENE2.1
+chr1	test	CDS	15500	16000	.	-	0	ID=GENE2.1.cds1;Parent=GENE2.1
+chr1	test	CDS	18000	19000	.	-	0	ID=GENE2.1.cds2;Parent=GENE2.1
+chr1	test	CDS	21000	22000	.	-	0	ID=GENE2.1.cds3;Parent=GENE2.1
+chr1	test	CDS	24000	24800	.	-	0	ID=GENE2.1.cds4;Parent=GENE2.1
+chr1	test	five_prime_UTR	24800	25000	.	-	.	ID=GENE2.1.utr5;Parent=GENE2.1
+
+# Gene 3: Simple exon-only gene (no CDS annotation)
+chr1	test	gene	30000	38000	.	+	.	ID=GENE3;Name=ExonOnlyGene
+chr1	test	mRNA	30000	38000	.	+	.	ID=GENE3.1;Parent=GENE3;Name=ExonOnlyGene-201
+chr1	test	exon	30000	31000	.	+	.	ID=GENE3.1.exon1;Parent=GENE3.1
+chr1	test	exon	33000	34000	.	+	.	ID=GENE3.1.exon2;Parent=GENE3.1
+chr1	test	exon	36000	38000	.	+	.	ID=GENE3.1.exon3;Parent=GENE3.1
+
+# Gene 4: CDS-heavy gene with small UTRs
+chr1	test	gene	42000	50000	.	-	.	ID=GENE4;Name=CDSHeavyGene
+chr1	test	mRNA	42000	50000	.	-	.	ID=GENE4.1;Parent=GENE4;Name=CDSHeavyGene-201
+chr1	test	exon	42000	44000	.	-	.	ID=GENE4.1.exon1;Parent=GENE4.1
+chr1	test	exon	46000	48000	.	-	.	ID=GENE4.1.exon2;Parent=GENE4.1
+chr1	test	exon	49000	50000	.	-	.	ID=GENE4.1.exon3;Parent=GENE4.1
+chr1	test	CDS	42100	44000	.	-	0	ID=GENE4.1.cds1;Parent=GENE4.1
+chr1	test	CDS	46000	48000	.	-	0	ID=GENE4.1.cds2;Parent=GENE4.1
+chr1	test	CDS	49000	49900	.	-	0	ID=GENE4.1.cds3;Parent=GENE4.1
+chr1	test	five_prime_UTR	49900	50000	.	-	.	ID=GENE4.1.utr5;Parent=GENE4.1
+chr1	test	three_prime_UTR	42000	42100	.	-	.	ID=GENE4.1.utr3;Parent=GENE4.1
