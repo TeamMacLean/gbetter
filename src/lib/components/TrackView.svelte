@@ -2,16 +2,35 @@
 	import { onMount } from 'svelte';
 	import { useViewport } from '$lib/stores/viewport.svelte';
 	import { useTracks } from '$lib/stores/tracks.svelte';
+	import { useRemoteTracks } from '$lib/stores/remoteTracks.svelte';
+	import { useAssembly } from '$lib/stores/assembly.svelte';
 	import { formatCoordinate } from '$lib/types/genome';
 	import { getTrackType } from '$lib/services/trackRegistry';
 	import { createRenderContext } from '$lib/types/tracks';
 
 	const viewport = useViewport();
 	const tracks = useTracks();
+	const remoteTracks = useRemoteTracks();
+	const assembly = useAssembly();
 
-	// Initialize viewport from URL on mount
+	// Initialize viewport from URL on mount and set up gene track
 	onMount(() => {
 		viewport.initializeFromURL();
+		// Set up gene track for current assembly
+		remoteTracks.setupGeneTrackForAssembly(assembly.current.id);
+	});
+
+	// Update remote tracks when viewport changes
+	$effect(() => {
+		remoteTracks.updateForViewport(viewport.current);
+	});
+
+	// Update gene track when assembly changes
+	$effect(() => {
+		const assemblyId = assembly.current.id;
+		if (assemblyId !== remoteTracks.activeAssemblyId) {
+			remoteTracks.setupGeneTrackForAssembly(assemblyId);
+		}
 	});
 
 	let containerEl: HTMLDivElement;
@@ -48,6 +67,8 @@
 
 		// Depend on renderVersion to force re-render when themes change
 		const _version = tracks.renderVersion;
+		// Also depend on remote track features
+		const _remoteFeatures = remoteTracks.visible.map(t => t.features.length);
 
 		const ctx = canvasEl.getContext('2d');
 		if (!ctx) return;
@@ -70,20 +91,28 @@
 		// Draw ruler
 		const rulerHeight = drawRuler(ctx, width);
 
-		// Draw tracks or placeholder
-		const visibleTracks = tracks.visible;
+		// Check for content (local tracks or remote tracks)
+		const visibleLocalTracks = tracks.visible;
+		const visibleRemoteTracks = remoteTracks.visible;
+		const hasLocalContent = visibleLocalTracks.some(t =>
+			t.features.some(f => f.chromosome === viewport.current.chromosome)
+		);
+		const hasRemoteContent = visibleRemoteTracks.some(t => t.features.length > 0);
 
-		if (visibleTracks.length > 0) {
-			// Filter tracks to current chromosome
-			const chrTracks = visibleTracks.filter(t =>
-				t.features.some(f => f.chromosome === viewport.current.chromosome)
-			);
+		if (hasLocalContent || hasRemoteContent) {
+			let currentY = rulerHeight;
 
-			if (chrTracks.length > 0) {
-				renderTracksWithRegistry(ctx, chrTracks, width, rulerHeight);
-			} else {
-				drawNoDataMessage(ctx, width, height, rulerHeight,
-					`No features on ${viewport.current.chromosome}`);
+			// Render remote tracks first (gene models)
+			if (hasRemoteContent) {
+				currentY = renderRemoteTracks(ctx, width, currentY);
+			}
+
+			// Render local tracks
+			if (hasLocalContent) {
+				const chrTracks = visibleLocalTracks.filter(t =>
+					t.features.some(f => f.chromosome === viewport.current.chromosome)
+				);
+				renderTracksWithRegistry(ctx, chrTracks, width, currentY);
 			}
 		} else {
 			drawPlaceholder(ctx, width, height, rulerHeight);
@@ -92,6 +121,181 @@
 		// Draw highlights on top
 		drawHighlights(ctx, width, height, rulerHeight);
 	});
+
+	/**
+	 * Render remote tracks (BigBed gene models)
+	 */
+	function renderRemoteTracks(
+		ctx: CanvasRenderingContext2D,
+		width: number,
+		startY: number
+	): number {
+		let currentY = startY;
+
+		for (const track of remoteTracks.visible) {
+			if (track.features.length === 0 && !track.isLoading) continue;
+
+			const trackHeight = track.height;
+
+			// Draw track label background
+			ctx.fillStyle = '#1a1a1a';
+			ctx.fillRect(0, currentY, width, trackHeight);
+
+			// Draw track label
+			ctx.fillStyle = '#666666';
+			ctx.font = '11px Inter, sans-serif';
+			ctx.textAlign = 'left';
+			ctx.fillText(track.name, 8, currentY + 11);
+
+			// Draw loading indicator
+			if (track.isLoading) {
+				ctx.fillStyle = '#6366f1';
+				ctx.font = '10px Inter, sans-serif';
+				ctx.fillText('Loading...', 8, currentY + 24);
+			}
+
+			// Draw error if any
+			if (track.error) {
+				ctx.fillStyle = '#ef4444';
+				ctx.font = '10px Inter, sans-serif';
+				ctx.fillText(`Error: ${track.error}`, 8, currentY + 24);
+			}
+
+			// Draw badge
+			ctx.fillStyle = '#444444';
+			ctx.font = '9px Inter, sans-serif';
+			const badge = 'GENES';
+			const badgeWidth = ctx.measureText(badge).width + 8;
+			ctx.fillRect(width - badgeWidth - 8, currentY + 2, badgeWidth, 14);
+			ctx.fillStyle = '#888888';
+			ctx.textAlign = 'center';
+			ctx.fillText(badge, width - badgeWidth / 2 - 8, currentY + 11);
+
+			// Render features as simple gene boxes (BED12 style)
+			if (track.features.length > 0) {
+				renderBedFeatures(ctx, track.features, width, currentY, trackHeight, track.color);
+			}
+
+			// Draw bottom border
+			ctx.strokeStyle = '#333333';
+			ctx.beginPath();
+			ctx.moveTo(0, currentY + trackHeight);
+			ctx.lineTo(width, currentY + trackHeight);
+			ctx.stroke();
+
+			currentY += trackHeight;
+		}
+
+		return currentY;
+	}
+
+	/**
+	 * Render BED12 features (genes with exons)
+	 */
+	function renderBedFeatures(
+		ctx: CanvasRenderingContext2D,
+		features: import('$lib/types/genome').BedFeature[],
+		width: number,
+		trackY: number,
+		trackHeight: number,
+		color: string
+	): void {
+		const labelOffset = 18;
+		const availableHeight = trackHeight - labelOffset;
+		const featureHeight = 12;
+		const exonHeight = 10;
+
+		// Simple row packing
+		const rows: Array<{ end: number }> = [];
+		const featureRows: Map<string, number> = new Map();
+
+		// Filter to visible features
+		const visibleFeatures = features.filter(f =>
+			f.end > viewport.current.start && f.start < viewport.current.end
+		);
+
+		// Assign rows
+		for (const feature of visibleFeatures) {
+			const startX = Math.max(0, (feature.start - viewport.current.start) * pixelsPerBase);
+			let rowIndex = 0;
+
+			for (let i = 0; i < rows.length; i++) {
+				if (rows[i].end < startX - 5) {
+					rowIndex = i;
+					break;
+				}
+				rowIndex = i + 1;
+			}
+
+			const endX = Math.min(width, (feature.end - viewport.current.start) * pixelsPerBase);
+			if (rows[rowIndex]) {
+				rows[rowIndex].end = endX;
+			} else {
+				rows[rowIndex] = { end: endX };
+			}
+
+			featureRows.set(feature.id, rowIndex);
+		}
+
+		// Render features
+		for (const feature of visibleFeatures) {
+			const rowIndex = featureRows.get(feature.id) ?? 0;
+			const rowY = trackY + labelOffset + rowIndex * (featureHeight + 4);
+
+			if (rowY + featureHeight > trackY + trackHeight) continue;
+
+			const startX = (feature.start - viewport.current.start) * pixelsPerBase;
+			const endX = (feature.end - viewport.current.start) * pixelsPerBase;
+			const featureWidth = endX - startX;
+
+			// Draw gene line
+			const centerY = rowY + featureHeight / 2;
+			ctx.strokeStyle = color;
+			ctx.lineWidth = 1;
+			ctx.beginPath();
+			ctx.moveTo(Math.max(0, startX), centerY);
+			ctx.lineTo(Math.min(width, endX), centerY);
+			ctx.stroke();
+
+			// Draw exon blocks if we have BED12 data
+			if (feature.blockCount && feature.blockSizes && feature.blockStarts) {
+				ctx.fillStyle = color;
+				for (let i = 0; i < feature.blockCount; i++) {
+					const blockStart = feature.start + (feature.blockStarts[i] || 0);
+					const blockSize = feature.blockSizes[i] || 0;
+					const blockStartX = (blockStart - viewport.current.start) * pixelsPerBase;
+					const blockWidth = blockSize * pixelsPerBase;
+
+					if (blockStartX + blockWidth > 0 && blockStartX < width) {
+						ctx.fillRect(
+							Math.max(0, blockStartX),
+							rowY + (featureHeight - exonHeight) / 2,
+							Math.min(blockWidth, width - blockStartX),
+							exonHeight
+						);
+					}
+				}
+			} else {
+				// No block data - draw as simple box
+				ctx.fillStyle = color;
+				ctx.fillRect(
+					Math.max(0, startX),
+					rowY + (featureHeight - exonHeight) / 2,
+					Math.min(featureWidth, width),
+					exonHeight
+				);
+			}
+
+			// Draw gene name if there's room
+			if (feature.name && featureWidth > 30) {
+				ctx.fillStyle = '#ffffff';
+				ctx.font = '10px Inter, sans-serif';
+				ctx.textAlign = 'left';
+				const labelX = Math.max(4, startX + 4);
+				ctx.fillText(feature.name, labelX, rowY + featureHeight + 10);
+			}
+		}
+	}
 
 	/**
 	 * Draw highlight regions as semi-transparent overlays
