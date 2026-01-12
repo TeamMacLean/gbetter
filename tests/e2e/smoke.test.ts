@@ -77,6 +77,10 @@ test.describe('Smoke Tests', () => {
 
 	test('has multiple header buttons', async ({ page }) => {
 		await page.goto('/');
+		await page.waitForLoadState('networkidle');
+
+		// Wait for at least one button to appear
+		await expect(page.locator('header button').first()).toBeVisible();
 
 		const headerButtons = page.locator('header button');
 		const count = await headerButtons.count();
