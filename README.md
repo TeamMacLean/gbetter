@@ -148,6 +148,22 @@ See the [GQL Manual](docs/GQL-MANUAL.md) for complete documentation, or [GQL Exa
 
 ---
 
+## AI Setup
+
+GBetter's AI features translate natural language into reproducible GQL commands. Choose your preferred AI backend:
+
+| Provider | Privacy | Cost |
+|----------|---------|------|
+| **Ollama** (Local) | Complete - runs on your machine | Free |
+| **Anthropic** (Claude) | Query text sent to API | Pay-per-use |
+| **OpenAI** (GPT) | Query text sent to API | Pay-per-use |
+
+**Your genomic data files are never sent to external services** - only your query text and track metadata.
+
+See the [AI Setup Guide](docs/AI-SETUP.md) for detailed installation and configuration instructions.
+
+---
+
 ## Tutorials
 
 Step-by-step guides for different use cases:

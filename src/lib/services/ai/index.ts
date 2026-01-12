@@ -12,12 +12,14 @@ import type {
 import { DEFAULT_AI_SETTINGS } from './types';
 import { anthropicProvider } from './providers/anthropic';
 import { openaiProvider } from './providers/openai';
+import { ollamaProvider } from './providers/ollama';
 import { browser } from '$app/environment';
 
 // Registry of available providers
 const providers: Map<string, AIProvider> = new Map([
 	['anthropic', anthropicProvider],
-	['openai', openaiProvider]
+	['openai', openaiProvider],
+	['ollama', ollamaProvider]
 ]);
 
 const SETTINGS_KEY = 'gbetter_ai_settings';
@@ -77,10 +79,14 @@ export function getActiveProvider(): AIProvider | undefined {
 }
 
 /**
- * Check if AI is configured (has API key for active provider)
+ * Check if AI is configured (has API key for active provider, or is Ollama)
  */
 export function isAIConfigured(): boolean {
 	const settings = loadAISettings();
+	// Ollama doesn't require an API key
+	if (settings.activeProvider === 'ollama') {
+		return true;
+	}
 	const apiKey = settings.apiKeys[settings.activeProvider];
 	return Boolean(apiKey && apiKey.length > 0);
 }
