@@ -3,6 +3,17 @@
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
 [![CI](https://github.com/TeamMacLean/gbetter/actions/workflows/ci.yml/badge.svg)](https://github.com/TeamMacLean/gbetter/actions/workflows/ci.yml)
+[![Deploy](https://github.com/TeamMacLean/gbetter/actions/workflows/deploy.yml/badge.svg)](https://github.com/TeamMacLean/gbetter/actions/workflows/deploy.yml)
+
+---
+
+## Try It Now
+
+**https://teammaclean.github.io/gbetter/**
+
+No installation required. Just open in your browser and start exploring genomes.
+
+---
 
 ## Features
 
@@ -11,6 +22,7 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 - **Web-first** - No installation, works in any modern browser
 - **Beautiful** - Dark mode interface, modern aesthetics
 - **Species-agnostic** - Works with any genome, not just human
+- **Private** - All data stays in your browser
 
 ## Supported File Formats
 
@@ -25,12 +37,86 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
 ## Quick Start
 
-1. Open GBetter in your browser
+1. Open [GBetter](https://teammaclean.github.io/gbetter/) in your browser
 2. Drag and drop a genomic file (BED, GFF3, VCF, or bedGraph)
 3. Use the search bar to navigate:
    - Type a gene name: `TP53`
    - Type coordinates: `chr17:7668421-7687490`
    - Use natural language: `show me genes with variants`
+
+---
+
+## Installation Options
+
+### Option 1: Use the Live Version (Recommended)
+
+Just visit **https://teammaclean.github.io/gbetter/** - nothing to install.
+
+Your data never leaves your browser. Files are parsed locally using JavaScript.
+
+### Option 2: Deploy Your Own Instance
+
+Fork GBetter to your GitHub account and deploy via GitHub Pages:
+
+1. **Fork the repository**
+
+   Click the "Fork" button at https://github.com/TeamMacLean/gbetter
+
+2. **Enable GitHub Pages**
+
+   In your forked repo, go to **Settings > Pages**:
+   - Source: **GitHub Actions**
+   - Click Save
+
+3. **Wait for deployment**
+
+   The deploy workflow runs automatically. Your instance will be live at:
+   ```
+   https://YOUR-USERNAME.github.io/gbetter/
+   ```
+
+4. **Keep it updated**
+
+   Sync your fork periodically to get new features:
+   ```bash
+   git fetch upstream
+   git merge upstream/main
+   git push
+   ```
+
+### Option 3: Run Locally
+
+For development or offline use:
+
+```bash
+# Clone the repository
+git clone https://github.com/TeamMacLean/gbetter.git
+cd gbetter
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+Open http://localhost:5173 in your browser.
+
+### Option 4: Self-Host on Your Server
+
+Build and deploy to any static hosting:
+
+```bash
+# Build for production
+npm run build
+
+# Output is in the 'build' directory
+# Deploy to nginx, Apache, S3, Netlify, etc.
+```
+
+Note: Update `svelte.config.js` to change the base path if not hosting at root.
+
+---
 
 ## GQL - GBetter Query Language
 
@@ -60,6 +146,8 @@ COUNT VARIANTS WITHIN TP53
 
 See the [GQL Manual](docs/GQL-MANUAL.md) for complete documentation, or [GQL Examples](docs/GQL-EXAMPLES.md) for practical use cases.
 
+---
+
 ## Tutorials
 
 Step-by-step guides for different use cases:
@@ -70,11 +158,7 @@ Step-by-step guides for different use cases:
 4. [Non-Model Genomes](docs/tutorials/04-non-model-genomes.md) - Domain experts
 5. [Reproducible Analysis](docs/tutorials/05-reproducible-analysis.md) - Power users
 
-## Installation
-
-*Section to be populated*
-
-<!-- Future: npm install, Docker, deployment options -->
+---
 
 ## Development
 
@@ -83,28 +167,14 @@ Step-by-step guides for different use cases:
 - Node.js 20+
 - npm
 
-### Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/TeamMacLean/gbetter.git
-cd gbetter
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
 ### Commands
 
 ```bash
 npm run dev          # Development server (localhost:5173)
 npm run build        # Production build
 npm run check        # TypeScript type checking
-npm run test:unit    # Run unit tests
-npm run test:e2e     # Run end-to-end tests
+npm run test:unit    # Run unit tests (280 tests)
+npm run test:e2e     # Run end-to-end tests (76 tests)
 ```
 
 ### Project Structure
@@ -126,14 +196,19 @@ test-data/          # Sample genomic files for testing
 docs/               # Documentation
 ```
 
+---
+
 ## Privacy & Security
 
 **Your genomic data never leaves your browser** unless you explicitly choose to use cloud AI features.
 
-- All file parsing happens client-side
-- AI queries send only your search text by default
+- All file parsing happens client-side in JavaScript
+- No server, no database, no tracking
+- AI queries send only your search text (not your data)
 - Optional local LLM support (Ollama) for complete privacy
 - Clear indicators when data would be sent externally
+
+---
 
 ## Contributing
 
