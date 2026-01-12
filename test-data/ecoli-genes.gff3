@@ -1,0 +1,60 @@
+##gff-version 3
+##sequence-region NC_000913 1 4641652
+# E. coli K-12 MG1655 - Selected genes for testing
+# Chromosome is circular, ~4.6 Mb
+# This demonstrates non-human genome support
+
+# Origin of replication region genes
+NC_000913	EcoCyc	gene	3925744	3926274	.	-	.	ID=dnaA;Name=dnaA;Note=Chromosomal replication initiator protein
+NC_000913	EcoCyc	mRNA	3925744	3926274	.	-	.	ID=dnaA-mRNA;Parent=dnaA
+NC_000913	EcoCyc	CDS	3925744	3926274	.	-	0	ID=dnaA-CDS;Parent=dnaA-mRNA
+
+NC_000913	EcoCyc	gene	3926604	3927674	.	+	.	ID=dnaN;Name=dnaN;Note=DNA polymerase III beta subunit
+NC_000913	EcoCyc	mRNA	3926604	3927674	.	+	.	ID=dnaN-mRNA;Parent=dnaN
+NC_000913	EcoCyc	CDS	3926604	3927674	.	+	0	ID=dnaN-CDS;Parent=dnaN-mRNA
+
+NC_000913	EcoCyc	gene	3927956	3928966	.	+	.	ID=recF;Name=recF;Note=DNA replication and repair protein
+NC_000913	EcoCyc	mRNA	3927956	3928966	.	+	.	ID=recF-mRNA;Parent=recF
+NC_000913	EcoCyc	CDS	3927956	3928966	.	+	0	ID=recF-CDS;Parent=recF-mRNA
+
+# Lac operon (classic regulatory system)
+NC_000913	EcoCyc	gene	366428	367510	.	-	.	ID=lacZ;Name=lacZ;Note=Beta-galactosidase
+NC_000913	EcoCyc	mRNA	366428	367510	.	-	.	ID=lacZ-mRNA;Parent=lacZ
+NC_000913	EcoCyc	CDS	366428	367510	.	-	0	ID=lacZ-CDS;Parent=lacZ-mRNA
+
+NC_000913	EcoCyc	gene	367723	368493	.	-	.	ID=lacY;Name=lacY;Note=Lactose permease
+NC_000913	EcoCyc	mRNA	367723	368493	.	-	.	ID=lacY-mRNA;Parent=lacY
+NC_000913	EcoCyc	CDS	367723	368493	.	-	0	ID=lacY-CDS;Parent=lacY-mRNA
+
+NC_000913	EcoCyc	gene	368664	369296	.	-	.	ID=lacA;Name=lacA;Note=Galactoside O-acetyltransferase
+NC_000913	EcoCyc	mRNA	368664	369296	.	-	.	ID=lacA-mRNA;Parent=lacA
+NC_000913	EcoCyc	CDS	368664	369296	.	-	0	ID=lacA-CDS;Parent=lacA-mRNA
+
+NC_000913	EcoCyc	gene	365531	366612	.	+	.	ID=lacI;Name=lacI;Note=Lac repressor
+NC_000913	EcoCyc	mRNA	365531	366612	.	+	.	ID=lacI-mRNA;Parent=lacI
+NC_000913	EcoCyc	CDS	365531	366612	.	+	0	ID=lacI-CDS;Parent=lacI-mRNA
+
+# Tryptophan operon
+NC_000913	EcoCyc	gene	1319635	1321275	.	+	.	ID=trpE;Name=trpE;Note=Anthranilate synthase component I
+NC_000913	EcoCyc	mRNA	1319635	1321275	.	+	.	ID=trpE-mRNA;Parent=trpE
+NC_000913	EcoCyc	CDS	1319635	1321275	.	+	0	ID=trpE-CDS;Parent=trpE-mRNA
+
+NC_000913	EcoCyc	gene	1321274	1322857	.	+	.	ID=trpD;Name=trpD;Note=Anthranilate synthase component II
+NC_000913	EcoCyc	mRNA	1321274	1322857	.	+	.	ID=trpD-mRNA;Parent=trpD
+NC_000913	EcoCyc	CDS	1321274	1322857	.	+	0	ID=trpD-CDS;Parent=trpD-mRNA
+
+# Some essential genes
+NC_000913	EcoCyc	gene	4035265	4037133	.	-	.	ID=rpoB;Name=rpoB;Note=RNA polymerase beta subunit
+NC_000913	EcoCyc	mRNA	4035265	4037133	.	-	.	ID=rpoB-mRNA;Parent=rpoB
+NC_000913	EcoCyc	CDS	4035265	4037133	.	-	0	ID=rpoB-CDS;Parent=rpoB-mRNA
+
+NC_000913	EcoCyc	gene	4037131	4041312	.	-	.	ID=rpoC;Name=rpoC;Note=RNA polymerase beta prime subunit
+NC_000913	EcoCyc	mRNA	4037131	4041312	.	-	.	ID=rpoC-mRNA;Parent=rpoC
+NC_000913	EcoCyc	CDS	4037131	4041312	.	-	0	ID=rpoC-CDS;Parent=rpoC-mRNA
+
+# Ribosomal genes
+NC_000913	EcoCyc	gene	3427191	3428678	.	+	.	ID=rrsA;Name=rrsA;Note=16S ribosomal RNA
+NC_000913	EcoCyc	mRNA	3427191	3428678	.	+	.	ID=rrsA-mRNA;Parent=rrsA
+
+NC_000913	EcoCyc	gene	3428823	3431725	.	+	.	ID=rrlA;Name=rrlA;Note=23S ribosomal RNA
+NC_000913	EcoCyc	mRNA	3428823	3431725	.	+	.	ID=rrlA-mRNA;Parent=rrlA

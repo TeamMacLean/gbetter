@@ -1,0 +1,19 @@
+##fileformat=VCFv4.2
+##INFO=<ID=GENE,Number=1,Type=String,Description="Gene name">
+##INFO=<ID=IMPACT,Number=1,Type=String,Description="Variant impact">
+##INFO=<ID=CLIN,Number=1,Type=String,Description="Clinical significance">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr17	7673776	rs1042522	C	G	.	PASS	GENE=TP53;IMPACT=missense;CLIN=pathogenic
+chr17	7674220	rs1800371	C	T	.	PASS	GENE=TP53;IMPACT=missense;CLIN=benign
+chr17	7675088	rs28934576	G	A	.	PASS	GENE=TP53;IMPACT=missense;CLIN=pathogenic
+chr17	7675994	rs876660754	C	T	.	PASS	GENE=TP53;IMPACT=splice;CLIN=likely_pathogenic
+chr17	43091464	rs80357713	A	G	.	PASS	GENE=BRCA1;IMPACT=missense;CLIN=pathogenic
+chr17	43094860	rs80357508	C	T	.	PASS	GENE=BRCA1;IMPACT=nonsense;CLIN=pathogenic
+chr17	43099774	rs1799950	C	T	.	PASS	GENE=BRCA1;IMPACT=missense;CLIN=benign
+chr7	55146606	rs121434568	C	T	.	PASS	GENE=EGFR;IMPACT=missense;CLIN=drug_response
+chr7	55152546	rs1050171	G	A	.	PASS	GENE=EGFR;IMPACT=synonymous;CLIN=benign
+chr7	55155830	rs121913465	A	G	.	PASS	GENE=EGFR;IMPACT=missense;CLIN=pathogenic
+chr12	25227234	rs121913529	G	A	.	PASS	GENE=KRAS;IMPACT=missense;CLIN=pathogenic
+chr12	25245274	rs121913530	C	T	.	PASS	GENE=KRAS;IMPACT=missense;CLIN=pathogenic
+chr10	87931051	rs121909219	G	A	.	PASS	GENE=PTEN;IMPACT=nonsense;CLIN=pathogenic
+chr10	87933009	rs587782949	C	T	.	PASS	GENE=PTEN;IMPACT=missense;CLIN=likely_pathogenic
