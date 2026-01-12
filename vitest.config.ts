@@ -22,7 +22,7 @@ export default defineConfig({
 		// Coverage configuration
 		coverage: {
 			provider: 'v8',
-			reporter: ['text', 'html'],
+			reporter: ['text', 'html', 'lcov'],
 			include: ['src/lib/**/*.{js,ts}'],
 			exclude: [
 				'src/lib/**/*.svelte',
