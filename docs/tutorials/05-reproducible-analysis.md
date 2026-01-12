@@ -142,27 +142,44 @@ Paste commands into GBetter's search bar one at a time to reproduce your workflo
 
 ---
 
-## Step 5: Query Console
+## Step 5: The GQL Console
 
-For power users, the query console provides a persistent workspace.
+The GQL Console is the primary interface for reproducible analysis. Unlike the Search Bar (which is for quick navigation), the Console is designed for scientific workflows.
 
 ### Opening the console
 
-- Click the "GQL Console" button
-- Or press `Cmd+\`` (backtick)
+- Click the **GQL Console** tab at the bottom of the screen
+- Or press `Cmd+\`` (backtick) / `Ctrl+\``
 
-### Console features
+### Console layout
 
-- Multi-line query editing
-- Query history
-- Results panel
-- Expandable view
+The Console has four sections:
+
+| Section | Location | Purpose |
+|---------|----------|---------|
+| **Natural Language** | Top-left | Type questions in plain English |
+| **GQL Query** | Bottom-left | View/edit the translated query before running |
+| **Results** | Center | Clickable list of results |
+| **History/Saved** | Right | Session history and saved queries |
+
+### Why use the Console instead of the Search Bar?
+
+| Feature | Search Bar | GQL Console |
+|---------|------------|-------------|
+| Quick navigation | Yes | Yes |
+| AI translation | No | Yes (with [AI configured](../AI-SETUP.md)) |
+| Edit query before running | No | Yes |
+| See full results list | No | Yes |
+| Save queries | No | Yes |
+| Export/import queries | No | Yes |
+| Share via URL | No | Yes |
 
 ### Running queries
 
-1. Type or paste your query
-2. Click "Run" or press `Cmd+Enter`
-3. View results in the panel
+1. Type natural language in the top input, press Enter to translate
+2. Review the GQL in the bottom input (edit if needed)
+3. Press `Cmd+Enter` or click **Execute**
+4. Click any result to navigate there
 
 ---
 

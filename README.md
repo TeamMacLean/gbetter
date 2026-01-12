@@ -42,7 +42,37 @@ No installation required. Just open in your browser and start exploring genomes.
 3. Use the search bar to navigate:
    - Type a gene name: `TP53`
    - Type coordinates: `chr17:7668421-7687490`
-   - Use natural language: `show me genes with variants`
+   - Use simple commands: `zoom in`, `pan left 10kb`
+
+---
+
+## Search Bar vs GQL Console
+
+GBetter has two query interfaces:
+
+### Search Bar (Header)
+
+The search bar in the header is for quick navigation:
+
+| Input | Example |
+|-------|---------|
+| Gene name | `TP53`, `BRCA1` |
+| Coordinates | `chr17:7668421-7687490` |
+| Commands | `zoom in`, `pan left 10kb`, `filter type=exon` |
+
+Works instantly, no AI required. Great for everyday navigation.
+
+### GQL Console (Bottom Panel)
+
+For advanced queries, open the GQL Console (`Cmd+\`` or click the tab at the bottom):
+
+- **Natural language input** - "show me genes with high-impact variants" (with [AI configured](docs/AI-SETUP.md))
+- **Editable GQL** - Review and modify translated queries before execution
+- **Clickable results** - Navigate to any result with one click
+- **Query history** - Replay previous queries
+- **Save & share** - Export queries as `.gql` files or share via URL
+
+The Console translates natural language to GQL, giving you reproducible commands you can save, share, and re-run.
 
 ---
 

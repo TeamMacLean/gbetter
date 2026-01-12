@@ -7,6 +7,7 @@ Welcome to GBetter! This tutorial will walk you through the basics of using a ge
 ## What You'll Learn
 
 - Opening GBetter and understanding the interface
+- The difference between the Search Bar and GQL Console
 - Searching for genes
 - Navigating with pan and zoom
 - Loading genomic data files
@@ -26,13 +27,52 @@ Open GBetter in your web browser. You'll see a dark-themed interface with:
 - **Header** (top): Search bar and navigation controls
 - **Sidebar** (left): Track list and file loading
 - **Main area** (center): Genomic visualization canvas
-- **Footer**: Current coordinates display
+- **GQL Console tab** (bottom): Click to open the advanced query interface
 
 The browser starts with a default view of chromosome 1 in the human genome.
 
 ---
 
-## Step 2: Searching for a Gene
+## Step 2: Two Ways to Query
+
+GBetter provides two interfaces for entering commands: the **Search Bar** for quick tasks and the **GQL Console** for advanced work.
+
+### Search Bar (Header)
+
+The search bar in the header is perfect for quick navigation:
+
+- Type a gene name: `TP53`
+- Type coordinates: `chr17:7668421-7687490`
+- Type simple commands: `zoom in`, `pan left 10kb`
+
+The search bar uses basic pattern matching - it works offline and responds instantly. Results appear inline next to the search bar.
+
+### GQL Console (Bottom Panel)
+
+For more complex queries, use the GQL Console:
+
+1. Click the **GQL Console** tab at the bottom of the screen (or press `Cmd+\`` / `Ctrl+\``)
+2. The console panel slides up, showing:
+   - **Natural Language input** (top-left): Type questions in plain English
+   - **GQL input** (bottom-left): View and edit the generated query
+   - **Results panel** (center): Clickable list of results
+   - **History/Saved** (right): Session history and saved queries
+
+**When to use the Console:**
+
+- Complex queries: `SELECT GENES INTERSECT variants ORDER BY length DESC`
+- AI-powered natural language: "show me genes with high-impact variants" (requires [AI setup](../AI-SETUP.md))
+- Saving queries for reproducibility
+- Sharing queries via URL
+- Exporting query collections
+
+**Key difference:** The Search Bar is quick and local. The GQL Console is powerful and can use AI for natural language understanding.
+
+For this tutorial, we'll use the Search Bar. You can try the GQL Console later - see [Tutorial 5: Reproducible Analysis](05-reproducible-analysis.md) for advanced usage.
+
+---
+
+## Step 3: Searching for a Gene
 
 Let's find TP53, a famous tumor suppressor gene often mutated in cancer.
 
@@ -54,7 +94,7 @@ When you typed `TP53`, GBetter:
 
 ---
 
-## Step 3: Zooming In and Out
+## Step 4: Zooming In and Out
 
 ### Using buttons
 
@@ -86,7 +126,7 @@ Zoom in several times until you can see individual features (exons, CDS regions)
 
 ---
 
-## Step 4: Panning
+## Step 5: Panning
 
 Move left or right along the chromosome.
 
@@ -107,7 +147,7 @@ Pan around to explore the region near TP53. What other genes are nearby?
 
 ---
 
-## Step 5: Loading a Data File
+## Step 6: Loading a Data File
 
 GBetter can display your own genomic data. Let's try loading a file.
 
@@ -140,7 +180,7 @@ Your data appears as a new track below the main view. Each track shows a differe
 
 ---
 
-## Step 6: Using Filters
+## Step 7: Using Filters
 
 When viewing gene annotations (GFF3 files), you can filter to focus on specific feature types.
 
@@ -176,7 +216,7 @@ Returns to showing all features normally.
 
 ---
 
-## Step 7: Highlighting Regions
+## Step 8: Highlighting Regions
 
 Mark regions of interest with highlights.
 

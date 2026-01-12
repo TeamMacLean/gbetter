@@ -1,6 +1,11 @@
 # GQL Manual - GBetter Query Language
 
-GQL (GBetter Query Language) is a simple, reproducible query language for genome browser operations. When you type natural language into the search bar, GBetter translates it to GQL, ensuring your queries are always reproducible and shareable.
+GQL (GBetter Query Language) is a simple, reproducible query language for genome browser operations. GQL commands can be entered in two places:
+
+- **Search Bar** (header) - Quick commands with basic pattern matching
+- **GQL Console** (bottom panel, `Cmd+\``) - Full GQL support with AI-powered natural language translation, editable queries, history, and saved queries
+
+When you type natural language, GBetter translates it to GQL, ensuring your queries are always reproducible and shareable. The GQL Console shows you the translated query before execution, so you can review and modify it.
 
 ## Table of Contents
 
