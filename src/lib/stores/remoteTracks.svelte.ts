@@ -27,6 +27,7 @@ interface RemoteTrack {
 	visible: boolean;
 	color: string;
 	height: number;
+	userHeight: number | null; // null = auto-height, number = user-set fixed height
 	isLoading: boolean;
 	error: string | null;
 	features: BedFeature[];
@@ -63,6 +64,7 @@ function addRemoteTrack(config: RemoteTrackConfig): RemoteTrack {
 		visible: true,
 		color: config.color || '#22c55e',
 		height: config.height || 100,
+		userHeight: null, // null = auto-height by default
 		isLoading: false,
 		error: null,
 		features: [],
@@ -86,6 +88,16 @@ function removeRemoteTrack(trackId: string): void {
 function toggleRemoteTrackVisibility(trackId: string): void {
 	remoteTracks = remoteTracks.map((t) =>
 		t.id === trackId ? { ...t, visible: !t.visible } : t
+	);
+}
+
+/**
+ * Set track height
+ * Set to null for auto-height, or a number for fixed height
+ */
+function setRemoteTrackHeight(trackId: string, height: number | null): void {
+	remoteTracks = remoteTracks.map((t) =>
+		t.id === trackId ? { ...t, userHeight: height } : t
 	);
 }
 
@@ -301,6 +313,7 @@ export function useRemoteTracks() {
 		addRemoteTrack,
 		removeRemoteTrack,
 		toggleRemoteTrackVisibility,
+		setRemoteTrackHeight,
 		updateForViewport,
 		searchGeneByName,
 		setupGeneTrackForAssembly,

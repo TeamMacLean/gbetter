@@ -155,6 +155,35 @@
 									<span class="text-red-400" title={track.error}>Error</span>
 								{/if}
 							</div>
+
+							<!-- Height control -->
+							<div class="mt-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+								<span class="text-[10px] text-[var(--color-text-muted)] w-8">
+									{track.userHeight ?? 'Auto'}
+								</span>
+								<input
+									type="range"
+									min="50"
+									max="300"
+									step="10"
+									value={track.userHeight ?? 150}
+									oninput={(e) => remoteTracks.setRemoteTrackHeight(track.id, parseInt(e.currentTarget.value))}
+									class="flex-1 h-1 bg-[var(--color-border)] rounded-lg appearance-none cursor-pointer accent-[var(--color-accent)]"
+									title="Track height"
+								/>
+								<button
+									onclick={() => remoteTracks.setRemoteTrackHeight(track.id, null)}
+									class="text-[10px] px-1.5 py-0.5 rounded transition-colors"
+									class:bg-[var(--color-accent)]={track.userHeight === null}
+									class:text-white={track.userHeight === null}
+									class:bg-[var(--color-bg-secondary)]={track.userHeight !== null}
+									class:text-[var(--color-text-muted)]={track.userHeight !== null}
+									class:hover:bg-[var(--color-border)]={track.userHeight !== null}
+									title="Auto-size track height"
+								>
+									Auto
+								</button>
+							</div>
 						</div>
 					{/each}
 					<!-- Track list -->

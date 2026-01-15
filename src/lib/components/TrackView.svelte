@@ -79,6 +79,7 @@
 		const _version = tracks.renderVersion;
 		const visibleRemote = remoteTracks.visible;
 		const _remoteFeatures = visibleRemote.map(t => t.features.length);
+		const _remoteHeights = visibleRemote.map(t => t.userHeight); // Track height changes
 
 		if (!canvasEl) return;
 
@@ -135,6 +136,42 @@
 	});
 
 	/**
+	 * Calculate the number of rows needed for gene packing
+	 */
+	function calculateGeneRows(
+		features: import('$lib/types/genome').BedFeature[],
+		width: number
+	): number {
+		const rows: Array<{ end: number }> = [];
+
+		const visibleFeatures = features.filter(f =>
+			f.end > viewport.current.start && f.start < viewport.current.end
+		);
+
+		for (const feature of visibleFeatures) {
+			const startX = Math.max(0, (feature.start - viewport.current.start) * pixelsPerBase);
+			let rowIndex = 0;
+
+			for (let i = 0; i < rows.length; i++) {
+				if (rows[i].end < startX - 5) {
+					rowIndex = i;
+					break;
+				}
+				rowIndex = i + 1;
+			}
+
+			const endX = Math.min(width, (feature.end - viewport.current.start) * pixelsPerBase);
+			if (rows[rowIndex]) {
+				rows[rowIndex].end = endX;
+			} else {
+				rows[rowIndex] = { end: endX };
+			}
+		}
+
+		return Math.max(1, rows.length);
+	}
+
+	/**
 	 * Render remote tracks (BigBed gene models)
 	 */
 	function renderRemoteTracks(
@@ -147,7 +184,22 @@
 		for (const track of remoteTracks.visible) {
 			if (track.features.length === 0 && !track.isLoading) continue;
 
-			const trackHeight = track.height;
+			// Calculate track height - use user-set height if available, otherwise auto-calculate
+			let trackHeight: number;
+			if (track.userHeight !== null && track.userHeight !== undefined) {
+				// User has set a specific height
+				trackHeight = track.userHeight;
+			} else {
+				// Auto-calculate based on number of gene rows
+				const labelOffset = 18;
+				const featureHeight = 12;
+				const rowSpacing = 4;
+				const rowCount = calculateGeneRows(track.features, width);
+				const minHeight = 50;
+				const maxHeight = 300;
+				const calculatedHeight = labelOffset + (rowCount * (featureHeight + rowSpacing)) + 20;
+				trackHeight = Math.min(maxHeight, Math.max(minHeight, calculatedHeight));
+			}
 
 			// Draw track label background
 			ctx.fillStyle = '#1a1a1a';
@@ -173,10 +225,10 @@
 				ctx.fillText(`Error: ${track.error}`, 8, currentY + 24);
 			}
 
-			// Draw badge
+			// Draw badge (based on track type)
 			ctx.fillStyle = '#444444';
 			ctx.font = '9px Inter, sans-serif';
-			const badge = 'GENES';
+			const badge = track.id === 'transcripts' ? 'TRANSCRIPTS' : 'GENES';
 			const badgeWidth = ctx.measureText(badge).width + 8;
 			ctx.fillRect(width - badgeWidth - 8, currentY + 2, badgeWidth, 14);
 			ctx.fillStyle = '#888888';
