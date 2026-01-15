@@ -25,6 +25,8 @@
 		viewport.initializeFromURL();
 		// Set up gene track for current assembly
 		remoteTracks.setupGeneTrackForAssembly(assembly.current.id);
+		// Immediately fetch features for the viewport
+		remoteTracks.updateForViewport(viewport.current);
 	});
 
 	// Update remote tracks when viewport changes
@@ -72,12 +74,13 @@
 
 	// Render canvas
 	$effect(() => {
-		if (!canvasEl) return;
-
-		// Depend on renderVersion to force re-render when themes change
+		// IMPORTANT: Read reactive dependencies BEFORE any early returns
+		// Otherwise Svelte won't track them and the effect won't re-run
 		const _version = tracks.renderVersion;
-		// Also depend on remote track features
-		const _remoteFeatures = remoteTracks.visible.map(t => t.features.length);
+		const visibleRemote = remoteTracks.visible;
+		const _remoteFeatures = visibleRemote.map(t => t.features.length);
+
+		if (!canvasEl) return;
 
 		const ctx = canvasEl.getContext('2d');
 		if (!ctx) return;

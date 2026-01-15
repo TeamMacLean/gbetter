@@ -97,20 +97,32 @@ export async function queryBigBed(
 		const bigbed = await getBigBed(url);
 		const header = await bigbed.getHeader(options);
 
-		// Get chromosome ID from name
-		const chromId = header.refsByName[chromosome];
-		if (chromId === undefined) {
-			// Try without 'chr' prefix or with it
-			const altName = chromosome.startsWith('chr')
-				? chromosome.slice(3)
-				: `chr${chromosome}`;
-			const altChromId = header.refsByName[altName];
-			if (altChromId === undefined) {
-				return []; // Chromosome not in file
+		// Find the correct chromosome name in the BigBed file
+		// Try exact match first, then common variations
+		let resolvedChrom = chromosome;
+		if (header.refsByName[chromosome] === undefined) {
+			// Try common variations: chr1, Chr1, 1, CHR1
+			const variations = [
+				chromosome.replace(/^chr/i, ''),           // Remove chr prefix
+				'chr' + chromosome.replace(/^chr/i, ''),   // Add chr prefix (lowercase)
+				'Chr' + chromosome.replace(/^chr/i, ''),   // Add Chr prefix (capitalized)
+			];
+
+			// Find first matching variation
+			for (const variant of variations) {
+				if (header.refsByName[variant] !== undefined) {
+					resolvedChrom = variant;
+					break;
+				}
+			}
+
+			// If still not found, return empty
+			if (header.refsByName[resolvedChrom] === undefined) {
+				return [];
 			}
 		}
 
-		const rawFeatures = await bigbed.getFeatures(chromosome, start, end, options);
+		const rawFeatures = await bigbed.getFeatures(resolvedChrom, start, end, options);
 
 		const features = rawFeatures.map((f: BigBedFeature) =>
 			parseBed12Rest(
@@ -189,29 +201,31 @@ export function clearBigBedCache(): void {
  * URLs for known gene BigBed files
  */
 export const GENE_BIGBED_URLS: Record<string, string> = {
-	// Human - UCSC (verified working with CORS)
+	// Human - UCSC (only hg38/hg19 have knownGene.bb)
 	'GRCh38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
 	'hg38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
 	'GRCh37': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
 	'hg19': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
-	// Self-hosted on Cloudflare R2 (verified working)
+	// Note: Other UCSC genomes (mm39, dm6, ce11, etc.) don't have knownGene.bb files
+	// They would need to be generated from GFF3 and hosted on R2
+	// Self-hosted on Cloudflare R2
 	// Plants
-	'tair10': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/tair10.genes.bb',
-	'irgsp1': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/irgsp1.genes.bb',
-	'iwgsc-refseq2': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/iwgsc-refseq2.genes.bb',
-	'morex-v3': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/morex-v3.genes.bb',
-	'zm-b73-nam5': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/zm-b73-nam5.genes.bb',
+	'tair10': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/tair10.genes.bb',
+	'irgsp1': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/irgsp1.genes.bb',
+	'iwgsc-refseq2': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/iwgsc-refseq2.genes.bb',
+	'morex-v3': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/morex-v3.genes.bb',
+	'zm-b73-nam5': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/zm-b73-nam5.genes.bb',
 	// Fungi
-	'spombe': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/spombe.genes.bb',
-	'botrytis': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/botrytis.genes.bb',
-	'magnaporthe': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/magnaporthe.genes.bb',
-	'puccinia': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/puccinia.genes.bb',
-	'zymoseptoria': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/zymoseptoria.genes.bb',
+	'spombe': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/spombe.genes.bb',
+	'botrytis': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/botrytis.genes.bb',
+	'magnaporthe': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/magnaporthe.genes.bb',
+	'puccinia': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/puccinia.genes.bb',
+	'zymoseptoria': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/zymoseptoria.genes.bb',
 	// Protists
-	'phytophthora': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/phytophthora.genes.bb',
+	'phytophthora': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/phytophthora.genes.bb',
 	// Bacteria/Viruses
-	'ecoli-k12': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/ecoli-k12.genes.bb',
-	'sars-cov-2': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/sars-cov-2.genes.bb',
+	'ecoli-k12': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/ecoli-k12.genes.bb',
+	'sars-cov-2': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/sars-cov-2.genes.bb',
 };
 
 /**

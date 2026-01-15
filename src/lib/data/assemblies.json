@@ -490,16 +490,16 @@
       "description": "Puccinia graminis f. sp. tritici, wheat stem rust",
       "source": "builtin",
       "chromosomes": [
-        { "name": "supercont1.1", "length": 5232829 },
-        { "name": "supercont1.2", "length": 3608426 },
-        { "name": "supercont1.3", "length": 2918913 },
-        { "name": "supercont1.4", "length": 2865889 },
-        { "name": "supercont1.5", "length": 2746339 },
-        { "name": "supercont1.6", "length": 2702188 },
-        { "name": "supercont1.7", "length": 2505287 },
-        { "name": "supercont1.8", "length": 2372880 },
-        { "name": "supercont1.9", "length": 2347389 },
-        { "name": "supercont1.10", "length": 2345820 }
+        { "name": "supercont2.1", "length": 5232829 },
+        { "name": "supercont2.2", "length": 3608426 },
+        { "name": "supercont2.3", "length": 2918913 },
+        { "name": "supercont2.4", "length": 2865889 },
+        { "name": "supercont2.5", "length": 2746339 },
+        { "name": "supercont2.6", "length": 2702188 },
+        { "name": "supercont2.7", "length": 2505287 },
+        { "name": "supercont2.8", "length": 2372880 },
+        { "name": "supercont2.9", "length": 2347389 },
+        { "name": "supercont2.10", "length": 2345820 }
       ]
     },
     {
