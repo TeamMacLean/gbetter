@@ -221,6 +221,14 @@ npm run check        # TypeScript check
   - ORDER BY, LIMIT in GQL
   - Track-aware SELECT queries (FROM clause)
 
+- **2026-01-15 Session 5**: STUCK - Gene tracks not rendering
+  - Added 13 R2-hosted gene track URLs to bigbed.ts
+  - Fixed case-insensitive assembly ID lookup
+  - Added viewport update after assembly switch
+  - Theme system imports added to TrackView.svelte
+  - **PROBLEM**: Despite all fixes, genes still not displaying
+  - See `docs/SESSION-5-HANDOFF.md` for debugging notes
+
 ## Key Files for Context
 1. `CLAUDE.md` - This file
 2. `src/lib/services/queryLanguage.ts` - GQL implementation
@@ -228,3 +236,6 @@ npm run check        # TypeScript check
 4. `src/lib/stores/viewport.svelte.ts` - Core state + URL sync
 5. `src/lib/services/trackTypes/geneModel.ts` - Theme system
 6. `src/lib/data/assemblies.json` - Genome definitions
+7. `src/lib/services/bigbed.ts` - BigBed URL mapping (R2 + UCSC)
+8. `src/lib/stores/remoteTracks.svelte.ts` - Remote track state
+9. `docs/SESSION-5-HANDOFF.md` - Debugging notes for broken gene tracks
