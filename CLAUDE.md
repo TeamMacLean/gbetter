@@ -221,13 +221,17 @@ npm run check        # TypeScript check
   - ORDER BY, LIMIT in GQL
   - Track-aware SELECT queries (FROM clause)
 
-- **2026-01-15 Session 5**: STUCK - Gene tracks not rendering
+- **2026-01-15 Session 5**: Gene tracks setup (had bugs)
   - Added 13 R2-hosted gene track URLs to bigbed.ts
   - Fixed case-insensitive assembly ID lookup
   - Added viewport update after assembly switch
-  - Theme system imports added to TrackView.svelte
-  - **PROBLEM**: Despite all fixes, genes still not displaying
-  - See `docs/SESSION-5-HANDOFF.md` for debugging notes
+
+- **2026-01-15 Session 6**: Fixed gene tracks - all working now
+  - Fixed Svelte 5 reactivity bug: read dependencies before early return in render effect
+  - Fixed R2 bucket URL (was pointing to wrong bucket ID)
+  - Fixed chromosome name resolution: actually use resolved name in BigBed query
+  - Fixed Puccinia chromosome names (supercont1.X -> supercont2.X)
+  - Gene tracks now work for 15 assemblies
 
 ## Key Files for Context
 1. `CLAUDE.md` - This file
@@ -238,4 +242,3 @@ npm run check        # TypeScript check
 6. `src/lib/data/assemblies.json` - Genome definitions
 7. `src/lib/services/bigbed.ts` - BigBed URL mapping (R2 + UCSC)
 8. `src/lib/stores/remoteTracks.svelte.ts` - Remote track state
-9. `docs/SESSION-5-HANDOFF.md` - Debugging notes for broken gene tracks
