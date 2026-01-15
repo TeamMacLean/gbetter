@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { useTracks } from '$lib/stores/tracks.svelte';
 	import { useViewport } from '$lib/stores/viewport.svelte';
+	import { useRemoteTracks } from '$lib/stores/remoteTracks.svelte';
 	import { getSupportedExtensions } from '$lib/services/trackRegistry';
 	import { getGeneModelThemes, getCurrentThemeName, setGeneModelTheme } from '$lib/services/trackTypes/geneModel';
 
 	const tracks = useTracks();
 	const viewport = useViewport();
+	const remoteTracks = useRemoteTracks();
 
 	// Gene model theme state
 	let currentGeneTheme = $state(getCurrentThemeName());
@@ -92,7 +94,7 @@
 		<div class="flex-1 p-3 overflow-y-auto">
 			<div class="flex items-center justify-between mb-3">
 				<h3 class="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
-					Tracks ({tracks.all.length})
+					Tracks ({tracks.all.length + remoteTracks.all.length})
 				</h3>
 				{#if tracks.all.length > 0}
 					<button
@@ -106,13 +108,55 @@
 			</div>
 
 			<div class="space-y-2">
-				{#if tracks.all.length === 0}
+				{#if tracks.all.length === 0 && remoteTracks.all.length === 0}
 					<!-- Empty state -->
 					<div class="p-3 bg-[var(--color-bg-tertiary)] rounded border border-dashed border-[var(--color-border)] text-center">
 						<p class="text-sm text-[var(--color-text-muted)]">No tracks loaded</p>
 						<p class="text-xs text-[var(--color-text-muted)] mt-1">Drop files on canvas or use button below</p>
 					</div>
 				{:else}
+					<!-- Remote tracks (genes, etc.) -->
+					{#each remoteTracks.all as track (track.id)}
+						<div
+							class="p-2 bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border)] group"
+						>
+							<div class="flex items-center gap-2">
+								<!-- Visibility toggle -->
+								<button
+									onclick={() => remoteTracks.toggleRemoteTrackVisibility(track.id)}
+									class="w-4 h-4 rounded flex items-center justify-center transition-colors"
+									style="background-color: {track.visible ? track.color : 'transparent'}; border: 2px solid {track.color}"
+									title={track.visible ? 'Hide track' : 'Show track'}
+								>
+									{#if track.visible}
+										<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+										</svg>
+									{/if}
+								</button>
+
+								<!-- Track name -->
+								<span class="flex-1 text-sm text-[var(--color-text-primary)] truncate">
+									{track.name}
+								</span>
+
+								<!-- Loading indicator -->
+								{#if track.isLoading}
+									<span class="text-xs text-[var(--color-accent)]">Loading...</span>
+								{/if}
+							</div>
+
+							<!-- Track info -->
+							<div class="mt-1 flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+								<span class="uppercase">{track.type}</span>
+								<span>·</span>
+								<span>{track.features.length.toLocaleString()} features</span>
+								{#if track.error}
+									<span class="text-red-400" title={track.error}>Error</span>
+								{/if}
+							</div>
+						</div>
+					{/each}
 					<!-- Track list -->
 					{#each tracks.all as track (track.id)}
 						{@const stats = getTrackStats(track)}
