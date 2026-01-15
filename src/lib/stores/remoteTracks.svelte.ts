@@ -11,6 +11,8 @@ import {
 	searchBigBedByName,
 	hasGeneBigBed,
 	getGeneBigBedUrl,
+	hasTranscriptBigBed,
+	getTranscriptBigBedUrl,
 	clearBigBedCache,
 } from '$lib/services/bigbed';
 import type { BedFeature, Viewport } from '$lib/types/genome';
@@ -214,41 +216,51 @@ async function searchGeneByName(name: string): Promise<BedFeature | null> {
 }
 
 /**
- * Set up gene track for an assembly
+ * Set up gene and transcript tracks for an assembly
  */
 function setupGeneTrackForAssembly(assemblyId: string): void {
-	// Remove existing gene tracks for other assemblies
+	// Remove existing tracks for other assemblies
 	remoteTracks = remoteTracks.filter(
-		(t) => t.id !== 'genes' || t.assemblyId === assemblyId
+		(t) => (t.id !== 'genes' && t.id !== 'transcripts') || t.assemblyId === assemblyId
 	);
 
-	// Check if we already have a gene track for this assembly
+	// Check if we already have tracks for this assembly
 	const existingGeneTrack = remoteTracks.find(
 		(t) => t.id === 'genes' && t.assemblyId === assemblyId
 	);
-	if (existingGeneTrack) {
-		activeAssemblyId = assemblyId;
-		return;
+	const existingTranscriptTrack = remoteTracks.find(
+		(t) => t.id === 'transcripts' && t.assemblyId === assemblyId
+	);
+
+	// Add gene track if needed
+	if (!existingGeneTrack && hasGeneBigBed(assemblyId)) {
+		const geneUrl = getGeneBigBedUrl(assemblyId);
+		if (geneUrl) {
+			addRemoteTrack({
+				id: 'genes',
+				name: 'Genes',
+				url: geneUrl,
+				assemblyId,
+				color: '#22c55e',
+				height: 100,
+			});
+		}
 	}
 
-	// Check if we have a BigBed URL for this assembly
-	if (!hasGeneBigBed(assemblyId)) {
-		activeAssemblyId = assemblyId;
-		return;
+	// Add transcript track if needed (different from genes - has exon structure)
+	if (!existingTranscriptTrack && hasTranscriptBigBed(assemblyId)) {
+		const transcriptUrl = getTranscriptBigBedUrl(assemblyId);
+		if (transcriptUrl) {
+			addRemoteTrack({
+				id: 'transcripts',
+				name: 'Transcripts',
+				url: transcriptUrl,
+				assemblyId,
+				color: '#3b82f6',
+				height: 120,
+			});
+		}
 	}
-
-	const url = getGeneBigBedUrl(assemblyId);
-	if (!url) return;
-
-	// Add the gene track
-	addRemoteTrack({
-		id: 'genes',
-		name: 'UCSC Known Genes',
-		url,
-		assemblyId,
-		color: '#22c55e',
-		height: 100,
-	});
 
 	activeAssemblyId = assemblyId;
 }

@@ -229,6 +229,34 @@ export const GENE_BIGBED_URLS: Record<string, string> = {
 };
 
 /**
+ * URLs for transcript BigBed files (compound feature models with exon structure)
+ */
+export const TRANSCRIPT_BIGBED_URLS: Record<string, string> = {
+	// Human - UCSC knownGene.bb already contains transcript structure
+	'GRCh38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
+	'hg38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
+	'GRCh37': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
+	'hg19': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
+	// Self-hosted on Cloudflare R2
+	// Plants
+	'tair10': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/tair10.transcripts.bb',
+	'irgsp1': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/irgsp1.transcripts.bb',
+	'iwgsc-refseq2': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/iwgsc-refseq2.transcripts.bb',
+	'morex-v3': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/morex-v3.transcripts.bb',
+	'zm-b73-nam5': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/zm-b73-nam5.transcripts.bb',
+	// Fungi
+	'spombe': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/spombe.transcripts.bb',
+	'botrytis': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/botrytis.transcripts.bb',
+	'magnaporthe': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/magnaporthe.transcripts.bb',
+	'puccinia': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/puccinia.transcripts.bb',
+	'zymoseptoria': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/zymoseptoria.transcripts.bb',
+	// Protists
+	'phytophthora': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/phytophthora.transcripts.bb',
+	// Bacteria/Viruses (these typically don't have separate transcript models)
+	// 'ecoli-k12' and 'sars-cov-2' only have genes.bb
+};
+
+/**
  * Check if an assembly has a known gene BigBed URL
  */
 export function hasGeneBigBed(assemblyId: string): boolean {
@@ -248,4 +276,26 @@ export function getGeneBigBedUrl(assemblyId: string): string | null {
 		k => k.toLowerCase() === assemblyId.toLowerCase()
 	);
 	return key ? GENE_BIGBED_URLS[key] : null;
+}
+
+/**
+ * Check if an assembly has a transcript BigBed URL
+ */
+export function hasTranscriptBigBed(assemblyId: string): boolean {
+	// Case-insensitive lookup
+	const key = Object.keys(TRANSCRIPT_BIGBED_URLS).find(
+		k => k.toLowerCase() === assemblyId.toLowerCase()
+	);
+	return key !== undefined;
+}
+
+/**
+ * Get the transcript BigBed URL for an assembly
+ */
+export function getTranscriptBigBedUrl(assemblyId: string): string | null {
+	// Case-insensitive lookup
+	const key = Object.keys(TRANSCRIPT_BIGBED_URLS).find(
+		k => k.toLowerCase() === assemblyId.toLowerCase()
+	);
+	return key ? TRANSCRIPT_BIGBED_URLS[key] : null;
 }
