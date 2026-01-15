@@ -170,9 +170,57 @@ src/
 | GFF3 | ✅ Complete | Parent-child linking, themes |
 | bedGraph | ✅ Complete | Signal/peak data |
 | VCF | ✅ Complete | Zoom-dependent rendering |
+| BigBed | ✅ Complete | Remote indexed BED, HTTP range requests |
 | BigWig | 🔲 Planned | Binary, needs WASM |
 | BAM | 🔲 Planned | Indexed, complex |
 | FASTA | 🔲 Planned | Sequence at high zoom |
+
+## Remote Gene/Transcript Tracks
+
+Remote tracks are loaded automatically based on the selected assembly. They use BigBed format
+with HTTP range requests for efficient region-based queries.
+
+### Track Types
+
+| Track | Data Level | Visual | Source |
+|-------|------------|--------|--------|
+| **Genes** | Gene-level | Single continuous box per gene | R2-hosted `.genes.bb` files |
+| **Transcripts** | Transcript-level | Compound model with exon blocks | UCSC `knownGene.bb` or R2 `.transcripts.bb` |
+
+### What Each Track Shows
+
+**Genes Track** (when available):
+- One feature per gene (e.g., "TP53", "BRCA1")
+- Single continuous rectangle spanning gene extent
+- No internal exon/intron structure shown
+- Useful for: gene density, gene-level annotations, simple overviews
+
+**Transcripts Track**:
+- One feature per transcript isoform (e.g., "ENST00000413465.6")
+- Compound structure with exon blocks connected by intron lines
+- Shows splicing patterns, UTRs, coding regions
+- Multiple transcripts per gene (alternative splicing)
+- Useful for: detailed gene structure, isoform analysis
+
+### Assembly Track Availability
+
+| Assembly Type | Genes Track | Transcripts Track | Notes |
+|---------------|-------------|-------------------|-------|
+| UCSC (GRCh38, hg19, etc.) | ❌ | ✅ | UCSC only provides transcript-level data |
+| R2 Plants (TAIR10, etc.) | ✅ | ✅ | Separate gene-level and transcript files |
+| R2 Fungi (S. pombe, etc.) | ✅ | ✅ | Separate gene-level and transcript files |
+| R2 Bacteria (E. coli, etc.) | ✅ | ❌ | No alternative splicing in prokaryotes |
+
+### Data Structure (BigBed BED12+)
+
+```
+chrom  start   end     name              score strand thickStart thickEnd rgb blockCount blockSizes    blockStarts   ... geneSymbol
+chr17  7661778 7676594 ENST00000413465.6 1     -      7661778    7676594  0   7          236,110,113,  0,1234,5678,  ... TP53
+```
+
+- `name` (field 4): Transcript ID for transcripts, Gene ID for genes
+- `blockCount/blockSizes/blockStarts` (fields 10-12): Exon structure
+- `geneSymbol` (extended field 15): Human-readable gene name (UCSC only)
 
 ## GQL Quick Reference
 ```
