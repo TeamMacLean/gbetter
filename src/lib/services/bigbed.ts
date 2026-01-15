@@ -189,22 +189,49 @@ export function clearBigBedCache(): void {
  * URLs for known gene BigBed files
  */
 export const GENE_BIGBED_URLS: Record<string, string> = {
+	// Human - UCSC (verified working with CORS)
 	'GRCh38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
 	'hg38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
 	'GRCh37': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
 	'hg19': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
+	// Self-hosted on Cloudflare R2 (verified working)
+	// Plants
+	'tair10': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/tair10.genes.bb',
+	'irgsp1': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/irgsp1.genes.bb',
+	'iwgsc-refseq2': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/iwgsc-refseq2.genes.bb',
+	'morex-v3': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/morex-v3.genes.bb',
+	'zm-b73-nam5': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/zm-b73-nam5.genes.bb',
+	// Fungi
+	'spombe': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/spombe.genes.bb',
+	'botrytis': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/botrytis.genes.bb',
+	'magnaporthe': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/magnaporthe.genes.bb',
+	'puccinia': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/puccinia.genes.bb',
+	'zymoseptoria': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/zymoseptoria.genes.bb',
+	// Protists
+	'phytophthora': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/phytophthora.genes.bb',
+	// Bacteria/Viruses
+	'ecoli-k12': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/ecoli-k12.genes.bb',
+	'sars-cov-2': 'https://pub-a59506d7c8c94437a8cd4034c5101b56.r2.dev/sars-cov-2.genes.bb',
 };
 
 /**
  * Check if an assembly has a known gene BigBed URL
  */
 export function hasGeneBigBed(assemblyId: string): boolean {
-	return assemblyId in GENE_BIGBED_URLS;
+	// Case-insensitive lookup
+	const key = Object.keys(GENE_BIGBED_URLS).find(
+		k => k.toLowerCase() === assemblyId.toLowerCase()
+	);
+	return key !== undefined;
 }
 
 /**
  * Get the gene BigBed URL for an assembly
  */
 export function getGeneBigBedUrl(assemblyId: string): string | null {
-	return GENE_BIGBED_URLS[assemblyId] || null;
+	// Case-insensitive lookup
+	const key = Object.keys(GENE_BIGBED_URLS).find(
+		k => k.toLowerCase() === assemblyId.toLowerCase()
+	);
+	return key ? GENE_BIGBED_URLS[key] : null;
 }

@@ -6,6 +6,7 @@
 	import { useAssembly } from '$lib/stores/assembly.svelte';
 	import { formatCoordinate } from '$lib/types/genome';
 	import { getTrackType } from '$lib/services/trackRegistry';
+	import { createRenderContext } from '$lib/types/tracks';
 	import {
 		getCurrentTheme,
 		roundedRect,
@@ -13,7 +14,6 @@
 		drawIntronConnector,
 		drawInnerChevrons,
 	} from '$lib/services/trackTypes/geneModel';
-	import { createRenderContext } from '$lib/types/tracks';
 
 	const viewport = useViewport();
 	const tracks = useTracks();
@@ -28,14 +28,8 @@
 	});
 
 	// Update remote tracks when viewport changes
-	// Explicitly access all viewport properties to ensure reactivity
 	$effect(() => {
-		const v = viewport.current;
-		remoteTracks.updateForViewport({
-			chromosome: v.chromosome,
-			start: v.start,
-			end: v.end
-		});
+		remoteTracks.updateForViewport(viewport.current);
 	});
 
 	// Update gene track when assembly changes
@@ -43,6 +37,8 @@
 		const assemblyId = assembly.current.id;
 		if (assemblyId !== remoteTracks.activeAssemblyId) {
 			remoteTracks.setupGeneTrackForAssembly(assemblyId);
+			// Force viewport update to fetch data for new track
+			remoteTracks.updateForViewport(viewport.current);
 		}
 	});
 
@@ -55,21 +51,6 @@
 
 	// File drop state
 	let isDragOver = $state(false);
-
-	// Track resize state
-	interface TrackBorder {
-		trackId: string;
-		trackType: 'local' | 'remote';
-		y: number; // Y position of bottom border
-	}
-	let trackBorders = $state<TrackBorder[]>([]);
-	let isResizing = $state(false);
-	let resizeTrackId = $state<string | null>(null);
-	let resizeTrackType = $state<'local' | 'remote' | null>(null);
-	let resizeStartY = $state(0);
-	let resizeStartHeight = $state(0);
-	let isNearBorder = $state(false);
-	const BORDER_HIT_ZONE = 6; // pixels from border to trigger resize
 
 	// Calculate pixels per base
 	const pixelsPerBase = $derived(containerWidth / viewport.width);
@@ -127,15 +108,12 @@
 		);
 		const hasRemoteContent = visibleRemoteTracks.some(t => t.features.length > 0);
 
-		// Reset track borders for resize hit detection
-		const newBorders: TrackBorder[] = [];
-
 		if (hasLocalContent || hasRemoteContent) {
 			let currentY = rulerHeight;
 
 			// Render remote tracks first (gene models)
 			if (hasRemoteContent) {
-				currentY = renderRemoteTracks(ctx, width, currentY, newBorders);
+				currentY = renderRemoteTracks(ctx, width, currentY);
 			}
 
 			// Render local tracks
@@ -149,48 +127,9 @@
 			drawPlaceholder(ctx, width, height, rulerHeight);
 		}
 
-		// Update track borders state for resize detection
-		trackBorders = newBorders;
-
 		// Draw highlights on top
 		drawHighlights(ctx, width, height, rulerHeight);
 	});
-
-	/**
-	 * Calculate the number of rows needed for gene packing
-	 */
-	function calculateGeneRows(
-		features: import('$lib/types/genome').BedFeature[],
-		width: number
-	): number {
-		const rows: Array<{ end: number }> = [];
-
-		const visibleFeatures = features.filter(f =>
-			f.end > viewport.current.start && f.start < viewport.current.end
-		);
-
-		for (const feature of visibleFeatures) {
-			const startX = Math.max(0, (feature.start - viewport.current.start) * pixelsPerBase);
-			let rowIndex = 0;
-
-			for (let i = 0; i < rows.length; i++) {
-				if (rows[i].end < startX - 5) {
-					rowIndex = i;
-					break;
-				}
-				rowIndex = i + 1;
-			}
-
-			const endX = Math.min(width, (feature.end - viewport.current.start) * pixelsPerBase);
-			if (rows[rowIndex]) {
-				rows[rowIndex].end = endX;
-			} else {
-				rows[rowIndex] = { end: endX };
-			}
-		}
-
-		return Math.max(1, rows.length);
-	}
 
 	/**
 	 * Render remote tracks (BigBed gene models)
@@ -198,30 +137,14 @@
 	function renderRemoteTracks(
 		ctx: CanvasRenderingContext2D,
 		width: number,
-		startY: number,
-		borders: TrackBorder[]
+		startY: number
 	): number {
 		let currentY = startY;
 
 		for (const track of remoteTracks.visible) {
 			if (track.features.length === 0 && !track.isLoading) continue;
 
-			// Calculate track height - use user-set height if available, otherwise auto-calculate
-			let trackHeight: number;
-			if (track.userHeight !== null && track.userHeight !== undefined) {
-				// User has set a specific height
-				trackHeight = track.userHeight;
-			} else {
-				// Auto-calculate based on number of gene rows
-				const labelOffset = 18;
-				const featureHeight = 12;
-				const rowSpacing = 4;
-				const rowCount = calculateGeneRows(track.features, width);
-				const minHeight = 50;
-				const maxHeight = 300;
-				const calculatedHeight = labelOffset + (rowCount * (featureHeight + rowSpacing)) + 20;
-				trackHeight = Math.min(maxHeight, Math.max(minHeight, calculatedHeight));
-			}
+			const trackHeight = track.height;
 
 			// Draw track label background
 			ctx.fillStyle = '#1a1a1a';
@@ -247,39 +170,27 @@
 				ctx.fillText(`Error: ${track.error}`, 8, currentY + 24);
 			}
 
-			// Draw badge (based on track type)
+			// Draw badge
 			ctx.fillStyle = '#444444';
 			ctx.font = '9px Inter, sans-serif';
-			const trackTypeLabel = track.id === 'transcripts' ? 'transcripts' : 'genes';
-			const badge = trackTypeLabel.toUpperCase();
+			const badge = 'GENES';
 			const badgeWidth = ctx.measureText(badge).width + 8;
 			ctx.fillRect(width - badgeWidth - 8, currentY + 2, badgeWidth, 14);
 			ctx.fillStyle = '#888888';
 			ctx.textAlign = 'center';
 			ctx.fillText(badge, width - badgeWidth / 2 - 8, currentY + 11);
 
-			// Render features with theme-aware styling
+			// Render features as simple gene boxes (BED12 style)
 			if (track.features.length > 0) {
-				renderBedFeatures(ctx, track.features, width, currentY, trackHeight, track.color, trackTypeLabel);
+				renderBedFeatures(ctx, track.features, width, currentY, trackHeight, track.color);
 			}
 
-			// Draw bottom border (thicker when being hovered for resize)
-			const borderY = currentY + trackHeight;
-			const isHoveredBorder = isNearBorder && resizeTrackId === track.id;
-			ctx.strokeStyle = isHoveredBorder ? '#666666' : '#333333';
-			ctx.lineWidth = isHoveredBorder ? 2 : 1;
+			// Draw bottom border
+			ctx.strokeStyle = '#333333';
 			ctx.beginPath();
-			ctx.moveTo(0, borderY);
-			ctx.lineTo(width, borderY);
+			ctx.moveTo(0, currentY + trackHeight);
+			ctx.lineTo(width, currentY + trackHeight);
 			ctx.stroke();
-			ctx.lineWidth = 1;
-
-			// Record border position for resize hit detection
-			borders.push({
-				trackId: track.id,
-				trackType: 'remote',
-				y: borderY
-			});
 
 			currentY += trackHeight;
 		}
@@ -296,14 +207,11 @@
 		width: number,
 		trackY: number,
 		trackHeight: number,
-		_color: string,
-		trackType: 'genes' | 'transcripts' = 'genes'
+		_color: string
 	): void {
 		const theme = getCurrentTheme();
 		const labelOffset = theme.labelHeight;
-
-		// Use theme dimensions
-		const featureHeight = trackType === 'genes' ? theme.exonHeight : theme.cdsHeight;
+		const featureHeight = theme.exonHeight;
 		const rowSpacing = 4;
 
 		// Simple row packing
@@ -350,9 +258,7 @@
 			const featureWidth = endX - startX;
 			const centerY = rowY + featureHeight / 2;
 			const strand = (feature.strand === '+' || feature.strand === '-') ? feature.strand : '.';
-
-			// Choose colors based on track type
-			const colors = trackType === 'genes' ? theme.gene : theme.cds;
+			const colors = theme.gene;
 
 			// Draw with BED12 block structure (exons) if available
 			if (feature.blockCount && feature.blockSizes && feature.blockStarts && feature.blockCount > 1) {
@@ -435,15 +341,6 @@
 				ctx.fillStyle = theme.label;
 				ctx.fillText(label, labelX, labelY, maxWidth);
 			}
-		}
-
-		// Overflow indicator
-		const maxRows = Math.floor((trackHeight - labelOffset) / (featureHeight + rowSpacing + theme.labelHeight));
-		if (rows.length > maxRows) {
-			ctx.fillStyle = theme.labelSecondary;
-			ctx.font = '9px Inter, sans-serif';
-			ctx.textAlign = 'right';
-			ctx.fillText(`+${rows.length - maxRows} more`, width - 8, trackY + trackHeight - 4);
 		}
 	}
 
@@ -724,93 +621,21 @@
 		}
 	}
 
-	// Check if mouse Y is near a track border
-	function findNearbyBorder(mouseY: number): TrackBorder | null {
-		for (const border of trackBorders) {
-			if (Math.abs(mouseY - border.y) <= BORDER_HIT_ZONE) {
-				return border;
-			}
-		}
-		return null;
-	}
-
-	// Get current height of a track
-	function getTrackHeight(trackId: string, trackType: 'local' | 'remote'): number {
-		if (trackType === 'remote') {
-			const track = remoteTracks.all.find(t => t.id === trackId);
-			return track?.userHeight ?? track?.height ?? 100;
-		}
-		// For local tracks (future)
-		const track = tracks.all.find(t => t.id === trackId);
-		return track?.height ?? 100;
-	}
-
-	// Mouse handlers for panning and resizing
+	// Mouse handlers for panning
 	function handleMouseDown(event: MouseEvent) {
-		const rect = canvasEl.getBoundingClientRect();
-		const mouseY = event.clientY - rect.top;
-		const border = findNearbyBorder(mouseY);
-
-		if (border) {
-			// Start resizing
-			isResizing = true;
-			resizeTrackId = border.trackId;
-			resizeTrackType = border.trackType;
-			resizeStartY = event.clientY;
-			resizeStartHeight = getTrackHeight(border.trackId, border.trackType);
-			document.body.style.cursor = 'ns-resize';
-		} else {
-			// Start panning
-			isDragging = true;
-			dragStartX = event.clientX;
-			document.body.style.cursor = 'grabbing';
-		}
+		isDragging = true;
+		dragStartX = event.clientX;
+		document.body.style.cursor = 'grabbing';
 	}
 
 	function handleMouseMove(event: MouseEvent) {
-		if (isResizing && resizeTrackId && resizeTrackType) {
-			// Handle resize drag
-			const deltaY = event.clientY - resizeStartY;
-			const newHeight = Math.max(50, Math.min(500, resizeStartHeight + deltaY));
-
-			if (resizeTrackType === 'remote') {
-				remoteTracks.setRemoteTrackHeight(resizeTrackId, newHeight);
-			}
-			// Local track resize could be added here
-			return;
-		}
-
-		if (isDragging) {
-			// Handle pan drag
-			const deltaX = event.clientX - dragStartX;
-			viewport.pan(deltaX, pixelsPerBase);
-			dragStartX = event.clientX;
-			return;
-		}
-
-		// Not dragging - check if hovering near a border
-		if (!canvasEl) return;
-		const rect = canvasEl.getBoundingClientRect();
-		const mouseY = event.clientY - rect.top;
-		const border = findNearbyBorder(mouseY);
-
-		if (border) {
-			isNearBorder = true;
-			resizeTrackId = border.trackId;
-			canvasEl.style.cursor = 'ns-resize';
-		} else {
-			isNearBorder = false;
-			resizeTrackId = null;
-			canvasEl.style.cursor = '';
-		}
+		if (!isDragging) return;
+		const deltaX = event.clientX - dragStartX;
+		viewport.pan(deltaX, pixelsPerBase);
+		dragStartX = event.clientX;
 	}
 
 	function handleMouseUp() {
-		if (isResizing) {
-			isResizing = false;
-			resizeTrackId = null;
-			resizeTrackType = null;
-		}
 		isDragging = false;
 		document.body.style.cursor = '';
 	}
