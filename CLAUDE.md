@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 2 complete (2026-01-09)
+**Status**: Active development, Session 7 complete (2026-01-15)
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -280,6 +280,40 @@ npm run check        # TypeScript check
   - Fixed chromosome name resolution: actually use resolved name in BigBed query
   - Fixed Puccinia chromosome names (supercont1.X -> supercont2.X)
   - Gene tracks now work for 15 assemblies
+
+- **2026-01-15 Session 7**: Complete model organism coverage
+  - Clarified Genes vs Transcripts tracks (see docs/GENE-TRACKS.md)
+  - UCSC knownGene.bb only has transcript-level data (exon blocks), not gene-level
+  - Removed UCSC from GENE_BIGBED_URLS - they only go in TRANSCRIPT_BIGBED_URLS
+  - Restored track height resize (sidebar slider + drag border on canvas)
+  - Added UCSC/GenArk transcript tracks for 9 model organisms:
+    - mm10, mm39 (mouse), T2T-CHM13 (human), danRer11 (zebrafish),
+    - dm6 (fly), ce11 (worm), sacCer3 (yeast), rn7 (rat), galGal6 (chicken)
+  - Added GENARK_CHROMOSOME_MAPS for NC_ accession number mapping
+  - All 24 assemblies now have working gene/transcript tracks
+
+## Known Issues & Gotchas
+
+### Cloudflare R2 URL Format
+The R2 public bucket URL format is: `https://pub-{bucket_id}.r2.dev/{file}`
+
+**Important**: The bucket ID shown in Cloudflare dashboard may differ from the actual public URL.
+When troubleshooting R2 404 errors, verify the actual bucket URL by checking an existing working
+file, not by looking at the dashboard. The current correct bucket is:
+`pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
+
+### GenArk Chromosome Names
+UCSC GenArk hubs use NCBI RefSeq accession numbers (NC_000067.7) instead of chr-prefixed names.
+The `GENARK_CHROMOSOME_MAPS` in `bigbed.ts` maps from standard chr names to NC_ accessions.
+When adding new GenArk assemblies, you must add chromosome mappings.
+
+### UCSC vs R2 Track Data
+- **UCSC knownGene.bb**: Contains transcript-level data only (blockCount > 1 for most features)
+- **R2 .genes.bb**: Contains gene-level data (blockCount = 1, single continuous feature)
+- **R2 .transcripts.bb**: Contains transcript-level data with exon structure
+
+If a user reports "both tracks look the same" or "genes track shows exons", check whether
+the data source actually has gene-level annotations or just transcript data with gene symbols.
 
 ## Key Files for Context
 1. `CLAUDE.md` - This file
