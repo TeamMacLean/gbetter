@@ -112,6 +112,7 @@
       "description": "Genome Reference Consortium Mouse Build 39",
       "source": "builtin",
       "chromSizesUrl": "https://hgdownload.soe.ucsc.edu/goldenPath/mm39/bigZips/mm39.chrom.sizes",
+      "defaultViewport": { "chromosome": "chr1", "start": 3140000, "end": 3240000 },
       "chromosomes": [
         { "name": "chr1", "length": 195154279 },
         { "name": "chr2", "length": 181755017 },
@@ -144,6 +145,7 @@
       "description": "Genome Reference Consortium Mouse Build 38",
       "source": "builtin",
       "chromSizesUrl": "https://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/mm10.chrom.sizes",
+      "defaultViewport": { "chromosome": "chr1", "start": 3200000, "end": 3300000 },
       "chromosomes": [
         { "name": "chr1", "length": 195471971 },
         { "name": "chr2", "length": 182113224 },

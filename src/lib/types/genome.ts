@@ -62,6 +62,7 @@ export interface GenomeAssembly {
 	chromosomes: ChromosomeInfo[];
 	source: 'builtin' | 'url' | 'inferred' | 'custom';
 	chromSizesUrl?: string; // URL to fetch full chrom.sizes if needed
+	defaultViewport?: Viewport; // Default region to show when switching to this assembly
 }
 
 // AI Query types

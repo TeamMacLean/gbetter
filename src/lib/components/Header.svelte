@@ -48,11 +48,17 @@
 	function handleAssemblyChange(assemblyId: string) {
 		assembly.setAssemblyById(assemblyId);
 		showAssemblyMenu = false;
-		// Navigate to first chromosome
-		const firstChr = assembly.chromosomes[0];
-		if (firstChr) {
-			const chrInfo = assembly.getChromosome(firstChr);
-			viewport.navigateTo(firstChr, 0, Math.min(chrInfo?.length ?? 100000, 100000));
+
+		// Use assembly-specific default viewport if available, otherwise use first chromosome
+		const defaultView = assembly.current.defaultViewport;
+		if (defaultView) {
+			viewport.navigateTo(defaultView.chromosome, defaultView.start, defaultView.end);
+		} else {
+			const firstChr = assembly.chromosomes[0];
+			if (firstChr) {
+				const chrInfo = assembly.getChromosome(firstChr);
+				viewport.navigateTo(firstChr, 0, Math.min(chrInfo?.length ?? 100000, 100000));
+			}
 		}
 	}
 
