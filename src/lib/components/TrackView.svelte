@@ -54,6 +54,21 @@
 	// File drop state
 	let isDragOver = $state(false);
 
+	// Track resize state
+	interface TrackBorder {
+		trackId: string;
+		trackType: 'local' | 'remote';
+		y: number; // Y position of bottom border
+	}
+	let trackBorders = $state<TrackBorder[]>([]);
+	let isResizing = $state(false);
+	let resizeTrackId = $state<string | null>(null);
+	let resizeTrackType = $state<'local' | 'remote' | null>(null);
+	let resizeStartY = $state(0);
+	let resizeStartHeight = $state(0);
+	let isNearBorder = $state(false);
+	const BORDER_HIT_ZONE = 6; // pixels from border to trigger resize
+
 	// Calculate pixels per base
 	const pixelsPerBase = $derived(containerWidth / viewport.width);
 
@@ -112,12 +127,15 @@
 		);
 		const hasRemoteContent = visibleRemoteTracks.some(t => t.features.length > 0);
 
+		// Reset track borders for resize hit detection
+		const newBorders: TrackBorder[] = [];
+
 		if (hasLocalContent || hasRemoteContent) {
 			let currentY = rulerHeight;
 
 			// Render remote tracks first (gene models)
 			if (hasRemoteContent) {
-				currentY = renderRemoteTracks(ctx, width, currentY);
+				currentY = renderRemoteTracks(ctx, width, currentY, newBorders);
 			}
 
 			// Render local tracks
@@ -130,6 +148,9 @@
 		} else {
 			drawPlaceholder(ctx, width, height, rulerHeight);
 		}
+
+		// Update track borders state for resize detection
+		trackBorders = newBorders;
 
 		// Draw highlights on top
 		drawHighlights(ctx, width, height, rulerHeight);
@@ -177,7 +198,8 @@
 	function renderRemoteTracks(
 		ctx: CanvasRenderingContext2D,
 		width: number,
-		startY: number
+		startY: number,
+		borders: TrackBorder[]
 	): number {
 		let currentY = startY;
 
@@ -240,12 +262,23 @@
 				renderBedFeatures(ctx, track.features, width, currentY, trackHeight, track.color);
 			}
 
-			// Draw bottom border
-			ctx.strokeStyle = '#333333';
+			// Draw bottom border (thicker when being hovered for resize)
+			const borderY = currentY + trackHeight;
+			const isHoveredBorder = isNearBorder && resizeTrackId === track.id;
+			ctx.strokeStyle = isHoveredBorder ? '#666666' : '#333333';
+			ctx.lineWidth = isHoveredBorder ? 2 : 1;
 			ctx.beginPath();
-			ctx.moveTo(0, currentY + trackHeight);
-			ctx.lineTo(width, currentY + trackHeight);
+			ctx.moveTo(0, borderY);
+			ctx.lineTo(width, borderY);
 			ctx.stroke();
+			ctx.lineWidth = 1;
+
+			// Record border position for resize hit detection
+			borders.push({
+				trackId: track.id,
+				trackType: 'remote',
+				y: borderY
+			});
 
 			currentY += trackHeight;
 		}
@@ -676,21 +709,93 @@
 		}
 	}
 
-	// Mouse handlers for panning
+	// Check if mouse Y is near a track border
+	function findNearbyBorder(mouseY: number): TrackBorder | null {
+		for (const border of trackBorders) {
+			if (Math.abs(mouseY - border.y) <= BORDER_HIT_ZONE) {
+				return border;
+			}
+		}
+		return null;
+	}
+
+	// Get current height of a track
+	function getTrackHeight(trackId: string, trackType: 'local' | 'remote'): number {
+		if (trackType === 'remote') {
+			const track = remoteTracks.all.find(t => t.id === trackId);
+			return track?.userHeight ?? track?.height ?? 100;
+		}
+		// For local tracks (future)
+		const track = tracks.all.find(t => t.id === trackId);
+		return track?.height ?? 100;
+	}
+
+	// Mouse handlers for panning and resizing
 	function handleMouseDown(event: MouseEvent) {
-		isDragging = true;
-		dragStartX = event.clientX;
-		document.body.style.cursor = 'grabbing';
+		const rect = canvasEl.getBoundingClientRect();
+		const mouseY = event.clientY - rect.top;
+		const border = findNearbyBorder(mouseY);
+
+		if (border) {
+			// Start resizing
+			isResizing = true;
+			resizeTrackId = border.trackId;
+			resizeTrackType = border.trackType;
+			resizeStartY = event.clientY;
+			resizeStartHeight = getTrackHeight(border.trackId, border.trackType);
+			document.body.style.cursor = 'ns-resize';
+		} else {
+			// Start panning
+			isDragging = true;
+			dragStartX = event.clientX;
+			document.body.style.cursor = 'grabbing';
+		}
 	}
 
 	function handleMouseMove(event: MouseEvent) {
-		if (!isDragging) return;
-		const deltaX = event.clientX - dragStartX;
-		viewport.pan(deltaX, pixelsPerBase);
-		dragStartX = event.clientX;
+		if (isResizing && resizeTrackId && resizeTrackType) {
+			// Handle resize drag
+			const deltaY = event.clientY - resizeStartY;
+			const newHeight = Math.max(50, Math.min(500, resizeStartHeight + deltaY));
+
+			if (resizeTrackType === 'remote') {
+				remoteTracks.setRemoteTrackHeight(resizeTrackId, newHeight);
+			}
+			// Local track resize could be added here
+			return;
+		}
+
+		if (isDragging) {
+			// Handle pan drag
+			const deltaX = event.clientX - dragStartX;
+			viewport.pan(deltaX, pixelsPerBase);
+			dragStartX = event.clientX;
+			return;
+		}
+
+		// Not dragging - check if hovering near a border
+		if (!canvasEl) return;
+		const rect = canvasEl.getBoundingClientRect();
+		const mouseY = event.clientY - rect.top;
+		const border = findNearbyBorder(mouseY);
+
+		if (border) {
+			isNearBorder = true;
+			resizeTrackId = border.trackId;
+			canvasEl.style.cursor = 'ns-resize';
+		} else {
+			isNearBorder = false;
+			resizeTrackId = null;
+			canvasEl.style.cursor = '';
+		}
 	}
 
 	function handleMouseUp() {
+		if (isResizing) {
+			isResizing = false;
+			resizeTrackId = null;
+			resizeTrackType = null;
+		}
 		isDragging = false;
 		document.body.style.cursor = '';
 	}
