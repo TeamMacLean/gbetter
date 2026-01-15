@@ -80,6 +80,41 @@ test.describe('Track Visibility Toggle', () => {
 		const buttonCount = await sidebar.locator('button').count();
 		expect(buttonCount).toBeGreaterThan(0);
 	});
+
+	test('each toggle controls its own track independently', async ({ page }) => {
+		await page.goto('/');
+
+		await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
+		await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
+
+		const sidebar = page.locator('aside');
+
+		// Both should start visible
+		let visibleToggles = sidebar.locator('button[title="Hide track"]');
+		expect(await visibleToggles.count()).toBe(2);
+
+		// Click first toggle (Genes) - should hide Genes track
+		await visibleToggles.nth(0).click();
+		await page.waitForTimeout(100);
+
+		// Check which track is hidden
+		const hiddenAfterFirst = sidebar.locator('button[title="Show track"]').locator('..').locator('..');
+		const hiddenTextFirst = await hiddenAfterFirst.textContent();
+		expect(hiddenTextFirst).toContain('Genes');
+
+		// Reset
+		await sidebar.locator('button[title="Show track"]').click();
+		await page.waitForTimeout(100);
+
+		// Click second toggle (Transcripts) - should hide Transcripts track
+		visibleToggles = sidebar.locator('button[title="Hide track"]');
+		await visibleToggles.nth(1).click();
+		await page.waitForTimeout(100);
+
+		const hiddenAfterSecond = sidebar.locator('button[title="Show track"]').locator('..').locator('..');
+		const hiddenTextSecond = await hiddenAfterSecond.textContent();
+		expect(hiddenTextSecond).toContain('Transcripts');
+	});
 });
 
 test.describe('Assembly Switching', () => {
