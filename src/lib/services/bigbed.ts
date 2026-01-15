@@ -204,17 +204,11 @@ export function clearBigBedCache(): void {
 }
 
 /**
- * URLs for known gene BigBed files
- * Note: UCSC knownGene.bb contains both gene symbols (parts[14]) and transcript IDs (parts[0]).
- * Both Genes and Transcripts tracks load from the same file but display differently.
+ * URLs for known gene BigBed files (gene-level annotations, single continuous features)
+ * Note: UCSC knownGene.bb only has transcript-level data with exon blocks,
+ * so UCSC assemblies only appear in TRANSCRIPT_BIGBED_URLS (no Genes track for them).
  */
 export const GENE_BIGBED_URLS: Record<string, string> = {
-	// Human - UCSC knownGene.bb contains gene symbols in extended fields (parts[14])
-	// Same file as transcripts but Genes track displays geneSymbol field
-	'GRCh38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
-	'hg38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
-	'GRCh37': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
-	'hg19': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
 	// Self-hosted on Cloudflare R2 - these have separate gene-level files
 	// Plants
 	'tair10': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/tair10.genes.bb',
