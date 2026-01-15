@@ -5,49 +5,57 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Gene Track Loading', () => {
-	test('gene track appears in sidebar on page load for GRCh38', async ({ page }) => {
-		await page.goto('/');
-
-		// Wait for the gene track to appear in the sidebar
-		// The track should load automatically for assemblies with BigBed URLs
-		await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
-	});
-
 	test('transcript track appears in sidebar on page load for GRCh38', async ({ page }) => {
 		await page.goto('/');
 
-		// Wait for the transcript track to appear in the sidebar
+		// GRCh38 uses UCSC knownGene.bb which is transcript-level data
+		// So only Transcripts track appears (no separate Genes track for UCSC)
 		await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
 	});
 
-	test('sidebar shows track count including both gene and transcript tracks', async ({ page }) => {
+	test('GRCh38 shows only one track (UCSC only has transcript data)', async ({ page }) => {
 		await page.goto('/');
 
-		// Wait for tracks to load
+		// Wait for track to load
+		await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
+
+		// Should only show 1 track for UCSC assemblies
+		await expect(page.getByText(/Tracks \(1\)/)).toBeVisible();
+	});
+
+	test('TAIR10 shows both genes and transcript tracks', async ({ page }) => {
+		await page.goto('/');
+		await page.waitForTimeout(500);
+
+		// Switch to TAIR10
+		const assemblyButton = page.locator('button').filter({ hasText: /GRCh|Human/i }).first();
+		await assemblyButton.click();
+		await page.getByText('TAIR10').click();
+
+		// Wait for both tracks to load
 		await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
 		await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
 
-		// Sidebar should show at least 2 tracks
-		await expect(page.getByText(/Tracks \([2-9]/)).toBeVisible();
+		// Should show 2 tracks for R2 assemblies
+		await expect(page.getByText(/Tracks \(2\)/)).toBeVisible();
 	});
 
-	test('gene track has visibility toggle', async ({ page }) => {
+	test('transcript track has visibility toggle', async ({ page }) => {
 		await page.goto('/');
 
-		// Wait for gene track
-		await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
+		// Wait for transcript track
+		await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
 
-		// The gene track item contains a visibility toggle button
-		// Look for any button in the sidebar that's near "Genes" text
+		// The track item contains a visibility toggle button
 		const sidebar = page.locator('aside');
-		await expect(sidebar.locator('button').first()).toBeVisible();
+		await expect(sidebar.locator('button[title="Hide track"]').first()).toBeVisible();
 	});
 
 	test('tracks show loading state then feature count', async ({ page }) => {
 		await page.goto('/');
 
-		// Wait for tracks to appear
-		await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
+		// Wait for track to appear
+		await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
 
 		// Eventually should show feature count (not "Loading...")
 		await expect(page.getByText(/\d+ features/).first()).toBeVisible({ timeout: 15000 });
@@ -56,8 +64,8 @@ test.describe('Gene Track Loading', () => {
 	test('tracks show BIGBED type', async ({ page }) => {
 		await page.goto('/');
 
-		// Wait for tracks
-		await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
+		// Wait for track
+		await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
 
 		// Should show the track type
 		await expect(page.getByText('BIGBED').first()).toBeVisible();
@@ -68,21 +76,29 @@ test.describe('Track Visibility Toggle', () => {
 	test('clicking visibility toggle changes track state', async ({ page }) => {
 		await page.goto('/');
 
-		// Wait for gene track to load and show features
-		await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
-		await expect(page.getByText(/\d+ features/).first()).toBeVisible({ timeout: 15000 });
+		// Wait for transcript track to load
+		await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
 
-		// Find and click the first toggle button in sidebar (genes track)
 		const sidebar = page.locator('aside');
-		const toggleButtons = sidebar.locator('button[title*="track"]');
+		const toggleButton = sidebar.locator('button[title="Hide track"]').first();
+		await expect(toggleButton).toBeVisible();
 
-		// If we can't find titled buttons, just verify buttons exist
-		const buttonCount = await sidebar.locator('button').count();
-		expect(buttonCount).toBeGreaterThan(0);
+		// Click to hide
+		await toggleButton.click();
+		await page.waitForTimeout(100);
+
+		// Should now show "Show track"
+		await expect(sidebar.locator('button[title="Show track"]').first()).toBeVisible();
 	});
 
-	test('each toggle controls its own track independently', async ({ page }) => {
+	test('each toggle controls its own track independently (TAIR10)', async ({ page }) => {
 		await page.goto('/');
+		await page.waitForTimeout(500);
+
+		// Switch to TAIR10 which has both Genes and Transcripts tracks
+		const assemblyButton = page.locator('button').filter({ hasText: /GRCh|Human/i }).first();
+		await assemblyButton.click();
+		await page.getByText('TAIR10').click();
 
 		await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
 		await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
@@ -139,16 +155,16 @@ test.describe('Assembly Switching', () => {
 	test('switching assemblies updates track features', async ({ page }) => {
 		await page.goto('/');
 
-		// Wait for initial tracks
-		await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
+		// Wait for initial track (GRCh38 only has Transcripts)
+		await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
 		await expect(page.getByText(/\d+ features/).first()).toBeVisible({ timeout: 15000 });
 
-		// Switch assembly
+		// Switch assembly to TAIR10
 		const assemblyButton = page.locator('button').filter({ hasText: /GRCh|Human/i }).first();
 		await assemblyButton.click();
 		await page.getByText('TAIR10').click();
 
-		// Wait for new features to load
+		// Wait for new features to load (TAIR10 has both Genes and Transcripts)
 		await page.waitForTimeout(2000);
 		await expect(page.getByText('Genes').first()).toBeVisible();
 		await expect(page.getByText('Transcripts').first()).toBeVisible();

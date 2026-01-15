@@ -199,16 +199,11 @@ export function clearBigBedCache(): void {
 
 /**
  * URLs for known gene BigBed files
+ * Note: UCSC knownGene.bb contains transcript-level data with exon structure,
+ * so UCSC assemblies only appear in TRANSCRIPT_BIGBED_URLS to avoid duplicate tracks.
  */
 export const GENE_BIGBED_URLS: Record<string, string> = {
-	// Human - UCSC (only hg38/hg19 have knownGene.bb)
-	'GRCh38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
-	'hg38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
-	'GRCh37': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
-	'hg19': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
-	// Note: Other UCSC genomes (mm39, dm6, ce11, etc.) don't have knownGene.bb files
-	// They would need to be generated from GFF3 and hosted on R2
-	// Self-hosted on Cloudflare R2
+	// Self-hosted on Cloudflare R2 - these have separate gene-level files
 	// Plants
 	'tair10': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/tair10.genes.bb',
 	'irgsp1': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/irgsp1.genes.bb',
@@ -232,12 +227,13 @@ export const GENE_BIGBED_URLS: Record<string, string> = {
  * URLs for transcript BigBed files (compound feature models with exon structure)
  */
 export const TRANSCRIPT_BIGBED_URLS: Record<string, string> = {
-	// Human - UCSC knownGene.bb already contains transcript structure
+	// Human - UCSC knownGene.bb contains transcript-level data with exon blocks
+	// These assemblies only show Transcripts track (no separate Genes track)
 	'GRCh38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
 	'hg38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
 	'GRCh37': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
 	'hg19': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
-	// Self-hosted on Cloudflare R2
+	// Self-hosted on Cloudflare R2 - these have matching .genes.bb files
 	// Plants
 	'tair10': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/tair10.transcripts.bb',
 	'irgsp1': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/irgsp1.transcripts.bb',
