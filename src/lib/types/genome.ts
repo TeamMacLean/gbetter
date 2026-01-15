@@ -28,6 +28,7 @@ export interface BedFeature extends GenomicFeature {
 	blockCount?: number;
 	blockSizes?: number[];
 	blockStarts?: number[];
+	geneSymbol?: string; // Gene symbol from extended BED fields (e.g., "TP53")
 }
 
 export interface GffFeature extends GenomicFeature {

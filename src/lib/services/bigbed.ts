@@ -57,6 +57,11 @@ function parseBed12Rest(
 	const parts = rest.split('\t');
 	const chromosome = refsByNumber[chromId]?.name || `chr${chromId}`;
 
+	// Extended BED fields from UCSC knownGene.bb:
+	// parts[14] = gene symbol (e.g., "TP53")
+	// parts[15] = protein ID (e.g., UniProt)
+	const geneSymbol = parts[14] && parts[14] !== '' ? parts[14] : undefined;
+
 	const feature: BedFeature = {
 		id: `${chromosome}:${start}-${end}:${parts[0] || 'unknown'}`,
 		chromosome,
@@ -71,6 +76,7 @@ function parseBed12Rest(
 		blockCount: parts[6] ? parseInt(parts[6], 10) : undefined,
 		blockSizes: parts[7] ? parts[7].split(',').filter(Boolean).map(Number) : undefined,
 		blockStarts: parts[8] ? parts[8].split(',').filter(Boolean).map(Number) : undefined,
+		geneSymbol,
 	};
 
 	return feature;
@@ -199,10 +205,16 @@ export function clearBigBedCache(): void {
 
 /**
  * URLs for known gene BigBed files
- * Note: UCSC knownGene.bb contains transcript-level data with exon structure,
- * so UCSC assemblies only appear in TRANSCRIPT_BIGBED_URLS to avoid duplicate tracks.
+ * Note: UCSC knownGene.bb contains both gene symbols (parts[14]) and transcript IDs (parts[0]).
+ * Both Genes and Transcripts tracks load from the same file but display differently.
  */
 export const GENE_BIGBED_URLS: Record<string, string> = {
+	// Human - UCSC knownGene.bb contains gene symbols in extended fields (parts[14])
+	// Same file as transcripts but Genes track displays geneSymbol field
+	'GRCh38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
+	'hg38': 'https://hgdownload.soe.ucsc.edu/gbdb/hg38/knownGene.bb',
+	'GRCh37': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
+	'hg19': 'https://hgdownload.soe.ucsc.edu/gbdb/hg19/knownGene.bb',
 	// Self-hosted on Cloudflare R2 - these have separate gene-level files
 	// Plants
 	'tair10': 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/tair10.genes.bb',
