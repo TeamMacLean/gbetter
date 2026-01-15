@@ -168,6 +168,22 @@ export function getCurrentThemeName(): string {
 	return currentTheme.name;
 }
 
+/**
+ * Get the current theme object (for use in other renderers)
+ */
+export function getCurrentTheme(): GeneModelTheme {
+	return currentTheme;
+}
+
+// Export types for use in other modules
+export type { GeneModelTheme, ColorDef };
+
+// =============================================================================
+// EXPORTED DRAWING HELPERS (for BigBed and other renderers)
+// =============================================================================
+
+export { roundedRect, drawPill, drawIntronConnector, drawInnerChevrons };
+
 function parseGff3(content: string): ParseResult<GeneModelFeature> {
 	const features: GeneModelFeature[] = [];
 	const errors: string[] = [];
