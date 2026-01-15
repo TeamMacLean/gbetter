@@ -148,7 +148,7 @@ async function fetchTrackFeatures(
 			viewport.chromosome,
 			fetchStart,
 			fetchEnd,
-			{ signal }
+			{ signal, assemblyId: track.assemblyId }
 		);
 
 		// Update track with features

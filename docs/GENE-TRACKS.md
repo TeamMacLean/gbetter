@@ -43,25 +43,41 @@ Transcript: ENST00000413465.6 (TP53)
 
 ### Which Assemblies Have Which Tracks?
 
-| Assembly | Genes | Transcripts | Why |
-|----------|:-----:|:-----------:|-----|
-| **Human** (GRCh38, hg38, hg19) | ❌ | ✅ | UCSC only provides transcript-level data |
-| **Mouse** (mm39, mm10) | ❌ | ✅ | UCSC only provides transcript-level data |
-| **Arabidopsis** (TAIR10) | ✅ | ✅ | We host both gene and transcript files |
-| **Rice** (IRGSP-1.0) | ✅ | ✅ | We host both gene and transcript files |
-| **S. pombe** | ✅ | ✅ | We host both gene and transcript files |
-| **E. coli K-12** | ✅ | ❌ | Bacteria don't have alternative splicing |
-| **SARS-CoV-2** | ✅ | ❌ | Viruses don't have alternative splicing |
+| Assembly | Genes | Transcripts | Source |
+|----------|:-----:|:-----------:|--------|
+| **Human** (GRCh38, hg38, hg19) | ❌ | ✅ | UCSC knownGene |
+| **Human T2T** (T2T-CHM13) | ❌ | ✅ | UCSC CAT/LiftOff |
+| **Mouse** (mm39, mm10) | ❌ | ✅ | UCSC/GenArk |
+| **Zebrafish** (danRer11) | ❌ | ✅ | GenArk RefSeq |
+| **Fly** (dm6) | ❌ | ✅ | GenArk RefSeq |
+| **Worm** (ce11) | ❌ | ✅ | GenArk RefSeq |
+| **Yeast** (sacCer3) | ❌ | ✅ | GenArk RefSeq |
+| **Rat** (rn7) | ❌ | ✅ | GenArk RefSeq |
+| **Chicken** (galGal6) | ❌ | ✅ | GenArk RefSeq |
+| **Arabidopsis** (TAIR10) | ✅ | ✅ | R2-hosted |
+| **Rice** (IRGSP-1.0) | ✅ | ✅ | R2-hosted |
+| **Wheat** (IWGSC RefSeq v2) | ✅ | ✅ | R2-hosted |
+| **Barley** (Morex v3) | ✅ | ✅ | R2-hosted |
+| **Maize** (B73 NAM5) | ✅ | ✅ | R2-hosted |
+| **S. pombe** | ✅ | ✅ | R2-hosted |
+| **Botrytis cinerea** | ✅ | ✅ | R2-hosted |
+| **Magnaporthe oryzae** | ✅ | ✅ | R2-hosted |
+| **Puccinia graminis** | ✅ | ✅ | R2-hosted |
+| **Zymoseptoria tritici** | ✅ | ✅ | R2-hosted |
+| **Phytophthora infestans** | ✅ | ✅ | R2-hosted |
+| **E. coli K-12** | ✅ | ❌ | R2-hosted (no splicing) |
+| **SARS-CoV-2** | ✅ | ❌ | R2-hosted (no splicing) |
 
-**Note**: For human/mouse genomes, you only see the Transcripts track because UCSC's knownGene.bb file contains transcript models with exon structure, not collapsed gene features. The gene symbol (like "TP53") is metadata on each transcript, not a separate feature.
+**Note**: Assemblies with only a Transcripts track use UCSC/GenArk data which contains transcript models with exon structure, not collapsed gene features. The gene symbol (like "TP53") is metadata on each transcript, not a separate feature.
 
 ## Gene Track Sources
 
 | Source | Genomes | Notes |
 |--------|---------|-------|
-| **UCSC** | Human (hg38, hg19), Mouse (mm39, mm10), T2T-CHM13 | Official UCSC Known Genes / GENCODE |
-| **GenArk** | Zebrafish, Fly, Worm, Yeast, Rat, Chicken | NCBI RefSeq annotations via UCSC GenArk hubs |
-| **Self-hosted** | Arabidopsis, Rice, S. pombe, Botrytis, Magnaporthe, E. coli, SARS-CoV-2 | Converted from Ensembl/NCBI GFF3 |
+| **UCSC** | Human (hg38, hg19, mm10) | Official UCSC Known Genes / GENCODE |
+| **UCSC CAT/LiftOff** | Human T2T-CHM13 | Gene annotations lifted from GRCh38 |
+| **GenArk** | Mouse (mm39), Zebrafish, Fly, Worm, Yeast, Rat, Chicken | NCBI RefSeq annotations via UCSC GenArk hubs |
+| **Self-hosted (R2)** | Plants, Fungi, Bacteria, Viruses | Converted from Ensembl/NCBI GFF3 |
 
 ## Adding New Genomes
 
