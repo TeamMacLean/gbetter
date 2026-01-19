@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 9 (2026-01-16) - Remote track panning bug UNRESOLVED
+**Status**: Active development, Session 10 (2026-01-19) - Remote track panning bug FIXED
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -518,21 +518,39 @@ All pan-data-loading tests pass." \
   - **Next steps**: See `docs/DEBUG-REMOTE-TRACKS.md` for diagnostic plan
   - Created `tests/e2e/remote-track-loading.test.ts`
 
+- **2026-01-19 Session 10**: Remote track panning bug FIXED
+  - **Root cause**: Svelte 5 fine-grained reactivity issue
+    - `$effect` in TrackView.svelte only read `viewport.current` (object reference)
+    - Didn't read `.chromosome`, `.start`, `.end` properties
+    - Svelte didn't detect property mutations during panning
+  - **Fix**: Explicitly read viewport properties to create fine-grained dependencies
+  - **Also fixed**: Stale closure in debounce by capturing viewport values immediately
+  - Created `tests/e2e/pan-data-loading.test.ts` with failing test first (TDD)
+  - Used Ralph Loop for automated iteration until tests passed
+  - Documented TDD + Ralph Loop pattern in CLAUDE.md
+
 ## Known Issues & Gotchas
 
-### ACTIVE: Remote Track Panning Bug
-**Status**: UNRESOLVED - See `docs/DEBUG-REMOTE-TRACKS.md`
+### RESOLVED: Remote Track Panning Bug (Session 10)
+**Status**: FIXED in commit c2ddc8d
 
-Symptoms:
-- User pans to new genomic region
-- Feature counts stay static
-- No new data loads even after stopping
+**Root cause**: Svelte 5 fine-grained reactivity. The `$effect` in TrackView.svelte
+only read `viewport.current` (object reference), not the individual properties.
+Svelte didn't detect `.start`/`.end` mutations during panning.
 
-Suspected causes (not yet proven):
-- Stale closure in debounce callback
-- AbortController race condition
-- rawFeaturesStore vs $state mismatch
-- Browser-specific behavior not captured by Playwright
+**Fix**: Explicitly read properties to create fine-grained dependencies:
+```typescript
+$effect(() => {
+  const vp = viewport.current;
+  const _chr = vp.chromosome;  // Create dependency
+  const _start = vp.start;     // Create dependency
+  const _end = vp.end;         // Create dependency
+  untrack(() => remoteTracks.updateForViewport(vp));
+});
+```
+
+**Lesson**: In Svelte 5, reading an object doesn't track nested property changes.
+You must read the specific properties you depend on.
 
 ### Testing Strategy Lesson (Session 9)
 **Two-layer testing is essential for UI features:**
