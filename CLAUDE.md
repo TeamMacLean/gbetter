@@ -86,7 +86,11 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
 ### 🔲 Not Yet Implemented
 
-- **BAM support** - Indexed reads, complex
+- **Remote indexed formats** - See `docs/PLAN-INDEXED-FORMATS.md` for detailed plan
+  - BAM/CRAM (reads) - `@gmod/bam`, `@gmod/cram`
+  - VCF tabix (.vcf.gz) - `@gmod/tabix` + `@gmod/vcf`
+  - GFF tabix (.gff.gz) - `@gmod/tabix` + `@gmod/gff`
+  - BED tabix (.bed.gz) - `@gmod/tabix`
 - **FASTA support** - Sequence display at high zoom
 - **Comparison views** - Side-by-side query results
 - **AI conversation follow-ups** - Reply to clarification questions
