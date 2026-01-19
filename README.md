@@ -22,7 +22,7 @@ No installation required. Just open in your browser and start exploring genomes.
 - **Web-first** - No installation, works in any modern browser
 - **Beautiful** - Dark mode interface, modern aesthetics
 - **Species-agnostic** - Works with any genome, not just human
-- **Private** - All data stays in your browser
+- **Private** - All data stays in your browserin h
 
 ## Supported File Formats
 

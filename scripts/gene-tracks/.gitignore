@@ -1,0 +1,16 @@
+# Python virtual environment
+.venv/
+venv/
+
+# Downloaded UCSC tools
+tools/
+
+# Temporary conversion files
+temp/
+
+# Generated BigBed output (may want to commit these)
+# output/
+
+# Python cache
+__pycache__/
+*.pyc

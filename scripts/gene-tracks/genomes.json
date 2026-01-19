@@ -1,0 +1,255 @@
+{
+  "description": "Gene annotation sources for GBetter genome browser",
+  "r2_bucket": "gbetter-gene-tracks",
+  "r2_public_url": "https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev",
+  "genomes": [
+    {
+      "id": "tair10",
+      "name": "Arabidopsis thaliana TAIR10",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/current/gff3/arabidopsis_thaliana/Arabidopsis_thaliana.TAIR10.62.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "1", "length": 30427671, "alias": "Chr1"},
+        {"name": "2", "length": 19698289, "alias": "Chr2"},
+        {"name": "3", "length": 23459830, "alias": "Chr3"},
+        {"name": "4", "length": 18585056, "alias": "Chr4"},
+        {"name": "5", "length": 26975502, "alias": "Chr5"},
+        {"name": "Pt", "length": 154478, "alias": "ChrC"},
+        {"name": "Mt", "length": 366924, "alias": "ChrM"}
+      ],
+      "gene_name_attr": "Name",
+      "notes": "Ensembl Plants uses 1,2,3.. our assemblies.json uses Chr1,Chr2,Chr3"
+    },
+    {
+      "id": "irgsp1",
+      "name": "Rice IRGSP-1.0",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/current/gff3/oryza_sativa/Oryza_sativa.IRGSP-1.0.62.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "1", "length": 43270923, "alias": "Chr1"},
+        {"name": "2", "length": 35937250, "alias": "Chr2"},
+        {"name": "3", "length": 36413819, "alias": "Chr3"},
+        {"name": "4", "length": 35502694, "alias": "Chr4"},
+        {"name": "5", "length": 29958434, "alias": "Chr5"},
+        {"name": "6", "length": 31248787, "alias": "Chr6"},
+        {"name": "7", "length": 29697621, "alias": "Chr7"},
+        {"name": "8", "length": 28443022, "alias": "Chr8"},
+        {"name": "9", "length": 23012720, "alias": "Chr9"},
+        {"name": "10", "length": 23207287, "alias": "Chr10"},
+        {"name": "11", "length": 29021106, "alias": "Chr11"},
+        {"name": "12", "length": 27531856, "alias": "Chr12"}
+      ],
+      "gene_name_attr": "Name"
+    },
+    {
+      "id": "spombe",
+      "name": "S. pombe ASM294v2",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/fungi/current/gff3/schizosaccharomyces_pombe/Schizosaccharomyces_pombe.ASM294v2.62.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "I", "length": 5579133},
+        {"name": "II", "length": 4539804},
+        {"name": "III", "length": 2452883},
+        {"name": "MT", "length": 19431}
+      ],
+      "gene_name_attr": "Name"
+    },
+    {
+      "id": "botrytis",
+      "name": "Botrytis cinerea B05.10",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/fungi/current/gff3/botrytis_cinerea/Botrytis_cinerea.ASM83294v1.62.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "1", "length": 4040217},
+        {"name": "2", "length": 3792102},
+        {"name": "3", "length": 3587032},
+        {"name": "4", "length": 3434810},
+        {"name": "5", "length": 3303348},
+        {"name": "6", "length": 3047179},
+        {"name": "7", "length": 2971782},
+        {"name": "8", "length": 2639986},
+        {"name": "9", "length": 2466024},
+        {"name": "10", "length": 2299696},
+        {"name": "11", "length": 2187566},
+        {"name": "12", "length": 2089607},
+        {"name": "13", "length": 1958855},
+        {"name": "14", "length": 1820284},
+        {"name": "15", "length": 1500812},
+        {"name": "16", "length": 1448025},
+        {"name": "17", "length": 1218711},
+        {"name": "18", "length": 843689}
+      ],
+      "gene_name_attr": "Name"
+    },
+    {
+      "id": "magnaporthe",
+      "name": "Magnaporthe oryzae 70-15",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/fungi/current/gff3/magnaporthe_oryzae/Magnaporthe_oryzae.MG8.62.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "1", "length": 6188750},
+        {"name": "2", "length": 5660313},
+        {"name": "3", "length": 5347064},
+        {"name": "4", "length": 4829217},
+        {"name": "5", "length": 4611972},
+        {"name": "6", "length": 3837729},
+        {"name": "7", "length": 3540859}
+      ],
+      "gene_name_attr": "Name",
+      "notes": "Ensembl Fungi - no Name attribute, falls back to gene_id (MGG_*)"
+    },
+    {
+      "id": "ecoli-k12",
+      "name": "E. coli K-12 MG1655",
+      "gff3_url": "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/005/845/GCF_000005845.2_ASM584v2/GCF_000005845.2_ASM584v2_genomic.gff.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "NC_000913.3", "length": 4641652, "alias": "chromosome"}
+      ],
+      "gene_name_attr": "gene",
+      "notes": "NCBI uses NC_* accession names"
+    },
+    {
+      "id": "sars-cov-2",
+      "name": "SARS-CoV-2 Wuhan-Hu-1",
+      "gff3_url": "https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/009/858/895/GCF_009858895.2_ASM985889v3/GCF_009858895.2_ASM985889v3_genomic.gff.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "NC_045512.2", "length": 29903}
+      ],
+      "gene_name_attr": "gene",
+      "notes": "Very small genome, ~29kb"
+    },
+    {
+      "id": "iwgsc-refseq2",
+      "name": "Wheat IWGSC RefSeq v2.1",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/current/gff3/triticum_aestivum_refseqv2/Triticum_aestivum_refseqv2.IWGSC_RefSeq_v2.1.62.chr.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "1A", "length": 594102056, "alias": "chr1A"},
+        {"name": "1B", "length": 689851870, "alias": "chr1B"},
+        {"name": "1D", "length": 495453186, "alias": "chr1D"},
+        {"name": "2A", "length": 780798557, "alias": "chr2A"},
+        {"name": "2B", "length": 801256715, "alias": "chr2B"},
+        {"name": "2D", "length": 651852609, "alias": "chr2D"},
+        {"name": "3A", "length": 750843639, "alias": "chr3A"},
+        {"name": "3B", "length": 830829764, "alias": "chr3B"},
+        {"name": "3D", "length": 615552423, "alias": "chr3D"},
+        {"name": "4A", "length": 744588157, "alias": "chr4A"},
+        {"name": "4B", "length": 673617499, "alias": "chr4B"},
+        {"name": "4D", "length": 509857067, "alias": "chr4D"},
+        {"name": "5A", "length": 709773743, "alias": "chr5A"},
+        {"name": "5B", "length": 713149757, "alias": "chr5B"},
+        {"name": "5D", "length": 566080677, "alias": "chr5D"},
+        {"name": "6A", "length": 618079260, "alias": "chr6A"},
+        {"name": "6B", "length": 720988478, "alias": "chr6B"},
+        {"name": "6D", "length": 473592718, "alias": "chr6D"},
+        {"name": "7A", "length": 736706236, "alias": "chr7A"},
+        {"name": "7B", "length": 750620385, "alias": "chr7B"},
+        {"name": "7D", "length": 638686055, "alias": "chr7D"}
+      ],
+      "gene_name_attr": "Name",
+      "notes": "Ensembl Plants uses 1A,1B.. our assemblies.json uses chr1A,chr1B. Falls back to gene_id if no Name."
+    },
+    {
+      "id": "morex-v3",
+      "name": "Barley MorexV3",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/current/gff3/hordeum_vulgare/Hordeum_vulgare.MorexV3_pseudomolecules_assembly.62.chr.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "1H", "length": 558535432, "alias": "chr1H"},
+        {"name": "2H", "length": 768075024, "alias": "chr2H"},
+        {"name": "3H", "length": 699711114, "alias": "chr3H"},
+        {"name": "4H", "length": 647060158, "alias": "chr4H"},
+        {"name": "5H", "length": 670030160, "alias": "chr5H"},
+        {"name": "6H", "length": 583380513, "alias": "chr6H"},
+        {"name": "7H", "length": 657224000, "alias": "chr7H"}
+      ],
+      "gene_name_attr": "Name",
+      "notes": "Ensembl Plants uses 1H,2H.. our assemblies.json uses chr1H,chr2H. Falls back to gene_id if no Name."
+    },
+    {
+      "id": "zm-b73-nam5",
+      "name": "Maize Zm-B73-NAM-5.0",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/plants/current/gff3/zea_mays/Zea_mays.Zm-B73-REFERENCE-NAM-5.0.62.chr.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "1", "length": 308452471, "alias": "chr1"},
+        {"name": "2", "length": 243675191, "alias": "chr2"},
+        {"name": "3", "length": 238017767, "alias": "chr3"},
+        {"name": "4", "length": 250330460, "alias": "chr4"},
+        {"name": "5", "length": 226353449, "alias": "chr5"},
+        {"name": "6", "length": 181357234, "alias": "chr6"},
+        {"name": "7", "length": 185808916, "alias": "chr7"},
+        {"name": "8", "length": 182411202, "alias": "chr8"},
+        {"name": "9", "length": 163004744, "alias": "chr9"},
+        {"name": "10", "length": 152435371, "alias": "chr10"}
+      ],
+      "gene_name_attr": "Name",
+      "notes": "Ensembl Plants uses 1,2.. our assemblies.json uses chr1,chr2. Falls back to gene_id if no Name."
+    },
+    {
+      "id": "puccinia",
+      "name": "Puccinia graminis ASM14992v1",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/fungi/current/gff3/puccinia_graminis/Puccinia_graminis.ASM14992v1.62.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "supercont2.1", "length": 5232829, "alias": "supercont1.1"},
+        {"name": "supercont2.2", "length": 3608426, "alias": "supercont1.2"},
+        {"name": "supercont2.3", "length": 2918913, "alias": "supercont1.3"},
+        {"name": "supercont2.4", "length": 2865889, "alias": "supercont1.4"},
+        {"name": "supercont2.5", "length": 2746339, "alias": "supercont1.5"},
+        {"name": "supercont2.6", "length": 2702188, "alias": "supercont1.6"},
+        {"name": "supercont2.7", "length": 2505287, "alias": "supercont1.7"},
+        {"name": "supercont2.8", "length": 2372880, "alias": "supercont1.8"},
+        {"name": "supercont2.9", "length": 2347389, "alias": "supercont1.9"},
+        {"name": "supercont2.10", "length": 2345820, "alias": "supercont1.10"}
+      ],
+      "gene_name_attr": "Name",
+      "notes": "Ensembl Fungi uses supercont2.* but assemblies.json uses supercont1.*. Falls back to gene_id."
+    },
+    {
+      "id": "zymoseptoria",
+      "name": "Zymoseptoria tritici MG2",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/fungi/current/gff3/zymoseptoria_tritici/Zymoseptoria_tritici.MG2.62.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "1", "length": 6088797},
+        {"name": "2", "length": 3862377},
+        {"name": "3", "length": 3502514},
+        {"name": "4", "length": 2883171},
+        {"name": "5", "length": 2838222},
+        {"name": "6", "length": 2681097},
+        {"name": "7", "length": 2663793},
+        {"name": "8", "length": 2444594},
+        {"name": "9", "length": 2281002},
+        {"name": "10", "length": 1746965},
+        {"name": "11", "length": 1697261},
+        {"name": "12", "length": 1687962},
+        {"name": "13", "length": 1685436}
+      ],
+      "gene_name_attr": "Name",
+      "notes": "Same chrom naming as assemblies.json. Falls back to gene_id."
+    },
+    {
+      "id": "phytophthora",
+      "name": "Phytophthora infestans T30-4",
+      "gff3_url": "https://ftp.ensemblgenomes.ebi.ac.uk/pub/protists/current/gff3/phytophthora_infestans/Phytophthora_infestans.ASM14294v1.62.gff3.gz",
+      "chrom_sizes_url": null,
+      "chromosomes": [
+        {"name": "supercont1.1", "length": 6933792},
+        {"name": "supercont1.2", "length": 5692976},
+        {"name": "supercont1.3", "length": 5316105},
+        {"name": "supercont1.4", "length": 4826456},
+        {"name": "supercont1.5", "length": 4476413},
+        {"name": "supercont1.6", "length": 4321911},
+        {"name": "supercont1.7", "length": 4172548},
+        {"name": "supercont1.8", "length": 4057594},
+        {"name": "supercont1.9", "length": 3941091},
+        {"name": "supercont1.10", "length": 3852909}
+      ],
+      "gene_name_attr": "Name",
+      "notes": "Ensembl Protists - same chrom naming as assemblies.json. Falls back to gene_id."
+    }
+  ]
+}
