@@ -16,14 +16,18 @@ import {
 	clearBigBedCache,
 } from '$lib/services/bigbed';
 import { queryBigWig, clearBigWigCache } from '$lib/services/bigwig';
-import type { BedFeature, Viewport } from '$lib/types/genome';
-import type { SignalFeature } from '$lib/types/tracks';
+import { queryTabixVcf, queryTabixGff, queryTabixBed, clearTabixCache } from '$lib/services/tabix';
+import type { BedFeature, GffFeature, Viewport } from '$lib/types/genome';
+import type { SignalFeature, VariantFeature } from '$lib/types/tracks';
 
 // Types
+type RemoteTrackType = 'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed';
+type RemoteFeature = BedFeature | SignalFeature | VariantFeature | GffFeature;
+
 interface RemoteTrack {
 	id: string;
 	name: string;
-	type: 'bigbed' | 'bigwig';
+	type: RemoteTrackType;
 	url: string;
 	assemblyId: string;
 	visible: boolean;
@@ -32,14 +36,14 @@ interface RemoteTrack {
 	userHeight: number | null; // null = auto-height, number = user-set fixed height
 	isLoading: boolean;
 	error: string | null;
-	features: BedFeature[] | SignalFeature[];
+	features: RemoteFeature[];
 	lastViewport: Viewport | null;
 }
 
 interface RemoteTrackConfig {
 	id: string;
 	name: string;
-	type?: 'bigbed' | 'bigwig';
+	type?: RemoteTrackType;
 	url: string;
 	assemblyId: string;
 	color?: string;
@@ -54,13 +58,13 @@ let remoteRenderVersion = $state(0);
 // PERFORMANCE: Store features OUTSIDE of $state to avoid Svelte 5 proxy overhead
 // This Map stores raw (non-proxied) arrays of features keyed by track ID
 // This is critical for BigWig tracks which can have 50,000+ features
-const rawFeaturesStore = new Map<string, BedFeature[] | SignalFeature[]>();
+const rawFeaturesStore = new Map<string, RemoteFeature[]>();
 
 /**
  * Get raw (non-proxied) features for a track
  * Use this instead of track.features for performance-critical operations
  */
-export function getRawFeatures(trackId: string): BedFeature[] | SignalFeature[] {
+export function getRawFeatures(trackId: string): RemoteFeature[] {
 	return rawFeaturesStore.get(trackId) || [];
 }
 
@@ -168,23 +172,54 @@ async function fetchTrackFeatures(
 
 	try {
 		// Query based on track type
-		let features: BedFeature[] | SignalFeature[];
-		if (track.type === 'bigwig') {
-			features = await queryBigWig(
-				track.url,
-				viewport.chromosome,
-				fetchStart,
-				fetchEnd,
-				{ signal, assemblyId: track.assemblyId }
-			);
-		} else {
-			features = await queryBigBed(
-				track.url,
-				viewport.chromosome,
-				fetchStart,
-				fetchEnd,
-				{ signal, assemblyId: track.assemblyId }
-			);
+		let features: RemoteFeature[];
+		switch (track.type) {
+			case 'bigwig':
+				features = await queryBigWig(
+					track.url,
+					viewport.chromosome,
+					fetchStart,
+					fetchEnd,
+					{ signal, assemblyId: track.assemblyId }
+				);
+				break;
+			case 'vcf':
+				features = await queryTabixVcf(
+					track.url,
+					viewport.chromosome,
+					fetchStart,
+					fetchEnd,
+					{ signal }
+				);
+				break;
+			case 'gff':
+				features = await queryTabixGff(
+					track.url,
+					viewport.chromosome,
+					fetchStart,
+					fetchEnd,
+					{ signal }
+				);
+				break;
+			case 'bed':
+				features = await queryTabixBed(
+					track.url,
+					viewport.chromosome,
+					fetchStart,
+					fetchEnd,
+					{ signal }
+				);
+				break;
+			case 'bigbed':
+			default:
+				features = await queryBigBed(
+					track.url,
+					viewport.chromosome,
+					fetchStart,
+					fetchEnd,
+					{ signal, assemblyId: track.assemblyId }
+				);
+				break;
 		}
 
 		// Update track with features
@@ -350,6 +385,7 @@ function clearAll(): void {
 	activeAssemblyId = null;
 	clearBigBedCache();
 	clearBigWigCache();
+	clearTabixCache();
 }
 
 /**

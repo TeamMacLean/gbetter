@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 10 (2026-01-19) - Remote track panning bug FIXED
+**Status**: Active development, Session 11 (2026-01-19) - Tabix URL support added
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -30,7 +30,7 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 - Coordinate input with navigation
 - Track type registry (extensible architecture)
 - Drag-and-drop file loading (local files)
-- URL input for remote tracks (BigBed/BigWig via sidebar File|URL tabs)
+- URL input for remote tracks (BigBed/BigWig/VCF/GFF/BED tabix via sidebar File|URL tabs)
 - Keyboard shortcuts (Cmd+` for query console)
 
 **Track Types**
@@ -88,9 +88,6 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
 - **Remote indexed formats** - See `docs/PLAN-INDEXED-FORMATS.md` for detailed plan
   - BAM/CRAM (reads) - `@gmod/bam`, `@gmod/cram`
-  - VCF tabix (.vcf.gz) - `@gmod/tabix` + `@gmod/vcf`
-  - GFF tabix (.gff.gz) - `@gmod/tabix` + `@gmod/gff`
-  - BED tabix (.bed.gz) - `@gmod/tabix`
 - **FASTA support** - Sequence display at high zoom
 - **Comparison views** - Side-by-side query results
 - **AI conversation follow-ups** - Reply to clarification questions
@@ -170,14 +167,101 @@ src/
 
 | Format | Status | Notes |
 |--------|--------|-------|
-| BED | ✅ Complete | BED3-BED12 |
-| GFF3 | ✅ Complete | Parent-child linking, themes |
-| bedGraph | ✅ Complete | Signal/peak data |
-| VCF | ✅ Complete | Zoom-dependent rendering |
-| BigBed | ✅ Complete | Remote indexed BED, HTTP range requests |
-| BigWig | ✅ Complete | Remote indexed signal, HTTP range requests |
-| BAM | 🔲 Planned | Indexed, complex |
-| FASTA | 🔲 Planned | Sequence at high zoom |
+| BED | ✅ Complete | BED3-BED12, local files |
+| GFF3 | ✅ Complete | Parent-child linking, themes, local files |
+| bedGraph | ✅ Complete | Signal/peak data, local files |
+| VCF | ✅ Complete | Zoom-dependent rendering, local files |
+| BigBed | ✅ Complete | Remote indexed BED (.bb), HTTP range requests |
+| BigWig | ✅ Complete | Remote indexed signal (.bw), HTTP range requests |
+| VCF.gz | ✅ Complete | Remote tabix-indexed variants (.vcf.gz + .tbi) |
+| GFF.gz | ✅ Complete | Remote tabix-indexed annotations (.gff.gz + .tbi) |
+| BED.gz | ✅ Complete | Remote tabix-indexed intervals (.bed.gz + .tbi) |
+| BAM | 🔲 Planned | Indexed alignments, complex |
+| CRAM | 🔲 Planned | Compressed alignments |
+| FASTA | 🔲 Planned | Sequence display at high zoom |
+
+## URL Track Loading
+
+Users can load remote indexed tracks by pasting URLs in the sidebar. The sidebar has **File** and **URL** tabs for adding tracks.
+
+### Supported URL Formats
+
+| Extension | Type | Index | Library |
+|-----------|------|-------|---------|
+| `.bb`, `.bigbed` | BigBed | Built-in | `@gmod/bbi` |
+| `.bw`, `.bigwig` | BigWig | Built-in | `@gmod/bbi` |
+| `.vcf.gz` | VCF | `.vcf.gz.tbi` | `@gmod/tabix` + `@gmod/vcf` |
+| `.gff.gz`, `.gff3.gz` | GFF | `.gff.gz.tbi` | `@gmod/tabix` + `@gmod/gff` |
+| `.bed.gz` | BED | `.bed.gz.tbi` | `@gmod/tabix` |
+
+### How It Works
+
+1. **BigBed/BigWig**: Self-contained index, single file needed
+2. **Tabix formats**: Require companion `.tbi` index file at same URL path
+   - `https://example.com/data.vcf.gz` → index at `https://example.com/data.vcf.gz.tbi`
+
+### Index Discovery
+
+For tabix-indexed files, the index URL is auto-discovered by appending `.tbi`:
+```
+Data file:  https://server.com/path/file.vcf.gz
+Index file: https://server.com/path/file.vcf.gz.tbi  (auto-discovered)
+```
+
+### CORS Requirements
+
+Remote URLs must be CORS-enabled. Options:
+1. **Cloudflare R2** - Public buckets have CORS enabled by default
+2. **AWS S3** - Configure CORS policy on bucket
+3. **Your server** - Add `Access-Control-Allow-Origin: *` headers
+
+### Test Files (E. coli K-12)
+
+Test tabix support with these R2-hosted files:
+
+| Format | URL |
+|--------|-----|
+| VCF | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.vcf.gz` |
+| GFF | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.gff3.gz` |
+| BED | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.bed.gz` |
+
+**Test procedure:**
+1. Switch assembly to "E. coli K-12 MG1655"
+2. Click URL tab in sidebar
+3. Paste one of the URLs above
+4. Click + to add track
+5. Navigate to `NC_000913.3:100000-300000` to see test features
+
+### Creating Tabix Files
+
+To create your own tabix-indexed files:
+
+```bash
+# Install htslib (provides bgzip and tabix)
+brew install htslib  # macOS
+apt install tabix    # Ubuntu/Debian
+
+# Compress and index VCF
+bgzip myfile.vcf
+tabix -p vcf myfile.vcf.gz
+
+# Compress and index GFF
+bgzip myfile.gff3
+tabix -p gff myfile.gff3.gz
+
+# Compress and index BED (must be sorted)
+sort -k1,1 -k2,2n myfile.bed > myfile.sorted.bed
+bgzip myfile.sorted.bed
+tabix -p bed myfile.sorted.bed.gz
+```
+
+### Key Files
+
+- `src/lib/services/tabix.ts` - Tabix query functions
+- `src/lib/services/bigbed.ts` - BigBed query functions
+- `src/lib/services/bigwig.ts` - BigWig query functions
+- `src/lib/stores/remoteTracks.svelte.ts` - Remote track state management
+- `src/lib/components/Sidebar.svelte` - URL input UI
 
 ## Remote Gene/Transcript Tracks
 
@@ -535,6 +619,22 @@ All pan-data-loading tests pass." \
     - File tab: local file picker (.bed, .gff3, .vcf, etc.)
     - URL tab: paste URL for remote indexed formats (.bb, .bw)
     - Auto-detects format from extension, extracts track name from filename
+
+- **2026-01-19 Session 11**: Tabix URL support for VCF/GFF/BED
+  - **Tabix support**: Added support for remote tabix-indexed files via URL input
+    - VCF.gz (.vcf.gz + .tbi) - variants
+    - GFF.gz (.gff.gz/.gff3.gz + .tbi) - gene annotations
+    - BED.gz (.bed.gz + .tbi) - intervals
+  - **New service**: `src/lib/services/tabix.ts` with query functions
+    - Uses `@gmod/tabix`, `@gmod/vcf`, `@gmod/gff` libraries
+    - Auto-discovers index files by appending `.tbi` to URL
+    - Handles chromosome name variations
+  - **Updated stores**: `remoteTracks.svelte.ts` now supports 5 track types:
+    - `'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed'`
+  - **Test files**: Created E. coli K-12 test files on R2 for visual testing
+    - `scripts/tabix-test-files/` - script to generate test files
+    - Uploaded to `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/`
+  - **TDD**: Used Ralph Loop with `tests/e2e/indexed-formats.test.ts`
 
 ## Known Issues & Gotchas
 

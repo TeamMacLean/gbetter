@@ -61,20 +61,26 @@
 
 		// Detect type from extension
 		const lowerUrl = url.toLowerCase();
-		let trackType: 'bigbed' | 'bigwig' | null = null;
+		let trackType: 'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed' | null = null;
 
 		if (lowerUrl.endsWith('.bb') || lowerUrl.endsWith('.bigbed')) {
 			trackType = 'bigbed';
 		} else if (lowerUrl.endsWith('.bw') || lowerUrl.endsWith('.bigwig')) {
 			trackType = 'bigwig';
+		} else if (lowerUrl.endsWith('.vcf.gz')) {
+			trackType = 'vcf';
+		} else if (lowerUrl.endsWith('.gff.gz') || lowerUrl.endsWith('.gff3.gz')) {
+			trackType = 'gff';
+		} else if (lowerUrl.endsWith('.bed.gz')) {
+			trackType = 'bed';
 		} else {
-			urlError = 'Unsupported format. Use .bb (BigBed) or .bw (BigWig)';
+			urlError = 'Unsupported format. Use .bb, .bw, .vcf.gz, .gff.gz, or .bed.gz';
 			return;
 		}
 
 		// Extract filename for track name
 		const filename = url.split('/').pop()?.split('?')[0] || 'Remote Track';
-		const trackName = filename.replace(/\.(bb|bw|bigbed|bigwig)$/i, '');
+		const trackName = filename.replace(/\.(bb|bw|bigbed|bigwig|vcf\.gz|gff\.gz|gff3\.gz|bed\.gz)$/i, '');
 
 		isAddingUrl = true;
 
@@ -83,13 +89,22 @@
 			const { useAssembly } = await import('$lib/stores/assembly.svelte');
 			const assembly = useAssembly();
 
+			// Choose color based on track type
+			const trackColors: Record<string, string> = {
+				bigwig: '#10b981',  // Green for signal
+				bigbed: '#8b5cf6',  // Purple for intervals
+				vcf: '#f59e0b',     // Amber for variants
+				gff: '#3b82f6',     // Blue for gene models
+				bed: '#ec4899',     // Pink for BED intervals
+			};
+
 			remoteTracks.addRemoteTrack({
 				id: `url-${Date.now()}`,
 				name: trackName,
 				type: trackType,
 				url: url,
 				assemblyId: assembly.current.id,
-				color: trackType === 'bigwig' ? '#10b981' : '#8b5cf6',
+				color: trackColors[trackType] || '#8b5cf6',
 			});
 
 			// Trigger fetch for current viewport
@@ -422,7 +437,7 @@
 						<p class="text-[10px] text-red-400">{urlError}</p>
 					{/if}
 					<p class="text-[10px] text-[var(--color-text-muted)]">
-						Supports .bb (BigBed) and .bw (BigWig)
+						Supports .bb, .bw, .vcf.gz, .gff.gz, .bed.gz
 					</p>
 				</div>
 			{/if}

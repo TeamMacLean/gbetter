@@ -40,6 +40,11 @@
 		"vitest": "^4.0.16"
 	},
 	"dependencies": {
-		"@gmod/bbi": "^8.1.1"
+		"@gmod/bam": "^7.1.15",
+		"@gmod/bbi": "^8.1.1",
+		"@gmod/cram": "^7.0.3",
+		"@gmod/gff": "^2.0.0",
+		"@gmod/tabix": "^3.2.2",
+		"@gmod/vcf": "^7.0.0"
 	}
 }
