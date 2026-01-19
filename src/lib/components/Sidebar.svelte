@@ -61,7 +61,7 @@
 
 		// Detect type from extension
 		const lowerUrl = url.toLowerCase();
-		let trackType: 'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed' | null = null;
+		let trackType: 'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed' | 'bam' | 'cram' | null = null;
 
 		if (lowerUrl.endsWith('.bb') || lowerUrl.endsWith('.bigbed')) {
 			trackType = 'bigbed';
@@ -73,14 +73,18 @@
 			trackType = 'gff';
 		} else if (lowerUrl.endsWith('.bed.gz')) {
 			trackType = 'bed';
+		} else if (lowerUrl.endsWith('.bam')) {
+			trackType = 'bam';
+		} else if (lowerUrl.endsWith('.cram')) {
+			trackType = 'cram';
 		} else {
-			urlError = 'Unsupported format. Use .bb, .bw, .vcf.gz, .gff.gz, or .bed.gz';
+			urlError = 'Unsupported format. Use .bb, .bw, .vcf.gz, .gff.gz, .bed.gz, .bam, or .cram';
 			return;
 		}
 
 		// Extract filename for track name
 		const filename = url.split('/').pop()?.split('?')[0] || 'Remote Track';
-		const trackName = filename.replace(/\.(bb|bw|bigbed|bigwig|vcf\.gz|gff\.gz|gff3\.gz|bed\.gz)$/i, '');
+		const trackName = filename.replace(/\.(bb|bw|bigbed|bigwig|vcf\.gz|gff\.gz|gff3\.gz|bed\.gz|bam|cram)$/i, '');
 
 		isAddingUrl = true;
 
@@ -96,6 +100,8 @@
 				vcf: '#f59e0b',     // Amber for variants
 				gff: '#3b82f6',     // Blue for gene models
 				bed: '#ec4899',     // Pink for BED intervals
+				bam: '#06b6d4',     // Cyan for BAM alignments
+				cram: '#14b8a6',    // Teal for CRAM alignments
 			};
 
 			remoteTracks.addRemoteTrack({
@@ -437,7 +443,7 @@
 						<p class="text-[10px] text-red-400">{urlError}</p>
 					{/if}
 					<p class="text-[10px] text-[var(--color-text-muted)]">
-						Supports .bb, .bw, .vcf.gz, .gff.gz, .bed.gz
+						Supports .bb, .bw, .vcf.gz, .gff.gz, .bed.gz, .bam, .cram
 					</p>
 				</div>
 			{/if}

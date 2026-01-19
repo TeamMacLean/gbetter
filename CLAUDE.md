@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 11 (2026-01-19) - Tabix URL support added
+**Status**: Active development, Session 12 (2026-01-19) - BAM/CRAM URL support added
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -86,11 +86,10 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
 ### 🔲 Not Yet Implemented
 
-- **Remote indexed formats** - See `docs/PLAN-INDEXED-FORMATS.md` for detailed plan
-  - BAM/CRAM (reads) - `@gmod/bam`, `@gmod/cram`
 - **FASTA support** - Sequence display at high zoom
 - **Comparison views** - Side-by-side query results
 - **AI conversation follow-ups** - Reply to clarification questions
+- **BAM read rendering** - Currently shows reads as simple intervals; need CIGAR visualization, coverage histogram at zoom-out
 
 ## Architecture Patterns
 
@@ -176,8 +175,8 @@ src/
 | VCF.gz | ✅ Complete | Remote tabix-indexed variants (.vcf.gz + .tbi) |
 | GFF.gz | ✅ Complete | Remote tabix-indexed annotations (.gff.gz + .tbi) |
 | BED.gz | ✅ Complete | Remote tabix-indexed intervals (.bed.gz + .tbi) |
-| BAM | 🔲 Planned | Indexed alignments, complex |
-| CRAM | 🔲 Planned | Compressed alignments |
+| BAM | ✅ Complete | Remote indexed alignments (.bam + .bai), renders as intervals |
+| CRAM | ⚠️ Partial | URL accepted, but requires reference sequence (not yet implemented) |
 | FASTA | 🔲 Planned | Sequence display at high zoom |
 
 ## URL Track Loading
@@ -193,6 +192,8 @@ Users can load remote indexed tracks by pasting URLs in the sidebar. The sidebar
 | `.vcf.gz` | VCF | `.vcf.gz.tbi` | `@gmod/tabix` + `@gmod/vcf` |
 | `.gff.gz`, `.gff3.gz` | GFF | `.gff.gz.tbi` | `@gmod/tabix` + `@gmod/gff` |
 | `.bed.gz` | BED | `.bed.gz.tbi` | `@gmod/tabix` |
+| `.bam` | BAM | `.bam.bai` | `@gmod/bam` |
+| `.cram` | CRAM | `.cram.crai` | `@gmod/cram` (partial) |
 
 ### How It Works
 
@@ -636,6 +637,21 @@ All pan-data-loading tests pass." \
     - Uploaded to `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/`
   - **TDD**: Used Ralph Loop with `tests/e2e/indexed-formats.test.ts`
 
+- **2026-01-19 Session 12**: BAM/CRAM URL support
+  - **BAM support**: Added support for remote BAM files via URL input
+    - `.bam` files with `.bam.bai` index (auto-discovered)
+    - Renders reads as simple BED-style intervals (basic implementation)
+  - **New service**: `src/lib/services/bam.ts` with `queryBam()` and `queryCram()`
+    - Uses `@gmod/bam` library
+    - Auto-discovers index by appending `.bai` to URL
+    - CRAM support is partial (returns empty, needs reference sequence)
+  - **Updated stores**: `remoteTracks.svelte.ts` now supports 7 track types:
+    - `'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed' | 'bam' | 'cram'`
+  - **Tests**: BAM/CRAM URL acceptance tests pass (2 tests)
+  - **TODO - Human testing needed**: Create E. coli test BAM file and upload to R2
+    - Use `samtools` to create small BAM from existing data
+    - Test visual rendering in browser with E. coli K-12 assembly
+
 ## Known Issues & Gotchas
 
 ### RESOLVED: Remote Track Panning Bug (Session 10)
@@ -703,4 +719,6 @@ the data source actually has gene-level annotations or just transcript data with
 6. `src/lib/data/assemblies.json` - Genome definitions
 7. `src/lib/services/bigbed.ts` - BigBed URL mapping (R2 + UCSC)
 8. `src/lib/services/bigwig.ts` - BigWig remote signal data
-9. `src/lib/stores/remoteTracks.svelte.ts` - Remote track state
+9. `src/lib/services/tabix.ts` - Tabix query functions (VCF, GFF, BED)
+10. `src/lib/services/bam.ts` - BAM/CRAM query functions
+11. `src/lib/stores/remoteTracks.svelte.ts` - Remote track state

@@ -17,11 +17,12 @@ import {
 } from '$lib/services/bigbed';
 import { queryBigWig, clearBigWigCache } from '$lib/services/bigwig';
 import { queryTabixVcf, queryTabixGff, queryTabixBed, clearTabixCache } from '$lib/services/tabix';
+import { queryBam, queryCram, clearBamCache } from '$lib/services/bam';
 import type { BedFeature, GffFeature, Viewport } from '$lib/types/genome';
 import type { SignalFeature, VariantFeature } from '$lib/types/tracks';
 
 // Types
-type RemoteTrackType = 'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed';
+type RemoteTrackType = 'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed' | 'bam' | 'cram';
 type RemoteFeature = BedFeature | SignalFeature | VariantFeature | GffFeature;
 
 interface RemoteTrack {
@@ -210,6 +211,24 @@ async function fetchTrackFeatures(
 					{ signal }
 				);
 				break;
+			case 'bam':
+				features = await queryBam(
+					track.url,
+					viewport.chromosome,
+					fetchStart,
+					fetchEnd,
+					{ signal, assemblyId: track.assemblyId }
+				);
+				break;
+			case 'cram':
+				features = await queryCram(
+					track.url,
+					viewport.chromosome,
+					fetchStart,
+					fetchEnd,
+					{ signal, assemblyId: track.assemblyId }
+				);
+				break;
 			case 'bigbed':
 			default:
 				features = await queryBigBed(
@@ -386,6 +405,7 @@ function clearAll(): void {
 	clearBigBedCache();
 	clearBigWigCache();
 	clearTabixCache();
+	clearBamCache();
 }
 
 /**

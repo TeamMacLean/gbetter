@@ -18,6 +18,8 @@ GBetter supports loading genomic data tracks directly from URLs. This allows you
 | `.vcf.gz` | VCF (tabix) | Indexed variant calls |
 | `.gff.gz`, `.gff3.gz` | GFF (tabix) | Indexed gene annotations |
 | `.bed.gz` | BED (tabix) | Indexed intervals |
+| `.bam` | BAM | Indexed read alignments |
+| `.cram` | CRAM | Compressed alignments (partial support) |
 
 ## Format Details
 
@@ -40,6 +42,19 @@ Index file: https://example.com/variants.vcf.gz.tbi  (required)
 ```
 
 GBetter automatically looks for the index file by appending `.tbi` to the data URL.
+
+### BAM/CRAM (Alignments)
+
+BAM files require a companion `.bai` index file:
+
+```
+Data file:  https://example.com/alignments.bam
+Index file: https://example.com/alignments.bam.bai  (required)
+```
+
+GBetter automatically looks for the index file by appending `.bai` to the data URL.
+
+**Note**: CRAM support is partial. CRAM files require a reference sequence for decoding, which is not yet implemented. Use BAM files for best results.
 
 ## Requirements
 
