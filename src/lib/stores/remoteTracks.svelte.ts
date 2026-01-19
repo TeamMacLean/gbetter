@@ -1,7 +1,7 @@
 /**
  * Remote Track Store
  *
- * Manages tracks loaded from remote indexed files (BigBed, etc.)
+ * Manages tracks loaded from remote indexed files (BigBed, BigWig, etc.)
  * Features are fetched on-demand based on the current viewport.
  */
 
@@ -15,13 +15,15 @@ import {
 	getTranscriptBigBedUrl,
 	clearBigBedCache,
 } from '$lib/services/bigbed';
+import { queryBigWig, clearBigWigCache } from '$lib/services/bigwig';
 import type { BedFeature, Viewport } from '$lib/types/genome';
+import type { SignalFeature } from '$lib/types/tracks';
 
 // Types
 interface RemoteTrack {
 	id: string;
 	name: string;
-	type: 'bigbed';
+	type: 'bigbed' | 'bigwig';
 	url: string;
 	assemblyId: string;
 	visible: boolean;
@@ -30,13 +32,14 @@ interface RemoteTrack {
 	userHeight: number | null; // null = auto-height, number = user-set fixed height
 	isLoading: boolean;
 	error: string | null;
-	features: BedFeature[];
+	features: BedFeature[] | SignalFeature[];
 	lastViewport: Viewport | null;
 }
 
 interface RemoteTrackConfig {
 	id: string;
 	name: string;
+	type?: 'bigbed' | 'bigwig';
 	url: string;
 	assemblyId: string;
 	color?: string;
@@ -46,6 +49,20 @@ interface RemoteTrackConfig {
 // State
 let remoteTracks = $state<RemoteTrack[]>([]);
 let activeAssemblyId = $state<string | null>(null);
+let remoteRenderVersion = $state(0);
+
+// PERFORMANCE: Store features OUTSIDE of $state to avoid Svelte 5 proxy overhead
+// This Map stores raw (non-proxied) arrays of features keyed by track ID
+// This is critical for BigWig tracks which can have 50,000+ features
+const rawFeaturesStore = new Map<string, BedFeature[] | SignalFeature[]>();
+
+/**
+ * Get raw (non-proxied) features for a track
+ * Use this instead of track.features for performance-critical operations
+ */
+export function getRawFeatures(trackId: string): BedFeature[] | SignalFeature[] {
+	return rawFeaturesStore.get(trackId) || [];
+}
 
 // Debounce timer for viewport changes
 let fetchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -58,7 +75,7 @@ function addRemoteTrack(config: RemoteTrackConfig): RemoteTrack {
 	const track: RemoteTrack = {
 		id: config.id,
 		name: config.name,
-		type: 'bigbed',
+		type: config.type || 'bigbed',
 		url: config.url,
 		assemblyId: config.assemblyId,
 		visible: true,
@@ -79,6 +96,7 @@ function addRemoteTrack(config: RemoteTrackConfig): RemoteTrack {
  * Remove a remote track
  */
 function removeRemoteTrack(trackId: string): void {
+	rawFeaturesStore.delete(trackId);
 	remoteTracks = remoteTracks.filter((t) => t.id !== trackId);
 }
 
@@ -105,6 +123,10 @@ function setRemoteTrackHeight(trackId: string, height: number | null): void {
  * Check if viewport has changed enough to warrant a refetch
  */
 function viewportChanged(track: RemoteTrack, viewport: Viewport): boolean {
+	// Always refetch if we have no features (e.g., after assembly switch or returning to view)
+	const currentFeatures = rawFeaturesStore.get(track.id);
+	if (!currentFeatures || currentFeatures.length === 0) return true;
+
 	if (!track.lastViewport) return true;
 	if (track.lastViewport.chromosome !== viewport.chromosome) return true;
 
@@ -116,8 +138,10 @@ function viewportChanged(track: RemoteTrack, viewport: Viewport): boolean {
 	if (Math.abs(lastWidth - currentWidth) / lastWidth > 0.3) return true;
 
 	// Panned outside the previously fetched region
-	if (viewport.start < track.lastViewport.start) return true;
-	if (viewport.end > track.lastViewport.end) return true;
+	const pannedLeft = viewport.start < track.lastViewport.start;
+	const pannedRight = viewport.end > track.lastViewport.end;
+
+	if (pannedLeft || pannedRight) return true;
 
 	return false;
 }
@@ -143,20 +167,38 @@ async function fetchTrackFeatures(
 	);
 
 	try {
-		const features = await queryBigBed(
-			track.url,
-			viewport.chromosome,
-			fetchStart,
-			fetchEnd,
-			{ signal, assemblyId: track.assemblyId }
-		);
+		// Query based on track type
+		let features: BedFeature[] | SignalFeature[];
+		if (track.type === 'bigwig') {
+			features = await queryBigWig(
+				track.url,
+				viewport.chromosome,
+				fetchStart,
+				fetchEnd,
+				{ signal, assemblyId: track.assemblyId }
+			);
+		} else {
+			features = await queryBigBed(
+				track.url,
+				viewport.chromosome,
+				fetchStart,
+				fetchEnd,
+				{ signal, assemblyId: track.assemblyId }
+			);
+		}
 
 		// Update track with features
+		// PERFORMANCE: Store raw features outside of $state to avoid proxy overhead
+		// This is critical for BigWig tracks which can have 50,000+ features
+		rawFeaturesStore.set(track.id, features);
+		remoteRenderVersion++; // Trigger re-render for components watching this
+
+		// Update track metadata (features array in $state is just for reactivity/count display)
 		remoteTracks = remoteTracks.map((t) =>
 			t.id === track.id
 				? {
 						...t,
-						features,
+						features, // Keep in sync for sidebar display, but use rawFeaturesStore for rendering
 						isLoading: false,
 						lastViewport: { chromosome: viewport.chromosome, start: fetchStart, end: fetchEnd },
 					}
@@ -187,6 +229,14 @@ function updateForViewport(viewport: Viewport): void {
 		clearTimeout(fetchDebounceTimer);
 	}
 
+	// CRITICAL: Capture viewport values NOW, not when timeout fires
+	// This fixes the stale closure bug where the viewport object could be mutated
+	const capturedViewport: Viewport = {
+		chromosome: viewport.chromosome,
+		start: viewport.start,
+		end: viewport.end
+	};
+
 	// Debounce to avoid excessive fetches during pan/zoom
 	fetchDebounceTimer = setTimeout(() => {
 		// Abort any in-flight requests
@@ -196,12 +246,18 @@ function updateForViewport(viewport: Viewport): void {
 		currentAbortController = new AbortController();
 
 		// Fetch for all visible tracks that need updating
+		// Use capturedViewport (immutable copy) instead of viewport (potentially stale reference)
 		const tracksToUpdate = remoteTracks.filter(
-			(t) => t.visible && viewportChanged(t, viewport)
+			(t) => t.visible && viewportChanged(t, capturedViewport)
 		);
 
+		console.log(`%c[RemoteTracks] Debounce fired: ${remoteTracks.length} tracks, ${tracksToUpdate.length} need update for ${capturedViewport.chromosome}:${capturedViewport.start}-${capturedViewport.end}`, 'color: #22c55e');
+
 		for (const track of tracksToUpdate) {
-			fetchTrackFeatures(track, viewport, currentAbortController.signal);
+			if (track.lastViewport) {
+				console.log(`%c[RemoteTracks] Track ${track.id}: lastVP=${track.lastViewport.start}-${track.lastViewport.end}, currentVP=${capturedViewport.start}-${capturedViewport.end}`, 'color: #888');
+			}
+			fetchTrackFeatures(track, capturedViewport, currentAbortController.signal);
 		}
 	}, FETCH_DEBOUNCE_MS);
 }
@@ -231,6 +287,15 @@ async function searchGeneByName(name: string): Promise<BedFeature | null> {
  * Set up gene and transcript tracks for an assembly
  */
 function setupGeneTrackForAssembly(assemblyId: string): void {
+	// Clear rawFeaturesStore and caches for tracks being removed (different assembly)
+	for (const track of remoteTracks) {
+		if ((track.id === 'genes' || track.id === 'transcripts') && track.assemblyId !== assemblyId) {
+			rawFeaturesStore.delete(track.id);
+		}
+	}
+	clearBigBedCache();
+	clearBigWigCache();
+
 	// Remove existing tracks for other assemblies
 	remoteTracks = remoteTracks.filter(
 		(t) => (t.id !== 'genes' && t.id !== 'transcripts') || t.assemblyId === assemblyId
@@ -284,6 +349,7 @@ function clearAll(): void {
 	remoteTracks = [];
 	activeAssemblyId = null;
 	clearBigBedCache();
+	clearBigWigCache();
 }
 
 /**
@@ -309,6 +375,9 @@ export function useRemoteTracks() {
 		},
 		get activeAssemblyId() {
 			return activeAssemblyId;
+		},
+		get renderVersion() {
+			return remoteRenderVersion;
 		},
 		addRemoteTrack,
 		removeRemoteTrack,

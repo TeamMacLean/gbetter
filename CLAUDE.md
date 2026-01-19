@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 7 complete (2026-01-15)
+**Status**: Active development, Session 9 (2026-01-16) - Remote track panning bug UNRESOLVED
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -85,7 +85,6 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
 ### 🔲 Not Yet Implemented
 
-- **BigWig support** - Binary format, needs WASM
 - **BAM support** - Indexed reads, complex
 - **FASTA support** - Sequence display at high zoom
 - **Comparison views** - Side-by-side query results
@@ -171,7 +170,7 @@ src/
 | bedGraph | ✅ Complete | Signal/peak data |
 | VCF | ✅ Complete | Zoom-dependent rendering |
 | BigBed | ✅ Complete | Remote indexed BED, HTTP range requests |
-| BigWig | 🔲 Planned | Binary, needs WASM |
+| BigWig | ✅ Complete | Remote indexed signal, HTTP range requests |
 | BAM | 🔲 Planned | Indexed, complex |
 | FASTA | 🔲 Planned | Sequence at high zoom |
 
@@ -247,10 +246,216 @@ LIST GENES WITH VARIANTS
 
 ## Commands
 ```bash
-npm run dev          # Dev server
+npm run dev          # Dev server (port 5173)
 npm run build        # Production build
 npm run check        # TypeScript check
+npm test             # Run all tests (unit + e2e)
+npm run test:unit    # Vitest unit tests only
+npm run test:e2e     # Playwright e2e tests only
+npm run test:e2e:ui  # Playwright with interactive UI
 ```
+
+## Testing
+
+### Philosophy
+Tests are a **development tool**, not just CI validation. Use them to:
+1. Verify changes work before committing
+2. Understand expected behavior by reading test descriptions
+3. Debug issues by running specific tests with `--headed` or `--ui`
+
+### Test Structure
+```
+tests/
+├── e2e/
+│   ├── smoke.test.ts          # Basic app loads, no crashes
+│   ├── navigation.test.ts     # Pan, zoom, coordinate input
+│   ├── gene-tracks.test.ts    # BigBed loading, assembly switching
+│   ├── visual.test.ts         # Screenshot regression
+│   └── personas/              # User journey tests
+│       ├── biologist.test.ts
+│       ├── bioinformatician.test.ts
+│       └── ...
+```
+
+### Running Tests
+```bash
+# Full suite (CI-style)
+npm test
+
+# Just e2e tests
+npm run test:e2e
+
+# Interactive debugging - see browser, step through
+npm run test:e2e:ui
+
+# Run specific test file
+npx playwright test gene-tracks.test.ts
+
+# Run with visible browser
+npx playwright test --headed
+
+# Update visual snapshots after intentional UI changes
+npm run test:visual:update
+```
+
+### Development Workflow
+1. **Before starting work**: Run `npm run test:e2e` to ensure baseline passes
+2. **After making changes**: Run relevant tests to verify
+3. **Before committing**: Run `npm test` (full suite)
+4. **If tests fail**: Use `--ui` mode to debug visually
+
+### Writing New Tests
+- Add e2e tests for user-visible features
+- Test file naming: `{feature}.test.ts`
+- Use descriptive test names that document behavior
+- Example pattern from gene-tracks.test.ts:
+```typescript
+test('TAIR10 shows both genes and transcript tracks', async ({ page }) => {
+  await page.goto('/');
+  // Switch assembly
+  const assemblyButton = page.locator('button').filter({ hasText: /GRCh|Human/i }).first();
+  await assemblyButton.click();
+  await page.getByText('TAIR10').click();
+  // Verify both tracks loaded
+  await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
+});
+```
+
+### Port Configuration
+Default dev server runs on port 5173. For multiple terminals:
+```bash
+npm run dev -- --port 5174  # Second terminal
+npm run dev -- --port 5175  # Third terminal
+```
+
+## Ralph Loop (Iterative Development)
+
+Ralph Loop is a Claude Code plugin for autonomous iterative development. It feeds the same prompt
+back to Claude after each response, allowing multi-iteration refinement until completion.
+
+### Basic Usage
+```bash
+/ralph-loop "Your task description" --completion-promise "DONE" --max-iterations 25
+```
+
+### Key Flags
+- `--completion-promise "TEXT"` - Claude outputs `<promise>TEXT</promise>` when truly complete
+- `--max-iterations N` - Safety limit (required unless you want infinite loop)
+
+### Correct Prompt Structure
+```bash
+# ✅ CORRECT - Promise as separate flag
+/ralph-loop "Implement feature X. Tasks: 1. Create service 2. Add tests. Verify: npm test" \
+  --completion-promise "FEATURE-COMPLETE" \
+  --max-iterations 20
+
+# ❌ WRONG - Promise embedded in prompt (won't be detected!)
+/ralph-loop "Implement feature X. Output: <promise>DONE</promise>" --max-iterations 20
+```
+
+### Example: Multi-Phase Implementation
+```bash
+/ralph-loop "Implement BigWig support for genome browser.
+
+## Tasks
+1. Create src/lib/services/bigwig.ts using @gmod/bbi
+2. Update remoteTracks.svelte.ts for bigwig type
+3. Update TrackView.svelte for signal rendering
+4. Add e2e test
+
+## Verification
+- npm run check (must pass)
+- npm run test:e2e (must pass)
+
+## Success Criteria
+All tasks complete and verified." \
+  --completion-promise "PHASE-COMPLETE" \
+  --max-iterations 25
+```
+
+### How It Works
+1. Claude receives prompt, works on task
+2. On exit attempt, stop hook checks for `<promise>YOUR_TEXT</promise>` in output
+3. If promise matches `--completion-promise` value → loop stops
+4. If no match → same prompt fed back, Claude sees previous work in files
+5. Continues until promise detected or max iterations reached
+
+### Monitoring
+```bash
+# Check current iteration
+grep '^iteration:' .claude/ralph-loop.local.md
+
+# View full state
+head -10 .claude/ralph-loop.local.md
+```
+
+### Common Mistakes
+1. **Promise in prompt text** - Use `--completion-promise` flag, not `<promise>` in the prompt
+2. **No max iterations** - Always set `--max-iterations` unless you want infinite loop
+3. **Vague completion criteria** - Be specific about what "done" means
+
+### TDD + Ralph Loop Pattern
+
+The most effective way to use Ralph Loop is with Test-Driven Development:
+
+**Pattern**:
+1. Write a failing test that captures the bug/feature
+2. Run test to confirm it fails (red)
+3. Use Ralph Loop with that test as verification criteria
+4. Loop iterates until tests pass (green)
+5. Human does final smoke test (minimal involvement)
+
+**Why this works**:
+- Tests provide objective, automated verification
+- No human needed in the loop until completion
+- Each iteration builds on previous work
+- Clear completion criteria (tests pass)
+
+**Example: Bug Fix**
+```bash
+# 1. First, write a test that captures the bug (should FAIL)
+#    tests/e2e/pan-data-loading.test.ts
+
+# 2. Verify it fails
+npx playwright test pan-data-loading.test.ts
+# Expected: 1 failed
+
+# 3. Run Ralph Loop to fix
+/ralph-loop "Fix the remote track panning bug.
+
+## Bug Description
+Mouse panning doesn't load new data for remote tracks (BigWig/BigBed).
+After panning to a new region, the feature count stays the same.
+
+## Failing Test
+tests/e2e/pan-data-loading.test.ts - 'panning loads new data in different genomic region'
+
+## Relevant Files
+- src/lib/stores/remoteTracks.svelte.ts (main logic)
+- src/lib/components/TrackView.svelte (viewport effect)
+
+## Verification
+npx playwright test pan-data-loading.test.ts
+Must show: 3 passed
+
+## Success Criteria
+All pan-data-loading tests pass." \
+  --completion-promise "BUG-FIXED" \
+  --max-iterations 15
+```
+
+**Key Principles**:
+1. **Failing test first** - Don't start Ralph Loop until you have a test that FAILS
+2. **Specific test file** - Run only the relevant test, not the full suite (faster iterations)
+3. **Clear file scope** - List the files Claude should modify
+4. **Objective verification** - Test pass/fail is unambiguous
+
+**Benefits over manual iteration**:
+- Human can walk away while Claude iterates
+- No back-and-forth asking "is this fixed?"
+- Tests prove the fix works, not just that code was changed
+- History of attempts preserved in files for debugging
 
 ## Session Log
 - **2026-01-08 Session 1**: Project kickoff
@@ -292,7 +497,56 @@ npm run check        # TypeScript check
   - Added GENARK_CHROMOSOME_MAPS for NC_ accession number mapping
   - All 24 assemblies now have working gene/transcript tracks
 
+- **2026-01-16 Session 8**: BigWig support
+  - Created `src/lib/services/bigwig.ts` with `queryBigWig()` function
+  - Uses `@gmod/bbi` library (already installed for BigBed)
+  - Updated `remoteTracks.svelte.ts` to support `type: 'bigwig'`
+  - Added `renderSignalFeatures()` to TrackView for area chart visualization
+  - Added `tests/e2e/bigwig.test.ts` with 4 passing tests
+  - First use of Ralph Loop for iterative development (documented above)
+
+- **2026-01-16 Session 9**: Remote track loading fixes - FAILED
+  - **Problem**: Panning doesn't load new data for BigWig/BigBed tracks
+  - **Attempted fixes** (all tests pass, manual testing fails):
+    1. Clear rawFeaturesStore when tracks removed
+    2. Refetch when features empty (regardless of lastViewport)
+    3. Use getRawFeatures() for hasRemoteContent check
+    4. Add remoteRenderVersion counter for reactivity
+    5. Use untrack() in viewport $effect to prevent infinite loop
+  - **Result**: 7 automated e2e tests pass, manual browser testing FAILS
+  - **Key insight**: Automated tests don't replicate actual user interaction
+  - **Next steps**: See `docs/DEBUG-REMOTE-TRACKS.md` for diagnostic plan
+  - Created `tests/e2e/remote-track-loading.test.ts`
+
 ## Known Issues & Gotchas
+
+### ACTIVE: Remote Track Panning Bug
+**Status**: UNRESOLVED - See `docs/DEBUG-REMOTE-TRACKS.md`
+
+Symptoms:
+- User pans to new genomic region
+- Feature counts stay static
+- No new data loads even after stopping
+
+Suspected causes (not yet proven):
+- Stale closure in debounce callback
+- AbortController race condition
+- rawFeaturesStore vs $state mismatch
+- Browser-specific behavior not captured by Playwright
+
+### Testing Strategy Lesson (Session 9)
+**Two-layer testing is essential for UI features:**
+
+1. **Data tests** - Verify fetch/parse logic works (these passed)
+2. **Visual tests** - Verify rendering shows the data (would have failed)
+
+A visual regression test comparing "loaded state" vs "after pan state" would have caught
+this bug immediately - the panned view would show blank while baseline shows data.
+
+For interaction-dependent features, always combine:
+- Automated data/state tests
+- Screenshot comparison tests
+- Manual smoke test before declaring "done"
 
 ### Cloudflare R2 URL Format
 The R2 public bucket URL format is: `https://pub-{bucket_id}.r2.dev/{file}`
@@ -323,4 +577,5 @@ the data source actually has gene-level annotations or just transcript data with
 5. `src/lib/services/trackTypes/geneModel.ts` - Theme system
 6. `src/lib/data/assemblies.json` - Genome definitions
 7. `src/lib/services/bigbed.ts` - BigBed URL mapping (R2 + UCSC)
-8. `src/lib/stores/remoteTracks.svelte.ts` - Remote track state
+8. `src/lib/services/bigwig.ts` - BigWig remote signal data
+9. `src/lib/stores/remoteTracks.svelte.ts` - Remote track state

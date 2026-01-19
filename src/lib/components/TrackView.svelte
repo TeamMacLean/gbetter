@@ -1,10 +1,11 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, untrack } from 'svelte';
 	import { useViewport } from '$lib/stores/viewport.svelte';
 	import { useTracks } from '$lib/stores/tracks.svelte';
-	import { useRemoteTracks } from '$lib/stores/remoteTracks.svelte';
+	import { useRemoteTracks, getRawFeatures } from '$lib/stores/remoteTracks.svelte';
 	import { useAssembly } from '$lib/stores/assembly.svelte';
 	import { formatCoordinate } from '$lib/types/genome';
+	import type { SignalFeature } from '$lib/types/tracks';
 	import { getTrackType } from '$lib/services/trackRegistry';
 	import { createRenderContext } from '$lib/types/tracks';
 	import {
@@ -23,24 +24,56 @@
 	// Initialize viewport from URL on mount and set up gene track
 	onMount(() => {
 		viewport.initializeFromURL();
+
 		// Set up gene track for current assembly
 		remoteTracks.setupGeneTrackForAssembly(assembly.current.id);
-		// Immediately fetch features for the viewport
+
+		// Support loading BigWig track via URL parameter for testing
+		// Usage: ?bigwig=<url>&bigwig_name=<name>
+		const params = new URLSearchParams(window.location.search);
+		const bigwigUrl = params.get('bigwig');
+		if (bigwigUrl) {
+			const bigwigName = params.get('bigwig_name') || 'BigWig Track';
+			remoteTracks.addRemoteTrack({
+				id: `bigwig-${Date.now()}`,
+				name: bigwigName,
+				type: 'bigwig',
+				url: bigwigUrl,
+				assemblyId: assembly.current.id,
+				color: '#10b981',
+				height: 100
+			});
+		}
+
+		// Immediately fetch features for the viewport (after all tracks are added)
 		remoteTracks.updateForViewport(viewport.current);
 	});
 
 	// Update remote tracks when viewport changes
+	// IMPORTANT: Use untrack to prevent this effect from depending on remoteTracks state
+	// Otherwise updating isLoading/features triggers a loop that aborts in-flight requests
+	// CRITICAL: Must explicitly read .chromosome, .start, .end to track fine-grained changes
+	// Just reading viewport.current (the object) won't detect property mutations in Svelte 5
 	$effect(() => {
-		remoteTracks.updateForViewport(viewport.current);
+		const vp = viewport.current;
+		// Explicitly read properties to create fine-grained dependencies
+		const _chr = vp.chromosome;
+		const _start = vp.start;
+		const _end = vp.end;
+		untrack(() => remoteTracks.updateForViewport(vp));
 	});
 
 	// Update gene track when assembly changes
 	$effect(() => {
 		const assemblyId = assembly.current.id;
-		if (assemblyId !== remoteTracks.activeAssemblyId) {
-			remoteTracks.setupGeneTrackForAssembly(assemblyId);
-			// Force viewport update to fetch data for new track
-			remoteTracks.updateForViewport(viewport.current);
+		const activeId = remoteTracks.activeAssemblyId;
+		if (assemblyId !== activeId) {
+			// Use untrack for the mutations to prevent re-triggering this effect
+			untrack(() => {
+				remoteTracks.setupGeneTrackForAssembly(assemblyId);
+				// Force viewport update to fetch data for new track
+				remoteTracks.updateForViewport(viewport.current);
+			});
 		}
 	});
 
@@ -92,6 +125,7 @@
 		// IMPORTANT: Read reactive dependencies BEFORE any early returns
 		// Otherwise Svelte won't track them and the effect won't re-run
 		const _version = tracks.renderVersion;
+		const _remoteRenderVersion = remoteTracks.renderVersion; // Track rawFeaturesStore changes
 		const visibleRemote = remoteTracks.visible;
 		const _remoteFeatures = visibleRemote.map(t => t.features.length);
 		const _remoteHeights = visibleRemote.map(t => t.userHeight); // Track height changes
@@ -125,7 +159,10 @@
 		const hasLocalContent = visibleLocalTracks.some(t =>
 			t.features.some(f => f.chromosome === viewport.current.chromosome)
 		);
-		const hasRemoteContent = visibleRemoteTracks.some(t => t.features.length > 0);
+		const hasRemoteContent = visibleRemoteTracks.some(t => {
+			const rawFeatures = getRawFeatures(t.id);
+			return rawFeatures && rawFeatures.length > 0;
+		});
 
 		// Reset track borders for resize hit detection
 		const newBorders: TrackBorder[] = [];
@@ -213,14 +250,19 @@
 				trackHeight = track.userHeight;
 			} else {
 				// Auto-calculate based on number of gene rows
-				const labelOffset = 18;
-				const featureHeight = 12;
-				const rowSpacing = 4;
-				const rowCount = calculateGeneRows(track.features, width);
-				const minHeight = 50;
-				const maxHeight = 300;
-				const calculatedHeight = labelOffset + (rowCount * (featureHeight + rowSpacing)) + 20;
-				trackHeight = Math.min(maxHeight, Math.max(minHeight, calculatedHeight));
+				// Note: For BigWig tracks, we don't need row packing - use a fixed height
+				if (track.type === 'bigwig') {
+					trackHeight = track.height || 100;
+				} else {
+					const labelOffset = 18;
+					const featureHeight = 12;
+					const rowSpacing = 4;
+					const rowCount = calculateGeneRows(track.features as import('$lib/types/genome').BedFeature[], width);
+					const minHeight = 50;
+					const maxHeight = 300;
+					const calculatedHeight = labelOffset + (rowCount * (featureHeight + rowSpacing)) + 20;
+					trackHeight = Math.min(maxHeight, Math.max(minHeight, calculatedHeight));
+				}
 			}
 
 			// Draw track label background
@@ -250,16 +292,26 @@
 			// Draw badge (based on track type)
 			ctx.fillStyle = '#444444';
 			ctx.font = '9px Inter, sans-serif';
-			const badge = track.id === 'transcripts' ? 'TRANSCRIPTS' : 'GENES';
+			let badge = track.id === 'transcripts' ? 'TRANSCRIPTS' : 'GENES';
+			if (track.type === 'bigwig') {
+				badge = 'SIGNAL';
+			}
 			const badgeWidth = ctx.measureText(badge).width + 8;
 			ctx.fillRect(width - badgeWidth - 8, currentY + 2, badgeWidth, 14);
 			ctx.fillStyle = '#888888';
 			ctx.textAlign = 'center';
 			ctx.fillText(badge, width - badgeWidth / 2 - 8, currentY + 11);
 
-			// Render features as simple gene boxes (BED12 style)
+			// Render features based on track type
 			if (track.features.length > 0) {
-				renderBedFeatures(ctx, track.features, width, currentY, trackHeight, track.color);
+				if (track.type === 'bigwig') {
+					// CRITICAL: Use getRawFeatures() to get non-proxied array for performance
+					// Svelte 5's $state creates deep proxies that cause O(n^2) behavior in tight loops
+					const rawFeatures = getRawFeatures(track.id) as SignalFeature[];
+					renderSignalFeatures(ctx, rawFeatures, width, currentY, trackHeight, track.color);
+				} else {
+					renderBedFeatures(ctx, track.features as import('$lib/types/genome').BedFeature[], width, currentY, trackHeight, track.color);
+				}
 			}
 
 			// Draw bottom border (thicker when being hovered for resize)
@@ -430,6 +482,143 @@
 				ctx.fillText(label, labelX, labelY, maxWidth);
 			}
 		}
+	}
+
+	/**
+	 * Render signal features (BigWig) as area chart
+	 */
+	function renderSignalFeatures(
+		ctx: CanvasRenderingContext2D,
+		features: SignalFeature[],
+		width: number,
+		trackY: number,
+		trackHeight: number,
+		color: string
+	): void {
+		const labelOffset = 16;
+		const plotHeight = trackHeight - labelOffset - 8;
+		const plotY = trackY + labelOffset;
+
+		// Filter to visible features
+		// Note: features should be raw (non-proxied) arrays from getRawFeatures()
+		const vpStart = viewport.current.start;
+		const vpEnd = viewport.current.end;
+		const visible = features.filter(f => f.end > vpStart && f.start < vpEnd);
+
+		if (visible.length === 0) return;
+
+		// Calculate Y scale (auto-scale to visible data)
+		let minVal = Infinity;
+		let maxVal = -Infinity;
+		for (const f of visible) {
+			minVal = Math.min(minVal, f.value);
+			maxVal = Math.max(maxVal, f.value);
+		}
+
+		// Add padding to range
+		const range = maxVal - minVal || 1;
+		minVal = Math.min(0, minVal); // Always include 0 if data is positive
+		maxVal = maxVal + range * 0.1;
+
+		const valueToY = (val: number): number => {
+			const normalized = (val - minVal) / (maxVal - minVal);
+			return plotY + plotHeight - (normalized * plotHeight);
+		};
+
+		// Draw baseline at 0
+		const zeroY = valueToY(0);
+		ctx.strokeStyle = '#333333';
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo(0, zeroY);
+		ctx.lineTo(width, zeroY);
+		ctx.stroke();
+
+		// Bin data if too dense
+		const basesPerPixel = (viewport.current.end - viewport.current.start) / width;
+		const binWidth = Math.max(1, Math.ceil(basesPerPixel));
+		const bins = new Map<number, { sum: number; count: number }>();
+
+		for (const f of visible) {
+			const startBin = Math.floor(f.start / binWidth);
+			const endBin = Math.ceil(f.end / binWidth);
+
+			for (let bin = startBin; bin < endBin; bin++) {
+				const existing = bins.get(bin) || { sum: 0, count: 0 };
+				existing.sum += f.value;
+				existing.count += 1;
+				bins.set(bin, existing);
+			}
+		}
+
+		// Create gradient for fill
+		const gradient = ctx.createLinearGradient(0, plotY, 0, plotY + plotHeight);
+		gradient.addColorStop(0, color);
+		gradient.addColorStop(1, color + '20'); // Fade to transparent
+
+		// Draw as filled area
+		ctx.beginPath();
+		ctx.moveTo(0, zeroY);
+
+		let lastX = 0;
+		const sortedBins = Array.from(bins.entries()).sort((a, b) => a[0] - b[0]);
+
+		for (const [bin, data] of sortedBins) {
+			const binStart = bin * binWidth;
+			const binEnd = binStart + binWidth;
+
+			const x1 = (binStart - viewport.current.start) * pixelsPerBase;
+			const x2 = (binEnd - viewport.current.start) * pixelsPerBase;
+			const avgValue = data.sum / data.count;
+			const y = valueToY(avgValue);
+
+			if (x1 > lastX + 1) {
+				// Gap - go down to zero and back up
+				ctx.lineTo(lastX, zeroY);
+				ctx.lineTo(x1, zeroY);
+			}
+
+			ctx.lineTo(x1, y);
+			ctx.lineTo(x2, y);
+			lastX = x2;
+		}
+
+		ctx.lineTo(lastX, zeroY);
+		ctx.closePath();
+
+		ctx.fillStyle = gradient;
+		ctx.fill();
+
+		// Draw outline
+		ctx.strokeStyle = color;
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		let started = false;
+
+		for (const [bin, data] of sortedBins) {
+			const binStart = bin * binWidth;
+			const binEnd = binStart + binWidth;
+			const x1 = (binStart - viewport.current.start) * pixelsPerBase;
+			const x2 = (binEnd - viewport.current.start) * pixelsPerBase;
+			const avgValue = data.sum / data.count;
+			const y = valueToY(avgValue);
+
+			if (!started) {
+				ctx.moveTo(x1, y);
+				started = true;
+			} else {
+				ctx.lineTo(x1, y);
+			}
+			ctx.lineTo(x2, y);
+		}
+		ctx.stroke();
+
+		// Draw Y-axis labels
+		ctx.fillStyle = '#666666';
+		ctx.font = '9px Inter, sans-serif';
+		ctx.textAlign = 'left';
+		ctx.fillText(maxVal.toFixed(1), 4, plotY + 8);
+		ctx.fillText(minVal.toFixed(1), 4, plotY + plotHeight - 2);
 	}
 
 	/**
