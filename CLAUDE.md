@@ -29,7 +29,8 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 - Pan (drag) and zoom (scroll wheel) on canvas
 - Coordinate input with navigation
 - Track type registry (extensible architecture)
-- Drag-and-drop file loading
+- Drag-and-drop file loading (local files)
+- URL input for remote tracks (BigBed/BigWig via sidebar File|URL tabs)
 - Keyboard shortcuts (Cmd+` for query console)
 
 **Track Types**
@@ -518,16 +519,18 @@ All pan-data-loading tests pass." \
   - **Next steps**: See `docs/DEBUG-REMOTE-TRACKS.md` for diagnostic plan
   - Created `tests/e2e/remote-track-loading.test.ts`
 
-- **2026-01-19 Session 10**: Remote track panning bug FIXED
-  - **Root cause**: Svelte 5 fine-grained reactivity issue
-    - `$effect` in TrackView.svelte only read `viewport.current` (object reference)
-    - Didn't read `.chromosome`, `.start`, `.end` properties
-    - Svelte didn't detect property mutations during panning
-  - **Fix**: Explicitly read viewport properties to create fine-grained dependencies
-  - **Also fixed**: Stale closure in debounce by capturing viewport values immediately
-  - Created `tests/e2e/pan-data-loading.test.ts` with failing test first (TDD)
-  - Used Ralph Loop for automated iteration until tests passed
-  - Documented TDD + Ralph Loop pattern in CLAUDE.md
+- **2026-01-19 Session 10**: Remote track panning bug FIXED + URL input
+  - **Panning bug fix**:
+    - Root cause: Svelte 5 fine-grained reactivity issue
+    - `$effect` only read `viewport.current` (object), not `.start`/`.end` properties
+    - Fix: Explicitly read properties to create fine-grained dependencies
+    - Also fixed stale closure in debounce by capturing viewport values immediately
+  - **TDD + Ralph Loop**: Wrote failing test first, used Ralph Loop to iterate until pass
+  - **Committed BigWig support** (from Session 8): `src/lib/services/bigwig.ts`
+  - **URL input for remote tracks**: Sidebar now has File|URL tabs
+    - File tab: local file picker (.bed, .gff3, .vcf, etc.)
+    - URL tab: paste URL for remote indexed formats (.bb, .bw)
+    - Auto-detects format from extension, extracts track name from filename
 
 ## Known Issues & Gotchas
 
