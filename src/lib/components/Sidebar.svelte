@@ -26,6 +26,12 @@
 	let isCollapsed = $state(false);
 	let fileInputEl: HTMLInputElement;
 
+	// Add track mode: 'file' or 'url'
+	let addTrackMode = $state<'file' | 'url'>('file');
+	let urlInput = $state('');
+	let urlError = $state<string | null>(null);
+	let isAddingUrl = $state(false);
+
 	function handleFileSelect(event: Event) {
 		const input = event.target as HTMLInputElement;
 		const files = input.files;
@@ -37,6 +43,67 @@
 
 		// Reset input so same file can be selected again
 		input.value = '';
+	}
+
+	async function handleUrlSubmit() {
+		const url = urlInput.trim();
+		if (!url) return;
+
+		urlError = null;
+
+		// Validate URL format
+		try {
+			new URL(url);
+		} catch {
+			urlError = 'Invalid URL format';
+			return;
+		}
+
+		// Detect type from extension
+		const lowerUrl = url.toLowerCase();
+		let trackType: 'bigbed' | 'bigwig' | null = null;
+
+		if (lowerUrl.endsWith('.bb') || lowerUrl.endsWith('.bigbed')) {
+			trackType = 'bigbed';
+		} else if (lowerUrl.endsWith('.bw') || lowerUrl.endsWith('.bigwig')) {
+			trackType = 'bigwig';
+		} else {
+			urlError = 'Unsupported format. Use .bb (BigBed) or .bw (BigWig)';
+			return;
+		}
+
+		// Extract filename for track name
+		const filename = url.split('/').pop()?.split('?')[0] || 'Remote Track';
+		const trackName = filename.replace(/\.(bb|bw|bigbed|bigwig)$/i, '');
+
+		isAddingUrl = true;
+
+		try {
+			// Add to remote tracks store
+			const { useAssembly } = await import('$lib/stores/assembly.svelte');
+			const assembly = useAssembly();
+
+			remoteTracks.addRemoteTrack({
+				id: `url-${Date.now()}`,
+				name: trackName,
+				type: trackType,
+				url: url,
+				assemblyId: assembly.current.id,
+				color: trackType === 'bigwig' ? '#10b981' : '#8b5cf6',
+			});
+
+			// Trigger fetch for current viewport
+			const { useViewport } = await import('$lib/stores/viewport.svelte');
+			const viewport = useViewport();
+			remoteTracks.updateForViewport(viewport.current);
+
+			// Clear input on success
+			urlInput = '';
+		} catch (err) {
+			urlError = err instanceof Error ? err.message : 'Failed to add track';
+		} finally {
+			isAddingUrl = false;
+		}
 	}
 
 	function getTrackStats(track: { features: { chromosome: string }[] }) {
@@ -284,27 +351,81 @@
 			</div>
 		</div>
 
-		<!-- File input -->
+		<!-- Add track section -->
 		<div class="p-3 border-t border-[var(--color-border)]">
-			<input
-				bind:this={fileInputEl}
-				type="file"
-				accept={supportedExtensions}
-				multiple
-				class="hidden"
-				onchange={handleFileSelect}
-			/>
-			<button
-				type="button"
-				onclick={() => fileInputEl?.click()}
-				class="w-full flex flex-col items-center gap-2 p-4 border-2 border-dashed border-[var(--color-border)] rounded-lg hover:border-[var(--color-accent)] hover:bg-[var(--color-bg-tertiary)] transition-colors cursor-pointer"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-				</svg>
-				<span class="text-xs text-[var(--color-text-secondary)]">Add track</span>
-				<span class="text-xs text-[var(--color-text-muted)]">{supportedExtensions}</span>
-			</button>
+			<!-- Tab buttons -->
+			<div class="flex mb-3 bg-[var(--color-bg-tertiary)] rounded-lg p-0.5">
+				<button
+					onclick={() => addTrackMode = 'file'}
+					class="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
+					class:bg-[var(--color-bg-secondary)]={addTrackMode === 'file'}
+					class:text-[var(--color-text-primary)]={addTrackMode === 'file'}
+					class:shadow-sm={addTrackMode === 'file'}
+					class:text-[var(--color-text-muted)]={addTrackMode !== 'file'}
+				>
+					File
+				</button>
+				<button
+					onclick={() => addTrackMode = 'url'}
+					class="flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-colors"
+					class:bg-[var(--color-bg-secondary)]={addTrackMode === 'url'}
+					class:text-[var(--color-text-primary)]={addTrackMode === 'url'}
+					class:shadow-sm={addTrackMode === 'url'}
+					class:text-[var(--color-text-muted)]={addTrackMode !== 'url'}
+				>
+					URL
+				</button>
+			</div>
+
+			{#if addTrackMode === 'file'}
+				<!-- File input -->
+				<input
+					bind:this={fileInputEl}
+					type="file"
+					accept={supportedExtensions}
+					multiple
+					class="hidden"
+					onchange={handleFileSelect}
+				/>
+				<button
+					type="button"
+					onclick={() => fileInputEl?.click()}
+					class="w-full flex flex-col items-center gap-2 p-4 border-2 border-dashed border-[var(--color-border)] rounded-lg hover:border-[var(--color-accent)] hover:bg-[var(--color-bg-tertiary)] transition-colors cursor-pointer"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+					</svg>
+					<span class="text-xs text-[var(--color-text-secondary)]">Drop or browse</span>
+					<span class="text-[10px] text-[var(--color-text-muted)]">{supportedExtensions}</span>
+				</button>
+			{:else}
+				<!-- URL input -->
+				<div class="space-y-2">
+					<div class="flex gap-1">
+						<input
+							type="url"
+							bind:value={urlInput}
+							placeholder="https://example.com/track.bw"
+							class="flex-1 px-2 py-1.5 text-xs bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
+							onkeydown={(e) => e.key === 'Enter' && handleUrlSubmit()}
+							disabled={isAddingUrl}
+						/>
+						<button
+							onclick={handleUrlSubmit}
+							disabled={!urlInput.trim() || isAddingUrl}
+							class="px-2 py-1.5 text-xs font-medium bg-[var(--color-accent)] text-white rounded hover:bg-[var(--color-accent-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+						>
+							{isAddingUrl ? '...' : '+'}
+						</button>
+					</div>
+					{#if urlError}
+						<p class="text-[10px] text-red-400">{urlError}</p>
+					{/if}
+					<p class="text-[10px] text-[var(--color-text-muted)]">
+						Supports .bb (BigBed) and .bw (BigWig)
+					</p>
+				</div>
+			{/if}
 		</div>
 	{/if}
 </aside>
