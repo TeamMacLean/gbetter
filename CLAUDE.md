@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 14 (2026-01-20) - Remote track chromosome validation
+**Status**: Active development, Session 15 (2026-01-20) - Local binary file support
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -166,16 +166,16 @@ src/
 
 | Format | Status | Notes |
 |--------|--------|-------|
-| BED | ✅ Complete | BED3-BED12, local files |
-| GFF3 | ✅ Complete | Parent-child linking, themes, local files |
-| bedGraph | ✅ Complete | Signal/peak data, local files |
-| VCF | ✅ Complete | Zoom-dependent rendering, local files |
-| BigBed | ✅ Complete | Remote indexed BED (.bb), HTTP range requests |
-| BigWig | ✅ Complete | Remote indexed signal (.bw), HTTP range requests |
-| VCF.gz | ✅ Complete | Remote tabix-indexed variants (.vcf.gz + .tbi) |
-| GFF.gz | ✅ Complete | Remote tabix-indexed annotations (.gff.gz + .tbi) |
-| BED.gz | ✅ Complete | Remote tabix-indexed intervals (.bed.gz + .tbi) |
-| BAM | ✅ Complete | Remote indexed alignments (.bam + .bai), renders as intervals |
+| BED | ✅ Complete | BED3-BED12, local text files |
+| GFF3 | ✅ Complete | Parent-child linking, themes, local text files |
+| bedGraph | ✅ Complete | Signal/peak data, local text files |
+| VCF | ✅ Complete | Zoom-dependent rendering, local text files |
+| BigBed | ✅ Complete | Local + remote, indexed BED (.bb), HTTP range requests |
+| BigWig | ✅ Complete | Local + remote, indexed signal (.bw), HTTP range requests |
+| VCF.gz | ✅ Complete | Local + remote, tabix-indexed variants (.vcf.gz + .tbi) |
+| GFF.gz | ✅ Complete | Local + remote, tabix-indexed annotations (.gff.gz + .tbi) |
+| BED.gz | ✅ Complete | Local + remote, tabix-indexed intervals (.bed.gz + .tbi) |
+| BAM | ✅ Complete | Local + remote, indexed alignments (.bam + .bai), renders as intervals |
 | CRAM | ⚠️ Partial | URL accepted, but requires reference sequence (not yet implemented) |
 | FASTA | 🔲 Planned | Sequence display at high zoom |
 
@@ -672,6 +672,27 @@ All pan-data-loading tests pass." \
   - **UI**: Amber warning banner in TrackView (reuses existing pattern)
   - **Tests**: `tests/e2e/chromosome-validation.test.ts` (3 tests, all pass)
 
+- **2026-01-20 Session 15**: Local binary file support
+  - **Feature**: Load binary genomics formats from local files (not just URLs)
+    - BigBed (.bb, .bigbed) - self-indexed, no additional files needed
+    - BigWig (.bw, .bigwig) - self-indexed, no additional files needed
+    - BAM (.bam) - requires .bai index file
+    - Tabix VCF/GFF/BED (.vcf.gz, .gff.gz, .bed.gz) - requires .tbi index file
+  - **New service**: `src/lib/services/localBinaryTracks.ts`
+    - Uses `BlobFile` from `generic-filehandle2` instead of `RemoteFile`
+    - `queryLocalBigBed()`, `queryLocalBigWig()`, `queryLocalBam()`
+    - `queryLocalTabixVcf()`, `queryLocalTabixGff()`, `queryLocalTabixBed()`
+    - Helper functions: `detectLocalBinaryType()`, `requiresIndexFile()`, `matchIndexFile()`
+  - **New store**: `src/lib/stores/localBinaryTracks.svelte.ts`
+    - Manages local File references and viewport-based fetching
+    - Similar API to remoteTracks store
+  - **UI updates**:
+    - Sidebar file input now accepts binary extensions (.bb, .bw, .bam, etc.)
+    - Index file pairing: auto-matches when multi-selected, prompts when needed
+    - Local binary tracks shown in sidebar with "(local)" badge
+    - TrackView renders local binary tracks with same styling as remote
+  - **Tests**: `tests/e2e/local-binary-files.test.ts` (6 tests, all pass)
+
 ## Known Issues & Gotchas
 
 ### RESOLVED: Remote Track Panning Bug (Session 10)
@@ -742,3 +763,5 @@ the data source actually has gene-level annotations or just transcript data with
 9. `src/lib/services/tabix.ts` - Tabix query functions (VCF, GFF, BED)
 10. `src/lib/services/bam.ts` - BAM/CRAM query functions
 11. `src/lib/stores/remoteTracks.svelte.ts` - Remote track state
+12. `src/lib/services/localBinaryTracks.ts` - Local binary file queries (BlobFile-based)
+13. `src/lib/stores/localBinaryTracks.svelte.ts` - Local binary track state

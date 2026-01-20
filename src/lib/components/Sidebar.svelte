@@ -2,12 +2,21 @@
 	import { useTracks } from '$lib/stores/tracks.svelte';
 	import { useViewport } from '$lib/stores/viewport.svelte';
 	import { useRemoteTracks } from '$lib/stores/remoteTracks.svelte';
+	import { useLocalBinaryTracks } from '$lib/stores/localBinaryTracks.svelte';
 	import { getSupportedExtensions } from '$lib/services/trackRegistry';
 	import { getGeneModelThemes, getCurrentThemeName, setGeneModelTheme } from '$lib/services/trackTypes/geneModel';
+	import {
+		detectLocalBinaryType,
+		requiresIndexFile,
+		getIndexExtension,
+		matchIndexFile,
+		type LocalBinaryTrackType
+	} from '$lib/services/localBinaryTracks';
 
 	const tracks = useTracks();
 	const viewport = useViewport();
 	const remoteTracks = useRemoteTracks();
+	const localBinaryTracks = useLocalBinaryTracks();
 
 	// Gene model theme state
 	let currentGeneTheme = $state(getCurrentThemeName());
@@ -20,11 +29,14 @@
 		tracks.invalidateRender();
 	}
 
-	// Get supported extensions for file input
-	const supportedExtensions = getSupportedExtensions().map(ext => `.${ext}`).join(',');
+	// Get supported extensions for file input (text formats + binary formats)
+	const textExtensions = getSupportedExtensions().map(ext => `.${ext}`);
+	const binaryExtensions = ['.bb', '.bigbed', '.bw', '.bigwig', '.bam', '.bai', '.vcf.gz', '.gff.gz', '.gff3.gz', '.bed.gz', '.tbi'];
+	const supportedExtensions = [...textExtensions, ...binaryExtensions].join(',');
 
 	let isCollapsed = $state(false);
 	let fileInputEl: HTMLInputElement;
+	let indexFileInputEl: HTMLInputElement;
 
 	// Add track mode: 'file' or 'url'
 	let addTrackMode = $state<'file' | 'url'>('file');
@@ -32,17 +44,106 @@
 	let urlError = $state<string | null>(null);
 	let isAddingUrl = $state(false);
 
-	function handleFileSelect(event: Event) {
+	// Pending binary file that needs an index
+	let pendingBinaryFile = $state<{ file: File; type: LocalBinaryTrackType } | null>(null);
+
+	// Track colors by type
+	const binaryTrackColors: Record<string, string> = {
+		bigwig: '#10b981',  // Green for signal
+		bigbed: '#8b5cf6',  // Purple for intervals
+		vcf: '#f59e0b',     // Amber for variants
+		gff: '#3b82f6',     // Blue for gene models
+		bed: '#ec4899',     // Pink for BED intervals
+		bam: '#06b6d4',     // Cyan for BAM alignments
+	};
+
+	async function handleFileSelect(event: Event) {
 		const input = event.target as HTMLInputElement;
 		const files = input.files;
-		if (!files) return;
+		if (!files || files.length === 0) return;
 
-		for (const file of files) {
-			tracks.addTrackFromFile(file);
+		const fileArray = Array.from(files);
+
+		// Separate files by type
+		const dataFiles: Array<{ file: File; type: LocalBinaryTrackType }> = [];
+		const indexFiles: File[] = [];
+		const textFiles: File[] = [];
+
+		for (const file of fileArray) {
+			const binaryType = detectLocalBinaryType(file.name);
+			if (binaryType) {
+				dataFiles.push({ file, type: binaryType });
+			} else if (file.name.endsWith('.bai') || file.name.endsWith('.tbi')) {
+				indexFiles.push(file);
+			} else {
+				textFiles.push(file);
+			}
+		}
+
+		// Handle text files with existing track system
+		for (const file of textFiles) {
+			await tracks.addTrackFromFile(file);
+		}
+
+		// Handle binary files
+		for (const { file, type } of dataFiles) {
+			if (requiresIndexFile(type)) {
+				// Try to auto-match index file from selected files
+				const indexFile = matchIndexFile(file, [...indexFiles, ...fileArray]);
+
+				if (indexFile) {
+					// Found matching index - add track immediately
+					await addLocalBinaryTrack(file, type, indexFile);
+				} else {
+					// No matching index - prompt user
+					pendingBinaryFile = { file, type };
+					// Open index file picker
+					setTimeout(() => indexFileInputEl?.click(), 100);
+				}
+			} else {
+				// Self-indexed format (BigBed, BigWig) - add immediately
+				await addLocalBinaryTrack(file, type);
+			}
 		}
 
 		// Reset input so same file can be selected again
 		input.value = '';
+	}
+
+	function handleIndexFileSelect(event: Event) {
+		const input = event.target as HTMLInputElement;
+		const files = input.files;
+		if (!files || files.length === 0 || !pendingBinaryFile) {
+			pendingBinaryFile = null;
+			return;
+		}
+
+		const indexFile = files[0];
+		addLocalBinaryTrack(pendingBinaryFile.file, pendingBinaryFile.type, indexFile);
+
+		pendingBinaryFile = null;
+		input.value = '';
+	}
+
+	function cancelPendingBinary() {
+		pendingBinaryFile = null;
+	}
+
+	async function addLocalBinaryTrack(file: File, type: LocalBinaryTrackType, indexFile?: File) {
+		const trackName = file.name
+			.replace(/\.(bb|bw|bigbed|bigwig|vcf\.gz|gff\.gz|gff3\.gz|bed\.gz|bam)$/i, '');
+
+		localBinaryTracks.addLocalBinaryTrack({
+			id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+			name: trackName,
+			type,
+			file,
+			indexFile,
+			color: binaryTrackColors[type] || '#8b5cf6',
+		});
+
+		// Trigger fetch for current viewport
+		localBinaryTracks.updateForViewport(viewport.current);
 	}
 
 	async function handleUrlSubmit() {
@@ -182,7 +283,7 @@
 		<div class="flex-1 p-3 overflow-y-auto">
 			<div class="flex items-center justify-between mb-3">
 				<h3 class="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">
-					Tracks ({tracks.all.length + remoteTracks.all.length})
+					Tracks ({tracks.all.length + remoteTracks.all.length + localBinaryTracks.all.length})
 				</h3>
 				{#if tracks.all.length > 0}
 					<button
@@ -196,7 +297,7 @@
 			</div>
 
 			<div class="space-y-2">
-				{#if tracks.all.length === 0 && remoteTracks.all.length === 0}
+				{#if tracks.all.length === 0 && remoteTracks.all.length === 0 && localBinaryTracks.all.length === 0}
 					<!-- Empty state -->
 					<div class="p-3 bg-[var(--color-bg-tertiary)] rounded border border-dashed border-[var(--color-border)] text-center">
 						<p class="text-sm text-[var(--color-text-muted)]">No tracks loaded</p>
@@ -274,7 +375,91 @@
 							</div>
 						</div>
 					{/each}
-					<!-- Track list -->
+					<!-- Local binary tracks (BigBed, BigWig, BAM, etc.) -->
+					{#each localBinaryTracks.all as track (track.id)}
+						<div
+							class="p-2 bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border)] group"
+						>
+							<div class="flex items-center gap-2">
+								<!-- Visibility toggle -->
+								<button
+									onclick={() => localBinaryTracks.toggleLocalBinaryTrackVisibility(track.id)}
+									class="w-4 h-4 rounded flex items-center justify-center transition-colors"
+									style="background-color: {track.visible ? track.color : 'transparent'}; border: 2px solid {track.color}"
+									title={track.visible ? 'Hide track' : 'Show track'}
+								>
+									{#if track.visible}
+										<svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+										</svg>
+									{/if}
+								</button>
+
+								<!-- Track name -->
+								<span class="flex-1 text-sm text-[var(--color-text-primary)] truncate">
+									{track.name}
+								</span>
+
+								<!-- Loading indicator -->
+								{#if track.isLoading}
+									<span class="text-xs text-[var(--color-accent)]">Loading...</span>
+								{/if}
+
+								<!-- Delete button -->
+								<button
+									onclick={() => localBinaryTracks.removeLocalBinaryTrack(track.id)}
+									class="opacity-0 group-hover:opacity-100 p-1 text-[var(--color-text-muted)] hover:text-red-400 transition-all"
+									title="Remove track"
+								>
+									<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+									</svg>
+								</button>
+							</div>
+
+							<!-- Track info -->
+							<div class="mt-1 flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+								<span class="uppercase">{track.type}</span>
+								<span>·</span>
+								<span>{track.features.length.toLocaleString()} features</span>
+								<span>·</span>
+								<span class="text-[var(--color-text-muted)] italic">local</span>
+								{#if track.error}
+									<span class="text-red-400" title={track.error}>Error</span>
+								{/if}
+							</div>
+
+							<!-- Height control -->
+							<div class="mt-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+								<span class="text-[10px] text-[var(--color-text-muted)] w-8">
+									{track.userHeight ?? 'Auto'}
+								</span>
+								<input
+									type="range"
+									min="50"
+									max="300"
+									step="10"
+									value={track.userHeight ?? 150}
+									oninput={(e) => localBinaryTracks.setLocalBinaryTrackHeight(track.id, parseInt(e.currentTarget.value))}
+									class="flex-1 h-1 bg-[var(--color-border)] rounded-lg appearance-none cursor-pointer accent-[var(--color-accent)]"
+									title="Track height"
+								/>
+								<button
+									onclick={() => localBinaryTracks.setLocalBinaryTrackHeight(track.id, null)}
+									class="text-[10px] px-1.5 py-0.5 rounded transition-colors"
+									class:bg-[var(--color-accent)]={track.userHeight === null}
+									class:text-white={track.userHeight === null}
+									class:bg-[var(--color-bg-secondary)]={track.userHeight !== null}
+									class:text-[var(--color-text-muted)]={track.userHeight !== null}
+									class:hover:bg-[var(--color-border)]={track.userHeight !== null}
+									title="Auto-size track height"
+								>
+									Auto
+								</button>
+							</div>
+						</div>
+					{/each}
+					<!-- Track list (text files) -->
 					{#each tracks.all as track (track.id)}
 						{@const stats = getTrackStats(track)}
 						<div
@@ -408,17 +593,49 @@
 					class="hidden"
 					onchange={handleFileSelect}
 				/>
-				<button
-					type="button"
-					onclick={() => fileInputEl?.click()}
-					class="w-full flex flex-col items-center gap-2 p-4 border-2 border-dashed border-[var(--color-border)] rounded-lg hover:border-[var(--color-accent)] hover:bg-[var(--color-bg-tertiary)] transition-colors cursor-pointer"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-					</svg>
-					<span class="text-xs text-[var(--color-text-secondary)]">Drop or browse</span>
-					<span class="text-[10px] text-[var(--color-text-muted)]">{supportedExtensions}</span>
-				</button>
+				<!-- Hidden index file input -->
+				<input
+					bind:this={indexFileInputEl}
+					type="file"
+					accept=".bai,.tbi"
+					class="hidden"
+					onchange={handleIndexFileSelect}
+				/>
+
+				{#if pendingBinaryFile}
+					<!-- Prompt for index file -->
+					<div class="p-3 bg-amber-900/20 border border-amber-600/50 rounded-lg space-y-2">
+						<p class="text-xs text-amber-200">
+							<strong>{pendingBinaryFile.file.name}</strong> requires an index file ({getIndexExtension(pendingBinaryFile.type)})
+						</p>
+						<div class="flex gap-2">
+							<button
+								onclick={() => indexFileInputEl?.click()}
+								class="flex-1 px-2 py-1.5 text-xs font-medium bg-amber-600 text-white rounded hover:bg-amber-500 transition-colors"
+							>
+								Select Index File
+							</button>
+							<button
+								onclick={cancelPendingBinary}
+								class="px-2 py-1.5 text-xs text-amber-300 hover:text-amber-100 transition-colors"
+							>
+								Cancel
+							</button>
+						</div>
+					</div>
+				{:else}
+					<button
+						type="button"
+						onclick={() => fileInputEl?.click()}
+						class="w-full flex flex-col items-center gap-2 p-4 border-2 border-dashed border-[var(--color-border)] rounded-lg hover:border-[var(--color-accent)] hover:bg-[var(--color-bg-tertiary)] transition-colors cursor-pointer"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+						</svg>
+						<span class="text-xs text-[var(--color-text-secondary)]">Drop or browse</span>
+						<span class="text-[10px] text-[var(--color-text-muted)]">BED, GFF, VCF, BigBed, BigWig, BAM</span>
+					</button>
+				{/if}
 			{:else}
 				<!-- URL input -->
 				<div class="space-y-2">

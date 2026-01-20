@@ -3,6 +3,7 @@
 	import { useViewport } from '$lib/stores/viewport.svelte';
 	import { useTracks } from '$lib/stores/tracks.svelte';
 	import { useRemoteTracks, getRawFeatures } from '$lib/stores/remoteTracks.svelte';
+	import { useLocalBinaryTracks, getLocalBinaryRawFeatures } from '$lib/stores/localBinaryTracks.svelte';
 	import { useAssembly } from '$lib/stores/assembly.svelte';
 	import { formatCoordinate } from '$lib/types/genome';
 	import type { SignalFeature } from '$lib/types/tracks';
@@ -19,6 +20,7 @@
 	const viewport = useViewport();
 	const tracks = useTracks();
 	const remoteTracks = useRemoteTracks();
+	const localBinaryTracks = useLocalBinaryTracks();
 	const assembly = useAssembly();
 
 	// Initialize viewport from URL on mount and set up gene track
@@ -49,8 +51,8 @@
 		remoteTracks.updateForViewport(viewport.current);
 	});
 
-	// Update remote tracks when viewport changes
-	// IMPORTANT: Use untrack to prevent this effect from depending on remoteTracks state
+	// Update remote tracks and local binary tracks when viewport changes
+	// IMPORTANT: Use untrack to prevent this effect from depending on track state
 	// Otherwise updating isLoading/features triggers a loop that aborts in-flight requests
 	// CRITICAL: Must explicitly read .chromosome, .start, .end to track fine-grained changes
 	// Just reading viewport.current (the object) won't detect property mutations in Svelte 5
@@ -60,7 +62,10 @@
 		const _chr = vp.chromosome;
 		const _start = vp.start;
 		const _end = vp.end;
-		untrack(() => remoteTracks.updateForViewport(vp));
+		untrack(() => {
+			remoteTracks.updateForViewport(vp);
+			localBinaryTracks.updateForViewport(vp);
+		});
 	});
 
 	// Update gene track when assembly changes
@@ -126,9 +131,13 @@
 		// Otherwise Svelte won't track them and the effect won't re-run
 		const _version = tracks.renderVersion;
 		const _remoteRenderVersion = remoteTracks.renderVersion; // Track rawFeaturesStore changes
+		const _localBinaryRenderVersion = localBinaryTracks.renderVersion; // Track local binary track changes
 		const visibleRemote = remoteTracks.visible;
+		const visibleLocalBinary = localBinaryTracks.visible;
 		const _remoteFeatures = visibleRemote.map(t => t.features.length);
 		const _remoteHeights = visibleRemote.map(t => t.userHeight); // Track height changes
+		const _localBinaryFeatures = visibleLocalBinary.map(t => t.features.length);
+		const _localBinaryHeights = visibleLocalBinary.map(t => t.userHeight);
 
 		if (!canvasEl) return;
 
@@ -153,9 +162,10 @@
 		// Draw ruler
 		const rulerHeight = drawRuler(ctx, width);
 
-		// Check for content (local tracks or remote tracks)
+		// Check for content (local tracks, remote tracks, or local binary tracks)
 		const visibleLocalTracks = tracks.visible;
 		const visibleRemoteTracks = remoteTracks.visible;
+		const visibleLocalBinaryTracks = localBinaryTracks.visible;
 		const hasLocalContent = visibleLocalTracks.some(t =>
 			t.features.some(f => f.chromosome === viewport.current.chromosome)
 		);
@@ -163,11 +173,15 @@
 			const rawFeatures = getRawFeatures(t.id);
 			return rawFeatures && rawFeatures.length > 0;
 		});
+		const hasLocalBinaryContent = visibleLocalBinaryTracks.some(t => {
+			const rawFeatures = getLocalBinaryRawFeatures(t.id);
+			return rawFeatures && rawFeatures.length > 0;
+		});
 
 		// Reset track borders for resize hit detection
 		const newBorders: TrackBorder[] = [];
 
-		if (hasLocalContent || hasRemoteContent) {
+		if (hasLocalContent || hasRemoteContent || hasLocalBinaryContent) {
 			let currentY = rulerHeight;
 
 			// Render remote tracks first (gene models)
@@ -175,7 +189,12 @@
 				currentY = renderRemoteTracks(ctx, width, currentY, newBorders);
 			}
 
-			// Render local tracks
+			// Render local binary tracks
+			if (hasLocalBinaryContent) {
+				currentY = renderLocalBinaryTracks(ctx, width, currentY, newBorders);
+			}
+
+			// Render local text tracks
 			if (hasLocalContent) {
 				const chrTracks = visibleLocalTracks.filter(t =>
 					t.features.some(f => f.chromosome === viewport.current.chromosome)
@@ -329,6 +348,116 @@
 			borders.push({
 				trackId: track.id,
 				trackType: 'remote',
+				y: borderY
+			});
+
+			currentY += trackHeight;
+		}
+
+		return currentY;
+	}
+
+	/**
+	 * Render local binary tracks (BigBed, BigWig, BAM, tabix)
+	 */
+	function renderLocalBinaryTracks(
+		ctx: CanvasRenderingContext2D,
+		width: number,
+		startY: number,
+		borders: TrackBorder[]
+	): number {
+		let currentY = startY;
+
+		for (const track of localBinaryTracks.visible) {
+			if (track.features.length === 0 && !track.isLoading) continue;
+
+			// Calculate track height
+			let trackHeight: number;
+			if (track.userHeight !== null && track.userHeight !== undefined) {
+				trackHeight = track.userHeight;
+			} else {
+				// Auto-calculate based on track type
+				if (track.type === 'bigwig') {
+					trackHeight = track.height || 100;
+				} else {
+					const labelOffset = 18;
+					const featureHeight = 12;
+					const rowSpacing = 4;
+					const rowCount = calculateGeneRows(track.features as import('$lib/types/genome').BedFeature[], width);
+					const minHeight = 50;
+					const maxHeight = 300;
+					const calculatedHeight = labelOffset + (rowCount * (featureHeight + rowSpacing)) + 20;
+					trackHeight = Math.min(maxHeight, Math.max(minHeight, calculatedHeight));
+				}
+			}
+
+			// Draw track label background
+			ctx.fillStyle = '#1a1a1a';
+			ctx.fillRect(0, currentY, width, trackHeight);
+
+			// Draw track label
+			ctx.fillStyle = '#666666';
+			ctx.font = '11px Inter, sans-serif';
+			ctx.textAlign = 'left';
+			ctx.fillText(track.name, 8, currentY + 11);
+
+			// Draw loading indicator
+			if (track.isLoading) {
+				ctx.fillStyle = '#6366f1';
+				ctx.font = '10px Inter, sans-serif';
+				ctx.fillText('Loading...', 8, currentY + 24);
+			}
+
+			// Draw error if any
+			if (track.error) {
+				ctx.fillStyle = '#ef4444';
+				ctx.font = '10px Inter, sans-serif';
+				ctx.fillText(`Error: ${track.error}`, 8, currentY + 24);
+			}
+
+			// Draw badge
+			ctx.fillStyle = '#444444';
+			ctx.font = '9px Inter, sans-serif';
+			const badgeMap: Record<string, string> = {
+				bigwig: 'SIGNAL',
+				bigbed: 'BIGBED',
+				bam: 'BAM',
+				vcf: 'VCF',
+				gff: 'GFF',
+				bed: 'BED',
+			};
+			const badge = (badgeMap[track.type] || track.type.toUpperCase()) + ' (local)';
+			const badgeWidth = ctx.measureText(badge).width + 8;
+			ctx.fillRect(width - badgeWidth - 8, currentY + 2, badgeWidth, 14);
+			ctx.fillStyle = '#888888';
+			ctx.textAlign = 'center';
+			ctx.fillText(badge, width - badgeWidth / 2 - 8, currentY + 11);
+
+			// Render features based on track type
+			if (track.features.length > 0) {
+				if (track.type === 'bigwig') {
+					const rawFeatures = getLocalBinaryRawFeatures(track.id) as SignalFeature[];
+					renderSignalFeatures(ctx, rawFeatures, width, currentY, trackHeight, track.color);
+				} else {
+					renderBedFeatures(ctx, track.features as import('$lib/types/genome').BedFeature[], width, currentY, trackHeight, track.color);
+				}
+			}
+
+			// Draw bottom border
+			const borderY = currentY + trackHeight;
+			const isHoveredBorder = isNearBorder && resizeTrackId === track.id;
+			ctx.strokeStyle = isHoveredBorder ? '#666666' : '#333333';
+			ctx.lineWidth = isHoveredBorder ? 2 : 1;
+			ctx.beginPath();
+			ctx.moveTo(0, borderY);
+			ctx.lineTo(width, borderY);
+			ctx.stroke();
+			ctx.lineWidth = 1;
+
+			// Record border position
+			borders.push({
+				trackId: track.id,
+				trackType: 'local',
 				y: borderY
 			});
 
@@ -914,7 +1043,12 @@
 			const track = remoteTracks.all.find(t => t.id === trackId);
 			return track?.userHeight ?? track?.height ?? 100;
 		}
-		// For local tracks (future)
+		// Check local binary tracks first
+		const localBinaryTrack = localBinaryTracks.all.find(t => t.id === trackId);
+		if (localBinaryTrack) {
+			return localBinaryTrack.userHeight ?? localBinaryTrack.height ?? 100;
+		}
+		// Fall back to text tracks
 		const track = tracks.all.find(t => t.id === trackId);
 		return track?.height ?? 100;
 	}
@@ -949,8 +1083,13 @@
 
 			if (resizeTrackType === 'remote') {
 				remoteTracks.setRemoteTrackHeight(resizeTrackId, newHeight);
+			} else if (resizeTrackType === 'local') {
+				// Check if it's a local binary track
+				const isLocalBinary = localBinaryTracks.all.some(t => t.id === resizeTrackId);
+				if (isLocalBinary) {
+					localBinaryTracks.setLocalBinaryTrackHeight(resizeTrackId, newHeight);
+				}
 			}
-			// Local track resize could be added here
 			return;
 		}
 
@@ -1086,6 +1225,26 @@
 			<span class="flex-1"><strong>{track.name}:</strong> {track.chromosomeMismatchWarning}</span>
 			<button
 				onclick={() => remoteTracks.clearRemoteTrackWarning(track.id)}
+				class="text-amber-300 hover:text-amber-100 transition-colors"
+				title="Dismiss"
+			>
+				<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+				</svg>
+			</button>
+		</div>
+	{/each}
+
+	<!-- Local binary track chromosome mismatch warnings -->
+	{#each localBinaryTracks.all.filter(t => t.chromosomeMismatchWarning) as track (track.id)}
+		{@const remoteWarningCount = remoteTracks.all.filter(t => t.chromosomeMismatchWarning).length}
+		<div class="absolute bottom-4 left-4 right-4 bg-amber-900/90 text-amber-200 px-4 py-2 rounded text-sm flex items-start gap-2" style="bottom: {(remoteWarningCount + localBinaryTracks.all.filter(t => t.chromosomeMismatchWarning).indexOf(track)) * 60 + 16}px">
+			<svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+			</svg>
+			<span class="flex-1"><strong>{track.name}:</strong> {track.chromosomeMismatchWarning}</span>
+			<button
+				onclick={() => localBinaryTracks.clearLocalBinaryTrackWarning(track.id)}
 				class="text-amber-300 hover:text-amber-100 transition-colors"
 				title="Dismiss"
 			>
