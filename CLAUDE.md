@@ -693,7 +693,40 @@ All pan-data-loading tests pass." \
     - TrackView renders local binary tracks with same styling as remote
   - **Tests**: `tests/e2e/local-binary-files.test.ts` (6 tests, all pass)
 
+- **2026-01-20 Session 16**: Reference sequence 2bit files for all assemblies
+  - **Created 2bit files for 12 assemblies** without UCSC coverage:
+    - Plants: Rice (89M), Wheat (3.4G), Maize (520M), Barley (1.0G)
+    - Fungi: S. pombe (3M), Botrytis (10M), Magnaporthe (9.8M), Puccinia (21M), Zymoseptoria (9.5M)
+    - Protists: Phytophthora (55M)
+    - Microbes: E. coli K-12 (1.1M), SARS-CoV-2 (7.3K)
+  - **New scripts**: `scripts/create-2bit-files/`
+    - `create-2bit.sh` - Downloads FASTA from NCBI/Ensembl, converts to 2bit using UCSC faToTwoBit
+    - `upload-r2.sh` - Uploads to R2 using rclone
+  - **Uploaded to R2**: Total ~5.1 GB (within 10 GB free tier)
+    - URL pattern: `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/reference/{assembly}.2bit`
+  - **Updated `src/lib/services/fasta.ts`**: Added R2 URLs for all 12 assemblies
+  - **All 27 assemblies now have reference sequence support**
+  - **Remaining issues**:
+    - Coordinate input rejects `NC_000913.3:100000-100100` format (needs debugging)
+    - BAM/VCF mismatch visualization not yet implemented (requires comparing reads to reference)
+
 ## Known Issues & Gotchas
+
+### OPEN: Coordinate Input Parsing (Session 16)
+**Status**: Not fixed - needs investigation next session
+
+Pasting `NC_000913.3:100000-100100` into coordinate input gives error:
+"Invalid format. Use chr1:1000-2000 or NC_000913.3:1000-2000"
+
+The regex in `parseCoordinate()` (src/lib/types/genome.ts:102) looks correct:
+```typescript
+const match = coord.match(/^([A-Za-z0-9_.]+):(\d[\d,]*)-(\d[\d,]*)$/i);
+```
+
+Possible causes to investigate:
+- Invisible characters in pasted text
+- Browser input handling
+- Svelte reactivity issue with input binding
 
 ### RESOLVED: Remote Track Panning Bug (Session 10)
 **Status**: FIXED in commit c2ddc8d
