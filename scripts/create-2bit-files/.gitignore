@@ -1,0 +1,4 @@
+# Generated files - don't commit to git
+output/
+fasta/
+tools/

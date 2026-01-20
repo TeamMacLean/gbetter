@@ -300,28 +300,47 @@ export function clearReferenceCache(): void {
 }
 
 /**
- * UCSC 2bit URLs for common assemblies
- * These are used as fallback/default reference sources
+ * 2bit URLs for assemblies
+ * Sources:
+ * - UCSC: hgdownload.soe.ucsc.edu (human, mouse, model organisms)
+ * - R2: pub-cdedc141a021461d9db8432b0ec926d7.r2.dev (plants, fungi, microbes)
  */
+const R2_BASE = 'https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/reference';
+
 export const UCSC_2BIT_URLS: Record<string, string> = {
-	// Human
+	// Human (UCSC)
 	'grch38': 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit',
 	'hg38': 'https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit',
 	'grch37': 'https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.2bit',
 	'hg19': 'https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.2bit',
 	't2t-chm13': 'https://hgdownload.soe.ucsc.edu/goldenPath/hs1/bigZips/hs1.2bit',
-	// Mouse
+	// Mouse (UCSC)
 	'mm39': 'https://hgdownload.soe.ucsc.edu/goldenPath/mm39/bigZips/mm39.2bit',
 	'mm10': 'https://hgdownload.soe.ucsc.edu/goldenPath/mm10/bigZips/mm10.2bit',
-	// Other model organisms
+	// Other model organisms (UCSC)
 	'danrer11': 'https://hgdownload.soe.ucsc.edu/goldenPath/danRer11/bigZips/danRer11.2bit',
 	'dm6': 'https://hgdownload.soe.ucsc.edu/goldenPath/dm6/bigZips/dm6.2bit',
 	'ce11': 'https://hgdownload.soe.ucsc.edu/goldenPath/ce11/bigZips/ce11.2bit',
 	'saccer3': 'https://hgdownload.soe.ucsc.edu/goldenPath/sacCer3/bigZips/sacCer3.2bit',
 	'rn7': 'https://hgdownload.soe.ucsc.edu/goldenPath/rn7/bigZips/rn7.2bit',
 	'galgal6': 'https://hgdownload.soe.ucsc.edu/goldenPath/galGal6/bigZips/galGal6.2bit',
-	// Plants (UCSC hub)
+	// Plants (R2)
 	'tair10': 'http://genome-test.cse.ucsc.edu/~hiram/hubs/Plants/araTha1/araTha1.2bit',
+	'irgsp1': `${R2_BASE}/irgsp1.2bit`,
+	'iwgsc-refseq2': `${R2_BASE}/iwgsc-refseq2.2bit`,
+	'zm-b73-nam5': `${R2_BASE}/zm-b73-nam5.2bit`,
+	'morex-v3': `${R2_BASE}/morex-v3.2bit`,
+	// Fungi (R2)
+	'spombe': `${R2_BASE}/spombe.2bit`,
+	'botrytis': `${R2_BASE}/botrytis.2bit`,
+	'magnaporthe': `${R2_BASE}/magnaporthe.2bit`,
+	'puccinia': `${R2_BASE}/puccinia.2bit`,
+	'zymoseptoria': `${R2_BASE}/zymoseptoria.2bit`,
+	// Protists (R2)
+	'phytophthora': `${R2_BASE}/phytophthora.2bit`,
+	// Microbes (R2)
+	'ecoli-k12': `${R2_BASE}/ecoli-k12.2bit`,
+	'sars-cov-2': `${R2_BASE}/sars-cov-2.2bit`,
 };
 
 /**
