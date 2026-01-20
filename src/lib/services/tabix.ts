@@ -327,6 +327,36 @@ export async function queryTabixBed(
 }
 
 /**
+ * Get chromosome list from a tabix-indexed file (VCF, GFF, BED)
+ * Uses the tabix index to get reference sequence names
+ */
+export async function getTabixChromosomes(url: string): Promise<string[]> {
+	try {
+		const tabix = await getTabixFile(url);
+
+		// Try to get reference sequence names from the index metadata
+		// This is the most reliable method
+		const refNames = await tabix.getReferenceSequenceNames();
+		if (refNames && refNames.length > 0) {
+			return refNames;
+		}
+
+		// Fallback: try to extract from VCF header contig lines
+		const header = await tabix.getHeader();
+		const chromosomes: string[] = [];
+		const contigMatches = header.matchAll(/##contig=<ID=([^,>]+)/g);
+		for (const match of contigMatches) {
+			chromosomes.push(match[1]);
+		}
+
+		return chromosomes;
+	} catch (error) {
+		console.error(`Error getting chromosomes from tabix ${url}:`, error);
+		return [];
+	}
+}
+
+/**
  * Clear all tabix caches
  */
 export function clearTabixCache(): void {

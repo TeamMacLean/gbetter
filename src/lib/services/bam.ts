@@ -139,6 +139,22 @@ export async function queryCram(
 }
 
 /**
+ * Get chromosome list from a BAM file
+ * Extracts reference sequence names from the BAM header
+ */
+export async function getBamChromosomes(url: string): Promise<string[]> {
+	try {
+		const bam = await getBamFile(url);
+		// indexToChr is populated after getHeader() - contains {refName, length}[]
+		const refSeqs = bam.indexToChr || [];
+		return refSeqs.map(r => r.refName);
+	} catch (error) {
+		console.error(`Error getting chromosomes from BAM ${url}:`, error);
+		return [];
+	}
+}
+
+/**
  * Clear all BAM caches
  */
 export function clearBamCache(): void {

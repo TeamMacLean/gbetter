@@ -16,8 +16,11 @@ import {
 	clearBigBedCache,
 } from '$lib/services/bigbed';
 import { queryBigWig, clearBigWigCache } from '$lib/services/bigwig';
-import { queryTabixVcf, queryTabixGff, queryTabixBed, clearTabixCache } from '$lib/services/tabix';
-import { queryBam, queryCram, clearBamCache } from '$lib/services/bam';
+import { queryTabixVcf, queryTabixGff, queryTabixBed, clearTabixCache, getTabixChromosomes } from '$lib/services/tabix';
+import { queryBam, queryCram, clearBamCache, getBamChromosomes } from '$lib/services/bam';
+import { getBigBedChromosomes } from '$lib/services/bigbed';
+import { getBigWigChromosomes } from '$lib/services/bigwig';
+import { useAssembly } from '$lib/stores/assembly.svelte';
 import type { BedFeature, GffFeature, Viewport } from '$lib/types/genome';
 import type { SignalFeature, VariantFeature } from '$lib/types/tracks';
 
@@ -39,6 +42,9 @@ interface RemoteTrack {
 	error: string | null;
 	features: RemoteFeature[];
 	lastViewport: Viewport | null;
+	// Chromosome validation
+	validatedChromosomes: boolean;
+	chromosomeMismatchWarning: string | null;
 }
 
 interface RemoteTrackConfig {
@@ -91,6 +97,8 @@ function addRemoteTrack(config: RemoteTrackConfig): RemoteTrack {
 		error: null,
 		features: [],
 		lastViewport: null,
+		validatedChromosomes: false,
+		chromosomeMismatchWarning: null,
 	};
 
 	remoteTracks = [...remoteTracks, track];
@@ -122,6 +130,108 @@ function setRemoteTrackHeight(trackId: string, height: number | null): void {
 	remoteTracks = remoteTracks.map((t) =>
 		t.id === trackId ? { ...t, userHeight: height } : t
 	);
+}
+
+/**
+ * Clear chromosome mismatch warning for a remote track
+ */
+function clearRemoteTrackWarning(trackId: string): void {
+	remoteTracks = remoteTracks.map((t) =>
+		t.id === trackId ? { ...t, chromosomeMismatchWarning: null } : t
+	);
+}
+
+/**
+ * Get chromosome names from a remote track file based on its type
+ */
+async function getChromosomesForTrack(track: RemoteTrack): Promise<string[]> {
+	switch (track.type) {
+		case 'bigbed':
+			const bbChroms = await getBigBedChromosomes(track.url);
+			return bbChroms.map(c => c.name);
+		case 'bigwig':
+			const bwChroms = await getBigWigChromosomes(track.url);
+			return bwChroms.map(c => c.name);
+		case 'vcf':
+		case 'gff':
+		case 'bed':
+			return await getTabixChromosomes(track.url);
+		case 'bam':
+		case 'cram':
+			return await getBamChromosomes(track.url);
+		default:
+			return [];
+	}
+}
+
+/**
+ * Validate track chromosomes against current assembly
+ * Sets a warning if there's no overlap between file chromosomes and assembly
+ */
+async function validateTrackChromosomes(track: RemoteTrack): Promise<void> {
+	// Skip validation for built-in gene/transcript tracks (they're assembly-matched)
+	if (track.id === 'genes' || track.id === 'transcripts') {
+		remoteTracks = remoteTracks.map((t) =>
+			t.id === track.id ? { ...t, validatedChromosomes: true } : t
+		);
+		return;
+	}
+
+	try {
+		const assembly = useAssembly();
+		const fileChromosomes = await getChromosomesForTrack(track);
+
+		if (fileChromosomes.length === 0) {
+			// Couldn't get chromosomes from file - skip validation
+			remoteTracks = remoteTracks.map((t) =>
+				t.id === track.id ? { ...t, validatedChromosomes: true } : t
+			);
+			return;
+		}
+
+		// Get assembly chromosome names (including aliases)
+		const assemblyChromNames = new Set<string>();
+		for (const chr of assembly.current.chromosomes) {
+			assemblyChromNames.add(chr.name.toLowerCase());
+			// Also add common variations
+			assemblyChromNames.add(chr.name.toLowerCase().replace(/^chr/i, ''));
+			assemblyChromNames.add('chr' + chr.name.toLowerCase().replace(/^chr/i, ''));
+			// Add aliases if present
+			if (chr.aliases) {
+				for (const alias of chr.aliases) {
+					assemblyChromNames.add(alias.toLowerCase());
+				}
+			}
+		}
+
+		// Check for overlap
+		const matchingChromosomes = fileChromosomes.filter(chr => {
+			const lowerChr = chr.toLowerCase();
+			return assemblyChromNames.has(lowerChr) ||
+				assemblyChromNames.has(lowerChr.replace(/^chr/i, '')) ||
+				assemblyChromNames.has('chr' + lowerChr.replace(/^chr/i, ''));
+		});
+
+		let warning: string | null = null;
+		if (matchingChromosomes.length === 0) {
+			// No overlap - warn user
+			const sampleChroms = fileChromosomes.slice(0, 3).join(', ');
+			const suffix = fileChromosomes.length > 3 ? '...' : '';
+			warning = `Chromosomes in file (${sampleChroms}${suffix}) don't match assembly "${assembly.current.name}". Consider switching assemblies.`;
+		}
+
+		remoteTracks = remoteTracks.map((t) =>
+			t.id === track.id
+				? { ...t, validatedChromosomes: true, chromosomeMismatchWarning: warning }
+				: t
+		);
+	} catch (error) {
+		console.error(`Error validating chromosomes for track ${track.id}:`, error);
+		// Don't block on validation errors
+		remoteTracks = remoteTracks.map((t) =>
+			t.id === track.id ? { ...t, validatedChromosomes: true } : t
+		);
+	}
 }
 
 /**
@@ -258,6 +368,11 @@ async function fetchTrackFeatures(
 					}
 				: t
 		);
+
+		// Validate chromosomes on first successful fetch (fire-and-forget)
+		if (!track.validatedChromosomes) {
+			validateTrackChromosomes(track);
+		}
 	} catch (error) {
 		if (error instanceof Error && error.name === 'AbortError') {
 			return; // Ignore aborted requests
@@ -439,6 +554,7 @@ export function useRemoteTracks() {
 		removeRemoteTrack,
 		toggleRemoteTrackVisibility,
 		setRemoteTrackHeight,
+		clearRemoteTrackWarning,
 		updateForViewport,
 		searchGeneByName,
 		setupGeneTrackForAssembly,
