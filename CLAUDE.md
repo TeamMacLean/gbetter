@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 13 (2026-01-20) - BAM human testing complete
+**Status**: Active development, Session 14 (2026-01-20) - Remote track chromosome validation
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -660,6 +660,17 @@ All pan-data-loading tests pass." \
     - Panning loads new data correctly
     - Feature count updates
   - **Indexed formats plan complete**: All URL-loadable formats working (BigBed, BigWig, VCF, GFF, BED, BAM)
+
+- **2026-01-20 Session 14**: Remote track chromosome validation
+  - **Problem**: Loading remote URL track with wrong assembly shows 0 features with no explanation
+  - **Solution**: Validate file chromosomes against assembly after first fetch, show warning if no overlap
+  - **New functions**:
+    - `getTabixChromosomes(url)` in tabix.ts - extracts ref names from tabix index
+    - `getBamChromosomes(url)` in bam.ts - extracts ref names from BAM header
+    - `validateTrackChromosomes()` in remoteTracks.svelte.ts - compares and warns
+    - `clearRemoteTrackWarning()` - dismisses warning
+  - **UI**: Amber warning banner in TrackView (reuses existing pattern)
+  - **Tests**: `tests/e2e/chromosome-validation.test.ts` (3 tests, all pass)
 
 ## Known Issues & Gotchas
 
