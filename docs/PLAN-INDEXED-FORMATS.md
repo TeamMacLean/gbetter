@@ -1,9 +1,9 @@
 # Plan: Remote Indexed Format Support
 
-**Status**: PHASE 3 COMPLETE - All formats implemented, human testing needed
+**Status**: COMPLETE - All formats implemented and tested
 **Created**: 2026-01-19 (Session 10)
-**Updated**: 2026-01-19 (Session 12) - BAM/CRAM implemented
-**Priority**: Low - Core implementation done, polish remaining
+**Updated**: 2026-01-20 (Session 13) - BAM human testing complete
+**Priority**: Done (future enhancements tracked below)
 
 ## Overview
 
@@ -63,48 +63,25 @@ npm install @gmod/bam @gmod/cram @gmod/tabix @gmod/vcf @gmod/gff
 
 ---
 
-## TODO: Human Testing for BAM
+## Human Testing for BAM ✅ (Session 13)
 
-**Status**: ⚠️ NEEDS HUMAN TESTING
+**Status**: COMPLETE
 
-Automated tests pass (URL acceptance), but visual testing with real BAM data is needed.
+### Test BAM on R2
 
-### Create E. coli Test BAM
+Created synthetic E. coli K-12 test BAM with 20 reads:
+- `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.bam`
+- `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.bam.bai`
 
-Similar to what we did for tabix files, create a small test BAM for E. coli K-12:
+Script: `scripts/bam-test-files/create-bam.sh`
 
-```bash
-# Option 1: Generate synthetic reads
-# Need: samtools, reference fasta
+### Test Results
 
-# Create test BAM from synthetic data
-samtools view -bS test-reads.sam > ecoli-test.bam
-samtools index ecoli-test.bam
-
-# Upload to R2
-# ecoli-test.bam
-# ecoli-test.bam.bai
-```
-
-### Test Procedure
-
-1. Switch assembly to "E. coli K-12 MG1655"
-2. Click URL tab in sidebar
-3. Paste BAM URL (once uploaded to R2)
-4. Click + to add track
-5. Navigate to `NC_000913.3:100000-110000` (smaller region for BAM)
-6. Verify:
-   - Track appears in sidebar with "bam" type indicator
-   - Reads load and display as intervals
-   - Panning loads new data
-   - Features count updates
-
-### Alternative: Find Public CORS-Enabled BAM
-
-Look for BAM files that are already CORS-enabled:
-- ENCODE project data
-- 1000 Genomes (some endpoints)
-- IGVF data portal
+Tested with E. coli K-12 assembly, region `NC_000913.3:100000-101000`:
+- ✅ Track appears in sidebar with "bam" type indicator
+- ✅ Reads load and display as intervals
+- ✅ Panning loads new data in different regions
+- ✅ Feature count updates correctly
 
 ---
 
@@ -141,6 +118,6 @@ CRAM requires reference sequence for some operations:
 - [x] User documentation (docs/URL-TRACKS.md)
 - [x] BAM/CRAM load via URL input (URL acceptance)
 - [x] BAM tests pass (URL acceptance)
-- [ ] **Human visual test with real BAM data** ← NEXT STEP
+- [x] Human visual test with real BAM data (Session 13)
 - [ ] BAM rendering improvements (coverage, CIGAR) - future
 - [ ] CRAM full support - future

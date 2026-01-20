@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 12 (2026-01-19) - BAM/CRAM URL support added
+**Status**: Active development, Session 13 (2026-01-20) - BAM human testing complete
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -218,13 +218,14 @@ Remote URLs must be CORS-enabled. Options:
 
 ### Test Files (E. coli K-12)
 
-Test tabix support with these R2-hosted files:
+Test indexed format support with these R2-hosted files:
 
 | Format | URL |
 |--------|-----|
 | VCF | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.vcf.gz` |
 | GFF | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.gff3.gz` |
 | BED | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.bed.gz` |
+| BAM | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.bam` |
 
 **Test procedure:**
 1. Switch assembly to "E. coli K-12 MG1655"
@@ -648,9 +649,17 @@ All pan-data-loading tests pass." \
   - **Updated stores**: `remoteTracks.svelte.ts` now supports 7 track types:
     - `'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed' | 'bam' | 'cram'`
   - **Tests**: BAM/CRAM URL acceptance tests pass (2 tests)
-  - **TODO - Human testing needed**: Create E. coli test BAM file and upload to R2
-    - Use `samtools` to create small BAM from existing data
-    - Test visual rendering in browser with E. coli K-12 assembly
+
+- **2026-01-20 Session 13**: BAM human testing complete
+  - **Test BAM created**: `scripts/bam-test-files/create-bam.sh`
+    - Generates synthetic E. coli K-12 BAM with 20 reads
+    - Uploaded to R2: `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.bam`
+  - **Human testing verified**:
+    - Track loads and displays in sidebar
+    - Reads render as intervals on canvas
+    - Panning loads new data correctly
+    - Feature count updates
+  - **Indexed formats plan complete**: All URL-loadable formats working (BigBed, BigWig, VCF, GFF, BED, BAM)
 
 ## Known Issues & Gotchas
 
