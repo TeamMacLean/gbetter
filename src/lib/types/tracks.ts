@@ -139,6 +139,39 @@ export interface GeneModelFeature extends GenomicFeature {
 }
 
 /**
+ * BAM read feature with sequence and alignment data
+ * Extends BedFeature with additional fields for sequence-level visualization
+ */
+export interface BAMReadFeature extends GenomicFeature {
+	/** Read sequence (e.g., "ACGTACGT...") */
+	seq: string;
+	/** Base quality scores (Phred+33 encoded) */
+	qual: Uint8Array | null;
+	/** CIGAR string (e.g., "10M2I8M") */
+	cigar: string;
+	/** Parsed CIGAR operations as array of [op, length] pairs */
+	parsedCigar: Array<[string, number]>;
+	/** Mapping quality (0-255) */
+	mq: number;
+	/** Whether the read is reverse complemented */
+	isReversed: boolean;
+	/** MD tag for mismatch positions (optional) */
+	mdTag?: string;
+	/** Read name */
+	readName: string;
+	/** Mate pair information */
+	mate?: {
+		chromosome: string;
+		start: number;
+		isReversed: boolean;
+	};
+	/** Template length (insert size) */
+	templateLength?: number;
+	/** SAM flags */
+	flags: number;
+}
+
+/**
  * Create a render context helper
  */
 export function createRenderContext(

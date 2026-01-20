@@ -5,8 +5,9 @@
 	import { useRemoteTracks, getRawFeatures } from '$lib/stores/remoteTracks.svelte';
 	import { useLocalBinaryTracks, getLocalBinaryRawFeatures } from '$lib/stores/localBinaryTracks.svelte';
 	import { useAssembly } from '$lib/stores/assembly.svelte';
+	import { useReferenceSequence } from '$lib/stores/referenceSequence.svelte';
 	import { formatCoordinate } from '$lib/types/genome';
-	import type { SignalFeature } from '$lib/types/tracks';
+	import type { SignalFeature, BAMReadFeature } from '$lib/types/tracks';
 	import { getTrackType } from '$lib/services/trackRegistry';
 	import { createRenderContext } from '$lib/types/tracks';
 	import {
@@ -16,19 +17,34 @@
 		drawIntronConnector,
 		drawInnerChevrons,
 	} from '$lib/services/trackTypes/geneModel';
+	import {
+		ZOOM_THRESHOLDS,
+		BASE_COLORS,
+		shouldShowSequence,
+		qualityToOpacity,
+		getReadRenderingMode,
+	} from '$lib/constants/zoom';
 
 	const viewport = useViewport();
 	const tracks = useTracks();
 	const remoteTracks = useRemoteTracks();
 	const localBinaryTracks = useLocalBinaryTracks();
 	const assembly = useAssembly();
+	const referenceSequence = useReferenceSequence();
 
 	// Initialize viewport from URL on mount and set up gene track
 	onMount(() => {
-		viewport.initializeFromURL();
+		// Pass assembly info so viewport can use assembly's default if no location in URL
+		viewport.initializeFromURL({
+			defaultViewport: assembly.current.defaultViewport,
+			chromosomes: assembly.current.chromosomes
+		});
 
 		// Set up gene track for current assembly
 		remoteTracks.setupGeneTrackForAssembly(assembly.current.id);
+
+		// Set up reference sequence for current assembly
+		referenceSequence.setupForAssembly(assembly.current.id);
 
 		// Support loading BigWig track via URL parameter for testing
 		// Usage: ?bigwig=<url>&bigwig_name=<name>
@@ -65,10 +81,13 @@
 		untrack(() => {
 			remoteTracks.updateForViewport(vp);
 			localBinaryTracks.updateForViewport(vp);
+			// Update reference sequence at high zoom
+			const ppb = containerWidth / (vp.end - vp.start);
+			referenceSequence.updateForViewport(vp.chromosome, vp.start, vp.end, ppb);
 		});
 	});
 
-	// Update gene track when assembly changes
+	// Update gene track and reference sequence when assembly changes
 	$effect(() => {
 		const assemblyId = assembly.current.id;
 		const activeId = remoteTracks.activeAssemblyId;
@@ -76,6 +95,7 @@
 			// Use untrack for the mutations to prevent re-triggering this effect
 			untrack(() => {
 				remoteTracks.setupGeneTrackForAssembly(assemblyId);
+				referenceSequence.setupForAssembly(assemblyId);
 				// Force viewport update to fetch data for new track
 				remoteTracks.updateForViewport(viewport.current);
 			});
@@ -138,6 +158,9 @@
 		const _remoteHeights = visibleRemote.map(t => t.userHeight); // Track height changes
 		const _localBinaryFeatures = visibleLocalBinary.map(t => t.features.length);
 		const _localBinaryHeights = visibleLocalBinary.map(t => t.userHeight);
+		// Track reference sequence state for reactivity
+		const _refSeq = referenceSequence.sequence;
+		const _refLoading = referenceSequence.isLoading;
 
 		if (!canvasEl) return;
 
@@ -183,6 +206,9 @@
 
 		if (hasLocalContent || hasRemoteContent || hasLocalBinaryContent) {
 			let currentY = rulerHeight;
+
+			// Render reference sequence at high zoom (before other tracks)
+			currentY = renderReferenceSequence(ctx, width, currentY);
 
 			// Render remote tracks first (gene models)
 			if (hasRemoteContent) {
@@ -328,6 +354,10 @@
 					// Svelte 5's $state creates deep proxies that cause O(n^2) behavior in tight loops
 					const rawFeatures = getRawFeatures(track.id) as SignalFeature[];
 					renderSignalFeatures(ctx, rawFeatures, width, currentY, trackHeight, track.color);
+				} else if (track.type === 'bam') {
+					// BAM tracks use special rendering with sequence at high zoom
+					const rawFeatures = getRawFeatures(track.id) as BAMReadFeature[];
+					renderBamReadsWithSequence(ctx, rawFeatures, width, currentY, trackHeight, track.color);
 				} else {
 					renderBedFeatures(ctx, track.features as import('$lib/types/genome').BedFeature[], width, currentY, trackHeight, track.color);
 				}
@@ -438,6 +468,10 @@
 				if (track.type === 'bigwig') {
 					const rawFeatures = getLocalBinaryRawFeatures(track.id) as SignalFeature[];
 					renderSignalFeatures(ctx, rawFeatures, width, currentY, trackHeight, track.color);
+				} else if (track.type === 'bam') {
+					// BAM tracks use special rendering with sequence at high zoom
+					const rawFeatures = getLocalBinaryRawFeatures(track.id) as BAMReadFeature[];
+					renderBamReadsWithSequence(ctx, rawFeatures, width, currentY, trackHeight, track.color);
 				} else {
 					renderBedFeatures(ctx, track.features as import('$lib/types/genome').BedFeature[], width, currentY, trackHeight, track.color);
 				}
@@ -748,6 +782,414 @@
 		ctx.textAlign = 'left';
 		ctx.fillText(maxVal.toFixed(1), 4, plotY + 8);
 		ctx.fillText(minVal.toFixed(1), 4, plotY + plotHeight - 2);
+	}
+
+	/**
+	 * Render reference sequence at high zoom
+	 * Shows nucleotide letters colored by base type
+	 */
+	function renderReferenceSequence(
+		ctx: CanvasRenderingContext2D,
+		width: number,
+		startY: number
+	): number {
+		// Only show if zoomed in far enough
+		if (!shouldShowSequence(pixelsPerBase)) {
+			return startY;
+		}
+
+		const trackHeight = 30;
+
+		// Check if reference is available
+		if (!referenceSequence.isAvailable) {
+			// Show message that reference is not available
+			ctx.fillStyle = '#1a1a1a';
+			ctx.fillRect(0, startY, width, trackHeight);
+			ctx.fillStyle = '#666666';
+			ctx.font = '11px Inter, sans-serif';
+			ctx.textAlign = 'left';
+			ctx.fillText('Reference sequence not available for this assembly', 8, startY + 18);
+			ctx.strokeStyle = '#333333';
+			ctx.beginPath();
+			ctx.moveTo(0, startY + trackHeight);
+			ctx.lineTo(width, startY + trackHeight);
+			ctx.stroke();
+			return startY + trackHeight;
+		}
+
+		const sequence = referenceSequence.sequence;
+		if (!sequence) {
+			// Loading or not yet fetched
+			ctx.fillStyle = '#1a1a1a';
+			ctx.fillRect(0, startY, width, trackHeight);
+			ctx.fillStyle = '#666666';
+			ctx.font = '11px Inter, sans-serif';
+			ctx.textAlign = 'left';
+			ctx.fillText('Loading reference sequence...', 8, startY + 18);
+			return startY + trackHeight;
+		}
+
+		const labelOffset = 14;
+
+		// Draw track background
+		ctx.fillStyle = '#1a1a1a';
+		ctx.fillRect(0, startY, width, trackHeight);
+
+		// Draw track label
+		ctx.fillStyle = '#666666';
+		ctx.font = '11px Inter, sans-serif';
+		ctx.textAlign = 'left';
+		ctx.fillText('Reference', 8, startY + 11);
+
+		// Calculate font size based on zoom
+		const fontSize = Math.min(14, Math.max(8, pixelsPerBase * 0.8));
+		ctx.font = `bold ${fontSize}px monospace`;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+
+		const centerY = startY + labelOffset + (trackHeight - labelOffset) / 2;
+
+		// Render each base
+		const seqStart = referenceSequence.start;
+		for (let i = 0; i < sequence.length; i++) {
+			const pos = seqStart + i;
+			if (pos < viewport.current.start || pos >= viewport.current.end) continue;
+
+			const base = sequence[i].toUpperCase();
+			const x = (pos - viewport.current.start + 0.5) * pixelsPerBase;
+
+			// Draw base background
+			const bgColor = BASE_COLORS[base] || BASE_COLORS.N;
+			ctx.fillStyle = bgColor + '30'; // Semi-transparent
+			ctx.fillRect(x - pixelsPerBase / 2, startY + labelOffset, pixelsPerBase, trackHeight - labelOffset);
+
+			// Draw base letter
+			ctx.fillStyle = BASE_COLORS[base] || BASE_COLORS.N;
+			ctx.fillText(base, x, centerY);
+		}
+
+		// Draw bottom border
+		ctx.strokeStyle = '#333333';
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		ctx.moveTo(0, startY + trackHeight);
+		ctx.lineTo(width, startY + trackHeight);
+		ctx.stroke();
+
+		return startY + trackHeight;
+	}
+
+	/**
+	 * Render BAM reads with sequence at high zoom
+	 * Shows nucleotide letters colored by base and quality
+	 */
+	function renderBamReadsWithSequence(
+		ctx: CanvasRenderingContext2D,
+		features: BAMReadFeature[],
+		width: number,
+		trackY: number,
+		trackHeight: number,
+		color: string
+	): void {
+		const labelOffset = 18;
+		const plotHeight = trackHeight - labelOffset - 4;
+		const plotY = trackY + labelOffset;
+
+		// Filter to visible reads
+		const visible = features.filter(f =>
+			f.end > viewport.current.start && f.start < viewport.current.end
+		);
+
+		if (visible.length === 0) return;
+
+		const renderMode = getReadRenderingMode(pixelsPerBase);
+
+		if (renderMode === 'sequence') {
+			// High zoom: show nucleotide letters
+			renderReadsAsSequence(ctx, visible, plotY, plotHeight);
+		} else if (renderMode === 'blocks') {
+			// Medium zoom: show CIGAR blocks
+			renderReadsAsBlocks(ctx, visible, plotY, plotHeight, color);
+		} else {
+			// Low zoom: show as simple rectangles (existing behavior)
+			renderReadsAsRectangles(ctx, visible, plotY, plotHeight, color);
+		}
+	}
+
+	/**
+	 * Render reads showing nucleotide sequences
+	 */
+	function renderReadsAsSequence(
+		ctx: CanvasRenderingContext2D,
+		reads: BAMReadFeature[],
+		plotY: number,
+		plotHeight: number
+	): void {
+		const fontSize = Math.min(12, Math.max(6, pixelsPerBase * 0.7));
+		ctx.font = `${fontSize}px monospace`;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+
+		const readHeight = Math.min(16, fontSize + 4);
+		const readSpacing = 2;
+
+		// Simple row packing
+		const rows: Array<{ end: number }> = [];
+		const readRows: Map<string, number> = new Map();
+
+		for (const read of reads) {
+			const startX = (read.start - viewport.current.start) * pixelsPerBase;
+			let rowIndex = 0;
+
+			for (let i = 0; i < rows.length; i++) {
+				if (rows[i].end < startX - 2) {
+					rowIndex = i;
+					break;
+				}
+				rowIndex = i + 1;
+			}
+
+			const endX = (read.end - viewport.current.start) * pixelsPerBase;
+			if (rows[rowIndex]) {
+				rows[rowIndex].end = endX;
+			} else {
+				rows[rowIndex] = { end: endX };
+			}
+
+			readRows.set(read.id, rowIndex);
+		}
+
+		// Get reference sequence for mismatch highlighting
+		const refSeq = referenceSequence.sequence;
+		const refStart = referenceSequence.start;
+
+		// Render reads
+		for (const read of reads) {
+			const rowIndex = readRows.get(read.id) ?? 0;
+			const readY = plotY + rowIndex * (readHeight + readSpacing);
+
+			if (readY + readHeight > plotY + plotHeight) continue;
+
+			// Draw read background
+			const startX = (read.start - viewport.current.start) * pixelsPerBase;
+			const endX = (read.end - viewport.current.start) * pixelsPerBase;
+			const readWidth = endX - startX;
+
+			ctx.fillStyle = read.isReversed ? '#44403c' : '#3f3f46'; // Different shade for strand
+			ctx.fillRect(startX, readY, readWidth, readHeight);
+
+			// Draw each base with quality-based opacity
+			if (read.seq) {
+				let refPos = read.start;
+				let queryPos = 0;
+
+				for (const [op, len] of read.parsedCigar) {
+					if (op === 'M' || op === '=' || op === 'X') {
+						// Match/mismatch - draw bases
+						for (let i = 0; i < len && queryPos < read.seq.length; i++) {
+							const pos = refPos + i;
+							if (pos < viewport.current.start || pos >= viewport.current.end) {
+								queryPos++;
+								continue;
+							}
+
+							const base = read.seq[queryPos].toUpperCase();
+							const x = (pos - viewport.current.start + 0.5) * pixelsPerBase;
+
+							// Check for mismatch with reference
+							let isMismatch = false;
+							if (refSeq && pos >= refStart && pos < refStart + refSeq.length) {
+								const refBase = refSeq[pos - refStart].toUpperCase();
+								isMismatch = base !== refBase && refBase !== 'N' && base !== 'N';
+							}
+
+							// Quality-based opacity
+							const qual = read.qual?.[queryPos] ?? 30;
+							const alpha = qualityToOpacity(qual);
+
+							if (isMismatch) {
+								// Highlight mismatches
+								ctx.fillStyle = '#dc2626'; // Red
+								ctx.fillRect(x - pixelsPerBase / 2, readY, pixelsPerBase, readHeight);
+								ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+							} else {
+								// Get base color with quality opacity
+								const baseColor = BASE_COLORS[base] || BASE_COLORS.N;
+								ctx.fillStyle = baseColor;
+								ctx.globalAlpha = alpha;
+							}
+
+							ctx.fillText(base, x, readY + readHeight / 2);
+							ctx.globalAlpha = 1.0;
+
+							queryPos++;
+						}
+						refPos += len;
+					} else if (op === 'I') {
+						// Insertion - show indicator
+						const x = (refPos - viewport.current.start) * pixelsPerBase;
+						ctx.fillStyle = '#22c55e'; // Green
+						ctx.fillRect(x - 1, readY, 2, readHeight);
+						queryPos += len;
+					} else if (op === 'D' || op === 'N') {
+						// Deletion/skip - draw gap line
+						const x1 = (refPos - viewport.current.start) * pixelsPerBase;
+						const x2 = (refPos + len - viewport.current.start) * pixelsPerBase;
+						ctx.strokeStyle = '#888888';
+						ctx.lineWidth = 1;
+						ctx.setLineDash([2, 2]);
+						ctx.beginPath();
+						ctx.moveTo(x1, readY + readHeight / 2);
+						ctx.lineTo(x2, readY + readHeight / 2);
+						ctx.stroke();
+						ctx.setLineDash([]);
+						refPos += len;
+					} else if (op === 'S') {
+						// Soft clip - skip in query
+						queryPos += len;
+					} else if (op === 'H') {
+						// Hard clip - nothing in query
+					}
+				}
+			}
+		}
+	}
+
+	/**
+	 * Render reads as CIGAR blocks (medium zoom)
+	 */
+	function renderReadsAsBlocks(
+		ctx: CanvasRenderingContext2D,
+		reads: BAMReadFeature[],
+		plotY: number,
+		plotHeight: number,
+		color: string
+	): void {
+		const readHeight = 8;
+		const readSpacing = 2;
+
+		// Simple row packing
+		const rows: Array<{ end: number }> = [];
+		const readRows: Map<string, number> = new Map();
+
+		for (const read of reads) {
+			const startX = (read.start - viewport.current.start) * pixelsPerBase;
+			let rowIndex = 0;
+
+			for (let i = 0; i < rows.length; i++) {
+				if (rows[i].end < startX - 2) {
+					rowIndex = i;
+					break;
+				}
+				rowIndex = i + 1;
+			}
+
+			const endX = (read.end - viewport.current.start) * pixelsPerBase;
+			if (rows[rowIndex]) {
+				rows[rowIndex].end = endX;
+			} else {
+				rows[rowIndex] = { end: endX };
+			}
+
+			readRows.set(read.id, rowIndex);
+		}
+
+		// Render reads
+		for (const read of reads) {
+			const rowIndex = readRows.get(read.id) ?? 0;
+			const readY = plotY + rowIndex * (readHeight + readSpacing);
+
+			if (readY + readHeight > plotY + plotHeight) continue;
+
+			// Draw CIGAR blocks
+			let refPos = read.start;
+			const baseColor = read.isReversed ? '#78716c' : (color || '#6366f1');
+
+			for (const [op, len] of read.parsedCigar) {
+				if (op === 'M' || op === '=' || op === 'X') {
+					// Match block
+					const x1 = (refPos - viewport.current.start) * pixelsPerBase;
+					const x2 = (refPos + len - viewport.current.start) * pixelsPerBase;
+					ctx.fillStyle = baseColor;
+					ctx.fillRect(Math.max(0, x1), readY, Math.min(x2, containerWidth) - Math.max(0, x1), readHeight);
+					refPos += len;
+				} else if (op === 'I') {
+					// Insertion marker
+					const x = (refPos - viewport.current.start) * pixelsPerBase;
+					ctx.fillStyle = '#22c55e';
+					ctx.fillRect(x - 1, readY - 1, 2, readHeight + 2);
+				} else if (op === 'D' || op === 'N') {
+					// Deletion/intron line
+					const x1 = (refPos - viewport.current.start) * pixelsPerBase;
+					const x2 = (refPos + len - viewport.current.start) * pixelsPerBase;
+					ctx.strokeStyle = '#666666';
+					ctx.lineWidth = 1;
+					ctx.beginPath();
+					ctx.moveTo(x1, readY + readHeight / 2);
+					ctx.lineTo(x2, readY + readHeight / 2);
+					ctx.stroke();
+					refPos += len;
+				} else if (op === 'S' || op === 'H') {
+					// Clips - no reference consumed
+				}
+			}
+		}
+	}
+
+	/**
+	 * Render reads as simple rectangles (low zoom, existing behavior)
+	 */
+	function renderReadsAsRectangles(
+		ctx: CanvasRenderingContext2D,
+		reads: BAMReadFeature[],
+		plotY: number,
+		plotHeight: number,
+		color: string
+	): void {
+		// For low zoom, just render as simple intervals
+		const readHeight = 4;
+		const readSpacing = 1;
+
+		// Simple row packing
+		const rows: Array<{ end: number }> = [];
+		const readRows: Map<string, number> = new Map();
+
+		for (const read of reads) {
+			const startX = (read.start - viewport.current.start) * pixelsPerBase;
+			let rowIndex = 0;
+
+			for (let i = 0; i < rows.length; i++) {
+				if (rows[i].end < startX - 1) {
+					rowIndex = i;
+					break;
+				}
+				rowIndex = i + 1;
+			}
+
+			const endX = (read.end - viewport.current.start) * pixelsPerBase;
+			if (rows[rowIndex]) {
+				rows[rowIndex].end = endX;
+			} else {
+				rows[rowIndex] = { end: endX };
+			}
+
+			readRows.set(read.id, rowIndex);
+		}
+
+		// Render reads
+		for (const read of reads) {
+			const rowIndex = readRows.get(read.id) ?? 0;
+			const readY = plotY + rowIndex * (readHeight + readSpacing);
+
+			if (readY + readHeight > plotY + plotHeight) continue;
+
+			const startX = (read.start - viewport.current.start) * pixelsPerBase;
+			const endX = (read.end - viewport.current.start) * pixelsPerBase;
+			const readWidth = Math.max(1, endX - startX);
+
+			ctx.fillStyle = read.isReversed ? '#78716c' : (color || '#6366f1');
+			ctx.fillRect(Math.max(0, startX), readY, Math.min(readWidth, containerWidth - Math.max(0, startX)), readHeight);
+		}
 	}
 
 	/**

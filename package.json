@@ -44,7 +44,9 @@
 		"@gmod/bbi": "^8.1.1",
 		"@gmod/cram": "^7.0.3",
 		"@gmod/gff": "^2.0.0",
+		"@gmod/indexedfasta": "^5.0.2",
 		"@gmod/tabix": "^3.2.2",
+		"@gmod/twobit": "^6.0.1",
 		"@gmod/vcf": "^7.0.0"
 	}
 }

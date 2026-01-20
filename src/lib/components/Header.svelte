@@ -34,7 +34,7 @@
 			viewport.setViewport(parsed);
 			inputError = '';
 		} else {
-			inputError = 'Invalid format. Use chr1:1,000-10,000';
+			inputError = 'Invalid format. Use chr1:1000-2000 or NC_000913.3:1000-2000';
 		}
 	}
 
@@ -168,7 +168,7 @@
 		<input
 			type="text"
 			bind:value={coordinateInput}
-			placeholder="chr1:1,000-10,000"
+			placeholder="chr:start-end"
 			class="w-48 px-3 py-1.5 text-sm bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded focus:outline-none focus:border-[var(--color-accent)] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)]"
 		/>
 		<button

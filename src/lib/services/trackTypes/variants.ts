@@ -1,10 +1,13 @@
 /**
  * Variant Track Type (VCF)
  * Zoom-dependent visualization: density → lollipops → ref/alt
+ * At high zoom, shows variants in reference sequence context
  */
 
 import type { TrackTypeConfig, RenderContext, ParseResult, VariantFeature } from '$lib/types/tracks';
 import type { Viewport } from '$lib/types/genome';
+import { ZOOM_THRESHOLDS, BASE_COLORS, shouldShowSequence } from '$lib/constants/zoom';
+import { getReferenceSequence } from '$lib/stores/referenceSequence.svelte';
 
 // Thresholds for display modes
 const DENSITY_THRESHOLD = 0.1;    // bases per pixel - show density heatmap
@@ -209,7 +212,16 @@ function renderDetailed(
 	plotHeight: number,
 	basesPerPixel: number
 ): void {
-	const fontSize = Math.min(12, Math.max(8, 1 / basesPerPixel * 0.8));
+	const pixelsPerBase = 1 / basesPerPixel;
+
+	// Check if we should show sequence context
+	if (shouldShowSequence(pixelsPerBase)) {
+		renderDetailedWithSequence(c, features, toPixelX, plotY, plotHeight, pixelsPerBase);
+		return;
+	}
+
+	// Standard detailed view (ref>alt boxes)
+	const fontSize = Math.min(12, Math.max(8, pixelsPerBase * 0.8));
 	c.font = `${fontSize}px monospace`;
 	c.textAlign = 'center';
 	c.textBaseline = 'middle';
@@ -243,6 +255,130 @@ function renderDetailed(
 			c.font = '8px Inter, sans-serif';
 			c.fillText(v.name, x, centerY - boxHeight / 2 - 6);
 			c.font = `${fontSize}px monospace`;
+		}
+	}
+}
+
+/**
+ * Render variants with reference sequence context at high zoom
+ * Shows reference bases with variant positions highlighted
+ */
+function renderDetailedWithSequence(
+	c: CanvasRenderingContext2D,
+	features: VariantFeature[],
+	toPixelX: (pos: number) => number,
+	plotY: number,
+	plotHeight: number,
+	pixelsPerBase: number
+): void {
+	const referenceSequence = getReferenceSequence();
+	const refSeq = referenceSequence.sequence;
+	const refStart = referenceSequence.start;
+	const refEnd = referenceSequence.end;
+
+	// Calculate font size based on zoom
+	const fontSize = Math.min(14, Math.max(8, pixelsPerBase * 0.8));
+	c.font = `bold ${fontSize}px monospace`;
+	c.textAlign = 'center';
+	c.textBaseline = 'middle';
+
+	const refY = plotY + 14; // Reference row
+	const altY = plotY + plotHeight / 2 + 10; // Alt allele row
+	const labelHeight = fontSize + 4;
+
+	// Create a map of variant positions for quick lookup
+	const variantMap = new Map<number, VariantFeature>();
+	for (const v of features) {
+		for (let i = 0; i < v.ref.length; i++) {
+			variantMap.set(v.start + i, v);
+		}
+	}
+
+	// Draw reference sequence with variant highlights
+	if (refSeq) {
+		for (let i = 0; i < refSeq.length; i++) {
+			const pos = refStart + i;
+			const x = toPixelX(pos) + pixelsPerBase / 2;
+			const base = refSeq[i].toUpperCase();
+			const variant = variantMap.get(pos);
+
+			if (variant && pos === variant.start) {
+				// This is a variant position - highlight it
+				const varType = getVariantType(variant.ref, variant.alt[0]);
+				const varColor = VARIANT_COLORS[varType];
+
+				// Draw highlight background for reference
+				c.fillStyle = varColor + '30';
+				const highlightWidth = variant.ref.length * pixelsPerBase;
+				c.fillRect(x - pixelsPerBase / 2, refY - labelHeight / 2, highlightWidth, labelHeight);
+
+				// Draw reference base
+				c.fillStyle = '#666666'; // Dim the reference
+				c.fillText(base, x, refY);
+
+				// Draw alt allele below
+				const alt = variant.alt[0];
+				c.fillStyle = varColor;
+				c.font = `bold ${fontSize}px monospace`;
+
+				// Background for alt
+				const altWidth = c.measureText(alt).width + 6;
+				c.fillStyle = varColor + '40';
+				c.fillRect(x - altWidth / 2, altY - labelHeight / 2, altWidth, labelHeight);
+
+				// Alt text
+				c.fillStyle = '#ffffff';
+				c.fillText(alt, x, altY);
+
+				// Draw connecting line
+				c.strokeStyle = varColor;
+				c.lineWidth = 2;
+				c.beginPath();
+				c.moveTo(x, refY + labelHeight / 2);
+				c.lineTo(x, altY - labelHeight / 2);
+				c.stroke();
+
+				// Draw variant type indicator
+				c.fillStyle = varColor;
+				c.font = '8px Inter, sans-serif';
+				c.fillText(varType.toUpperCase(), x, plotY + 8);
+				c.font = `bold ${fontSize}px monospace`;
+			} else if (!variant) {
+				// Not a variant position - draw normal reference base
+				c.fillStyle = BASE_COLORS[base] || BASE_COLORS.N;
+				c.fillText(base, x, refY);
+			}
+			// Skip bases that are part of a multi-base variant (not the start)
+		}
+	} else {
+		// No reference sequence available - fall back to standard display
+		c.fillStyle = '#666666';
+		c.font = '10px Inter, sans-serif';
+		c.textAlign = 'left';
+		c.fillText('Reference sequence not available', 8, plotY + 20);
+
+		// Draw variants without context
+		for (const v of features) {
+			const x = toPixelX(v.start) + pixelsPerBase / 2;
+			const varType = getVariantType(v.ref, v.alt[0]);
+			const varColor = VARIANT_COLORS[varType];
+
+			// Background
+			const text = `${v.ref}>${v.alt[0]}`;
+			const textWidth = c.measureText(text).width + 8;
+			c.fillStyle = varColor + '40';
+			c.fillRect(x - textWidth / 2, altY - labelHeight / 2, textWidth, labelHeight);
+
+			// Border
+			c.strokeStyle = varColor;
+			c.lineWidth = 1;
+			c.strokeRect(x - textWidth / 2, altY - labelHeight / 2, textWidth, labelHeight);
+
+			// Text
+			c.fillStyle = '#ffffff';
+			c.font = `${fontSize}px monospace`;
+			c.textAlign = 'center';
+			c.fillText(text, x, altY);
 		}
 	}
 }

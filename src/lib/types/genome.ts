@@ -94,11 +94,17 @@ export function formatCoordinate(chr: string, start: number, end: number): strin
 }
 
 export function parseCoordinate(coord: string): Viewport | null {
-	const match = coord.match(/^(chr[\dXYM]+|[\dXYM]+):(\d[\d,]*)-(\d[\d,]*)$/i);
+	// Support multiple chromosome naming conventions:
+	// - chr17:1000-2000 (UCSC style)
+	// - 17:1000-2000 (numeric)
+	// - NC_000913.3:1000-2000 (NCBI RefSeq accession)
+	// - CM000663.2:1000-2000 (GenBank accession)
+	const match = coord.match(/^([A-Za-z0-9_.]+):(\d[\d,]*)-(\d[\d,]*)$/i);
 	if (!match) return null;
 
 	let chr = match[1];
-	if (!chr.startsWith('chr')) {
+	// Only add 'chr' prefix for simple numeric chromosomes (1-22, X, Y, M)
+	if (/^[\dXYM]+$/i.test(chr) && !chr.startsWith('chr')) {
 		chr = 'chr' + chr;
 	}
 

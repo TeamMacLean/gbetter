@@ -11,13 +11,27 @@
 import { BamFile, BamRecord } from '@gmod/bam';
 import { RemoteFile } from 'generic-filehandle2';
 import type { BedFeature } from '$lib/types/genome';
+import type { BAMReadFeature } from '$lib/types/tracks';
 
 // Cache for BAM file handles
 const bamCache = new Map<string, BamFile>();
 
 // Cache for fetched features (keyed by url + region)
-const featureCache = new Map<string, { features: BedFeature[]; timestamp: number }>();
+const featureCache = new Map<string, { features: BAMReadFeature[]; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Parse CIGAR string into operation/length pairs
+ */
+function parseCigar(cigar: string): Array<[string, number]> {
+	const ops: Array<[string, number]> = [];
+	const regex = /(\d+)([MIDNSHP=X])/g;
+	let match;
+	while ((match = regex.exec(cigar)) !== null) {
+		ops.push([match[2], parseInt(match[1], 10)]);
+	}
+	return ops;
+}
 
 /**
  * Get or create a BAM file handle
@@ -43,9 +57,51 @@ async function getBamFile(url: string): Promise<BamFile> {
 }
 
 /**
- * Convert BAM record to BedFeature
+ * Convert BAM record to BAMReadFeature with sequence data
  */
-function bamRecordToFeature(record: BamRecord, chromosome: string): BedFeature {
+function bamRecordToFeature(record: BamRecord, chromosome: string): BAMReadFeature {
+	const cigarString = record.CIGAR || '';
+	const parsedCigar = parseCigar(cigarString);
+	const flags = record.flags || 0;
+
+	// Get mate information if available (using internal properties)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const rec = record as any;
+	let mate: BAMReadFeature['mate'] | undefined;
+	if (rec._next_pos !== undefined && rec._next_pos >= 0) {
+		mate = {
+			chromosome: rec._next_refid !== undefined ? chromosome : chromosome, // Would need refSeqs to resolve
+			start: rec._next_pos,
+			isReversed: (flags & 0x20) !== 0, // mate reverse strand flag
+		};
+	}
+
+	return {
+		id: `${record.name}:${record.start}-${record.end}:${flags}`,
+		chromosome,
+		start: record.start,
+		end: record.end,
+		name: record.name || undefined,
+		strand: record.strand === 1 ? '+' : record.strand === -1 ? '-' : undefined,
+		// Sequence data
+		seq: record.seq || '',
+		qual: record.qual || null,
+		cigar: cigarString,
+		parsedCigar,
+		mq: record.mq || 0,
+		isReversed: record.isReverseComplemented?.() ?? ((flags & 0x10) !== 0),
+		mdTag: record.tags?.MD as string | undefined,
+		readName: record.name || '',
+		mate,
+		templateLength: rec.template_length,
+		flags,
+	};
+}
+
+/**
+ * Convert BAM record to simple BedFeature (for backwards compatibility)
+ */
+function bamRecordToBedFeature(record: BamRecord, chromosome: string): BedFeature {
 	return {
 		id: `${record.name}:${record.start}-${record.end}`,
 		chromosome,
@@ -59,6 +115,7 @@ function bamRecordToFeature(record: BamRecord, chromosome: string): BedFeature {
 
 /**
  * Query features from a remote BAM file
+ * Returns BAMReadFeature with full sequence data for high-zoom rendering
  */
 export async function queryBam(
 	url: string,
@@ -66,7 +123,7 @@ export async function queryBam(
 	start: number,
 	end: number,
 	options: { signal?: AbortSignal; assemblyId?: string } = {}
-): Promise<BedFeature[]> {
+): Promise<BAMReadFeature[]> {
 	// Check cache
 	const cacheKey = `${url}:${chromosome}:${start}-${end}`;
 	const cached = featureCache.get(cacheKey);

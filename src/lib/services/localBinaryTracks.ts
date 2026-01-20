@@ -17,7 +17,7 @@ import { BlobFile } from 'generic-filehandle2';
 import VCF from '@gmod/vcf';
 import gff from '@gmod/gff';
 import type { BedFeature, GffFeature } from '$lib/types/genome';
-import type { SignalFeature, VariantFeature } from '$lib/types/tracks';
+import type { SignalFeature, VariantFeature, BAMReadFeature } from '$lib/types/tracks';
 
 // Feature type from @gmod/bbi
 interface BigBedFeature {
@@ -227,22 +227,63 @@ export async function getLocalBigWigChromosomes(
 // ============================================================
 
 /**
- * Convert BAM record to BedFeature
+ * Parse CIGAR string into operation/length pairs
  */
-function bamRecordToFeature(record: BamRecord, chromosome: string): BedFeature {
+function parseCigar(cigar: string): Array<[string, number]> {
+	const ops: Array<[string, number]> = [];
+	const regex = /(\d+)([MIDNSHP=X])/g;
+	let match;
+	while ((match = regex.exec(cigar)) !== null) {
+		ops.push([match[2], parseInt(match[1], 10)]);
+	}
+	return ops;
+}
+
+/**
+ * Convert BAM record to BAMReadFeature with sequence data
+ */
+function bamRecordToFeature(record: BamRecord, chromosome: string): BAMReadFeature {
+	const cigarString = record.CIGAR || '';
+	const parsedCigar = parseCigar(cigarString);
+	const flags = record.flags || 0;
+
+	// Get mate information if available (using internal properties)
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	const rec = record as any;
+	let mate: BAMReadFeature['mate'] | undefined;
+	if (rec._next_pos !== undefined && rec._next_pos >= 0) {
+		mate = {
+			chromosome: rec._next_refid !== undefined ? chromosome : chromosome,
+			start: rec._next_pos,
+			isReversed: (flags & 0x20) !== 0,
+		};
+	}
+
 	return {
-		id: `${record.name}:${record.start}-${record.end}`,
+		id: `${record.name}:${record.start}-${record.end}:${flags}`,
 		chromosome,
 		start: record.start,
 		end: record.end,
 		name: record.name || undefined,
 		strand: record.strand === 1 ? '+' : record.strand === -1 ? '-' : undefined,
-		score: record.mq,
+		// Sequence data
+		seq: record.seq || '',
+		qual: record.qual || null,
+		cigar: cigarString,
+		parsedCigar,
+		mq: record.mq || 0,
+		isReversed: record.isReverseComplemented?.() ?? ((flags & 0x10) !== 0),
+		mdTag: record.tags?.MD as string | undefined,
+		readName: record.name || '',
+		mate,
+		templateLength: rec.template_length,
+		flags,
 	};
 }
 
 /**
  * Query features from a local BAM file
+ * Returns BAMReadFeature with full sequence data for high-zoom rendering
  * @param bamFile - The BAM data file
  * @param indexFile - The BAI index file
  */
@@ -253,7 +294,7 @@ export async function queryLocalBam(
 	start: number,
 	end: number,
 	options: { signal?: AbortSignal } = {}
-): Promise<BedFeature[]> {
+): Promise<BAMReadFeature[]> {
 	try {
 		const bam = new BamFile({
 			bamFilehandle: new BlobFile(bamFile),

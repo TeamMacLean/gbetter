@@ -116,16 +116,35 @@ function syncViewportToURL(): void {
 
 /**
  * Initialize viewport from URL params (call once on mount)
+ * If assembly is specified but no location, uses assembly's default viewport
  */
-function initializeFromURL(): void {
+function initializeFromURL(assemblyInfo?: {
+	defaultViewport?: Viewport;
+	chromosomes: Array<{ name: string; length: number }>
+}): void {
 	if (initialized) return;
 
 	const urlViewport = parseViewportFromURL();
 	if (urlViewport) {
+		// Explicit viewport in URL - use it
 		viewport.chromosome = urlViewport.chromosome;
 		viewport.start = urlViewport.start;
 		viewport.end = urlViewport.end;
+	} else if (assemblyInfo) {
+		// No viewport in URL but assembly specified - use assembly default
+		if (assemblyInfo.defaultViewport) {
+			viewport.chromosome = assemblyInfo.defaultViewport.chromosome;
+			viewport.start = assemblyInfo.defaultViewport.start;
+			viewport.end = assemblyInfo.defaultViewport.end;
+		} else if (assemblyInfo.chromosomes.length > 0) {
+			// Fall back to first chromosome
+			const firstChr = assemblyInfo.chromosomes[0];
+			viewport.chromosome = firstChr.name;
+			viewport.start = 0;
+			viewport.end = Math.min(firstChr.length, 100000);
+		}
 	}
+	// If no assembly info and no URL viewport, keep the DEFAULT_VIEWPORT (chr1)
 
 	initialized = true;
 }

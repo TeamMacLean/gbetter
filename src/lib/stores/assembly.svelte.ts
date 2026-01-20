@@ -3,6 +3,7 @@
  * Supports built-in assemblies, URL loading, file loading, and inference from tracks
  */
 
+import { browser } from '$app/environment';
 import type { GenomeAssembly, ChromosomeInfo, GenomicFeature } from '$lib/types/genome';
 import assembliesData from '$lib/data/assemblies.json';
 
@@ -12,8 +13,26 @@ export const BUILTIN_ASSEMBLIES: GenomeAssembly[] = assembliesData.assemblies.ma
 	source: 'builtin' as const
 }));
 
+/**
+ * Get initial assembly from URL parameter or default to first
+ */
+function getInitialAssembly(): GenomeAssembly {
+	if (browser) {
+		const params = new URLSearchParams(window.location.search);
+		const assemblyId = params.get('assembly');
+		if (assemblyId) {
+			// Case-insensitive match
+			const found = BUILTIN_ASSEMBLIES.find(
+				a => a.id.toLowerCase() === assemblyId.toLowerCase()
+			);
+			if (found) return found;
+		}
+	}
+	return BUILTIN_ASSEMBLIES[0];
+}
+
 // Reactive state
-let currentAssembly = $state<GenomeAssembly>(BUILTIN_ASSEMBLIES[0]);
+let currentAssembly = $state<GenomeAssembly>(getInitialAssembly());
 let inferredChromosomes = $state<Map<string, number>>(new Map());
 
 // Derived values
@@ -21,10 +40,26 @@ const chromosomeList = $derived(currentAssembly.chromosomes.map(c => c.name));
 const hasInferredData = $derived(inferredChromosomes.size > 0);
 
 /**
+ * Update URL with assembly parameter
+ */
+function updateURLWithAssembly(assemblyId: string): void {
+	if (!browser) return;
+
+	const params = new URLSearchParams(window.location.search);
+	params.set('assembly', assemblyId);
+
+	const newUrl = `${window.location.pathname}?${params.toString()}`;
+	window.history.replaceState({}, '', newUrl);
+}
+
+/**
  * Set the current assembly
  */
 function setAssembly(assembly: GenomeAssembly): void {
 	currentAssembly = assembly;
+	if (assembly.source === 'builtin') {
+		updateURLWithAssembly(assembly.id);
+	}
 }
 
 /**
@@ -34,6 +69,7 @@ function setAssemblyById(id: string): void {
 	const assembly = BUILTIN_ASSEMBLIES.find(a => a.id === id);
 	if (assembly) {
 		currentAssembly = assembly;
+		updateURLWithAssembly(assembly.id);
 	}
 }
 
