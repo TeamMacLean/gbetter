@@ -591,6 +591,7 @@
 					accept={supportedExtensions}
 					multiple
 					class="hidden"
+					data-testid="sidebar-file-input"
 					onchange={handleFileSelect}
 				/>
 				<!-- Hidden index file input -->

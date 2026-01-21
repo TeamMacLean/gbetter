@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 15 (2026-01-20) - Local binary file support
+**Status**: Active development, Session 17 (2026-01-21) - BAM CIGAR rendering tests
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -84,12 +84,27 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 - Chromosome mismatch warnings when loading tracks
 - Suggests switching assemblies or using "inferred from data"
 
+**Reference Sequence**
+- 2bit file support for all 27 assemblies (UCSC + R2-hosted)
+- Sequence display at high zoom (< 125bp, 8+ pixels/base)
+- Colored nucleotides: A=green, C=blue, G=amber, T=red
+- Auto-fetches from UCSC or R2 based on assembly
+
+**BAM Read Rendering**
+- Three zoom levels with automatic transition:
+  - **Sequence level** (8+ px/base): Colored nucleotide letters, mismatch highlighting (red background)
+  - **Block level** (1-8 px/base): CIGAR blocks with insertion markers (green) and deletion gaps
+  - **Rectangle level** (<1 px/base): Simple rectangles for zoomed-out view
+- CIGAR operations: M (match), I (insertion), D (deletion), S (soft clip), N (skip)
+- Quality-based opacity (higher quality = more opaque)
+- Works with local and remote BAM files
+- Visual regression tests for all rendering modes
+
 ### 🔲 Not Yet Implemented
 
-- **FASTA support** - Sequence display at high zoom
 - **Comparison views** - Side-by-side query results
 - **AI conversation follow-ups** - Reply to clarification questions
-- **BAM read rendering** - Currently shows reads as simple intervals; need CIGAR visualization, coverage histogram at zoom-out
+- **BAM coverage histogram** - Coverage plot at very low zoom
 
 ## Architecture Patterns
 
@@ -707,26 +722,41 @@ All pan-data-loading tests pass." \
   - **Updated `src/lib/services/fasta.ts`**: Added R2 URLs for all 12 assemblies
   - **All 27 assemblies now have reference sequence support**
   - **Remaining issues**:
-    - Coordinate input rejects `NC_000913.3:100000-100100` format (needs debugging)
     - BAM/VCF mismatch visualization not yet implemented (requires comparing reads to reference)
+
+- **2026-01-21 Session 17**: Bug fixes and BAM CIGAR rendering verification
+  - **Fixed coordinate input whitespace bug**: Pasting coordinates with trailing/leading spaces
+    caused "Invalid format" error. Fixed by adding `.trim()` in `parseCoordinate()`.
+  - **Added tests**: `tests/e2e/coordinate-input.test.ts` (5 tests for NC_ format + whitespace)
+  - **Verified FASTA/sequence display**: Confirmed working, updated docs
+  - **Created comprehensive CIGAR test BAM**: `scripts/bam-test-files/create-cigar-test-bam.sh`
+    - 30 reads with varied CIGAR operations: simple matches, insertions, deletions, soft clips
+    - Mismatch regions (all T's, G's, C's vs reference)
+    - Quality score variations (high, medium, low)
+    - Complex CIGAR patterns (multiple operations)
+    - Dense coverage region
+  - **Added BAM visual regression tests**: `tests/e2e/bam-cigar-rendering.test.ts` (13 tests)
+    - Sequence-level: colored nucleotides, insertion markers, deletion gaps, mismatches, quality
+    - Block-level: CIGAR blocks, insertion lines, deletion connecting lines
+    - Rectangle-level: simple rectangles, dense coverage
+    - Zoom transitions test
+  - **Fixed test selector bug**: SessionRestoreBanner file input was being selected instead of
+    Sidebar file input. Added `data-testid="sidebar-file-input"` for precise targeting.
+  - **BAM rendering verified working** at all zoom levels with full CIGAR support
+  - **Created workflow doc**: `semi-autonomous-feature-development.md` (Discuss → TDD → Ralph Loop)
 
 ## Known Issues & Gotchas
 
-### OPEN: Coordinate Input Parsing (Session 16)
-**Status**: Not fixed - needs investigation next session
+### RESOLVED: Coordinate Input Whitespace (Session 17)
+**Status**: FIXED in commit 087b1e9
 
-Pasting `NC_000913.3:100000-100100` into coordinate input gives error:
-"Invalid format. Use chr1:1000-2000 or NC_000913.3:1000-2000"
+Pasting `NC_000913.3:100000-100100 ` (with trailing space) into coordinate input gave error.
+Root cause: Regex `$` anchor requires string to end immediately after digits.
 
-The regex in `parseCoordinate()` (src/lib/types/genome.ts:102) looks correct:
+**Fix**: Added `.trim()` before regex match in `parseCoordinate()`:
 ```typescript
-const match = coord.match(/^([A-Za-z0-9_.]+):(\d[\d,]*)-(\d[\d,]*)$/i);
+const match = coord.trim().match(/^([A-Za-z0-9_.]+):(\d[\d,]*)-(\d[\d,]*)$/i);
 ```
-
-Possible causes to investigate:
-- Invisible characters in pasted text
-- Browser input handling
-- Svelte reactivity issue with input binding
 
 ### RESOLVED: Remote Track Panning Bug (Session 10)
 **Status**: FIXED in commit c2ddc8d
@@ -798,3 +828,8 @@ the data source actually has gene-level annotations or just transcript data with
 11. `src/lib/stores/remoteTracks.svelte.ts` - Remote track state
 12. `src/lib/services/localBinaryTracks.ts` - Local binary file queries (BlobFile-based)
 13. `src/lib/stores/localBinaryTracks.svelte.ts` - Local binary track state
+14. `src/lib/services/fasta.ts` - Reference sequence queries (2bit + indexed FASTA)
+15. `src/lib/stores/referenceSequence.svelte.ts` - Reference sequence state
+16. `src/lib/components/TrackView.svelte` - Canvas rendering (BAM CIGAR rendering at lines ~800-1200)
+17. `tests/e2e/bam-cigar-rendering.test.ts` - BAM visual regression tests
+18. `scripts/bam-test-files/create-cigar-test-bam.sh` - Creates test BAM with varied CIGAR ops
