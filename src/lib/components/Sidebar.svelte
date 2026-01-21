@@ -31,7 +31,7 @@
 
 	// Get supported extensions for file input (text formats + binary formats)
 	const textExtensions = getSupportedExtensions().map(ext => `.${ext}`);
-	const binaryExtensions = ['.bb', '.bigbed', '.bw', '.bigwig', '.bam', '.bai', '.vcf.gz', '.gff.gz', '.gff3.gz', '.bed.gz', '.tbi'];
+	const binaryExtensions = ['.bb', '.bigbed', '.bw', '.bigwig', '.bam', '.bai', '.cram', '.crai', '.vcf.gz', '.gff.gz', '.gff3.gz', '.bed.gz', '.tbi'];
 	const supportedExtensions = [...textExtensions, ...binaryExtensions].join(',');
 
 	let isCollapsed = $state(false);
@@ -55,6 +55,7 @@
 		gff: '#3b82f6',     // Blue for gene models
 		bed: '#ec4899',     // Pink for BED intervals
 		bam: '#06b6d4',     // Cyan for BAM alignments
+		cram: '#14b8a6',    // Teal for CRAM alignments
 	};
 
 	async function handleFileSelect(event: Event) {
@@ -73,7 +74,7 @@
 			const binaryType = detectLocalBinaryType(file.name);
 			if (binaryType) {
 				dataFiles.push({ file, type: binaryType });
-			} else if (file.name.endsWith('.bai') || file.name.endsWith('.tbi')) {
+			} else if (file.name.endsWith('.bai') || file.name.endsWith('.tbi') || file.name.endsWith('.crai')) {
 				indexFiles.push(file);
 			} else {
 				textFiles.push(file);
@@ -131,7 +132,7 @@
 
 	async function addLocalBinaryTrack(file: File, type: LocalBinaryTrackType, indexFile?: File) {
 		const trackName = file.name
-			.replace(/\.(bb|bw|bigbed|bigwig|vcf\.gz|gff\.gz|gff3\.gz|bed\.gz|bam)$/i, '');
+			.replace(/\.(bb|bw|bigbed|bigwig|vcf\.gz|gff\.gz|gff3\.gz|bed\.gz|bam|cram)$/i, '');
 
 		localBinaryTracks.addLocalBinaryTrack({
 			id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -598,7 +599,7 @@
 				<input
 					bind:this={indexFileInputEl}
 					type="file"
-					accept=".bai,.tbi"
+					accept=".bai,.tbi,.crai"
 					class="hidden"
 					onchange={handleIndexFileSelect}
 				/>

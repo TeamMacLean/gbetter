@@ -5,16 +5,21 @@
  * - .bam + .bai (BAM alignments)
  * - .cram + .crai (CRAM alignments)
  *
- * Uses @gmod/bam for parsing.
+ * Uses @gmod/bam for BAM and @gmod/cram for CRAM parsing.
  */
 
 import { BamFile, BamRecord } from '@gmod/bam';
+import { IndexedCramFile, CraiIndex, CramFile, CramRecord } from '@gmod/cram';
 import { RemoteFile } from 'generic-filehandle2';
 import type { BedFeature } from '$lib/types/genome';
 import type { BAMReadFeature } from '$lib/types/tracks';
+import { query2bit, get2bitUrl } from '$lib/services/fasta';
 
 // Cache for BAM file handles
 const bamCache = new Map<string, BamFile>();
+
+// Cache for CRAM file handles (keyed by url + assemblyId)
+const cramCache = new Map<string, { cram: IndexedCramFile; seqIdToName: Map<number, string>; nameToSeqId: Map<string, number> }>();
 
 // Cache for fetched features (keyed by url + region)
 const featureCache = new Map<string, { features: BAMReadFeature[]; timestamp: number }>();
@@ -178,9 +183,223 @@ export async function queryBam(
 }
 
 /**
+ * Get or create a CRAM file handle with reference sequence callback
+ */
+async function getCramFile(url: string, assemblyId: string): Promise<{
+	cram: IndexedCramFile;
+	seqIdToName: Map<number, string>;
+	nameToSeqId: Map<string, number>;
+}> {
+	const cacheKey = `${url}:${assemblyId}`;
+	if (cramCache.has(cacheKey)) {
+		return cramCache.get(cacheKey)!;
+	}
+
+	// Get 2bit URL for this assembly
+	const twoBitUrl = get2bitUrl(assemblyId);
+	if (!twoBitUrl) {
+		throw new Error(`No reference sequence available for assembly: ${assemblyId}`);
+	}
+
+	// We need to read the SAM header first to build seqId -> name mapping
+	// Create a temporary CramFile just to read the header
+	const tempCram = new CramFile({
+		filehandle: new RemoteFile(url),
+	});
+
+	const samHeader = await tempCram.getSamHeader();
+
+	// Build seqId -> chromosome name mapping from @SQ lines
+	const seqIdToName = new Map<number, string>();
+	const nameToSeqId = new Map<string, number>();
+	let seqId = 0;
+	for (const line of samHeader) {
+		if (line.tag === 'SQ') {
+			const snTag = line.data.find((d: { tag: string; value: string }) => d.tag === 'SN');
+			if (snTag) {
+				seqIdToName.set(seqId, snTag.value);
+				nameToSeqId.set(snTag.value, seqId);
+				seqId++;
+			}
+		}
+	}
+
+	// Create seqFetch callback that uses 2bit reference
+	const seqFetch = async (seqId: number, start: number, end: number): Promise<string> => {
+		const chromName = seqIdToName.get(seqId);
+		if (!chromName) {
+			console.warn(`Unknown sequence ID: ${seqId}`);
+			return '';
+		}
+		try {
+			// CRAM uses 1-based coordinates, query2bit uses 0-based
+			const seq = await query2bit(twoBitUrl, chromName, start - 1, end);
+			return seq;
+		} catch (error) {
+			console.error(`Error fetching reference sequence for ${chromName}:${start}-${end}:`, error);
+			return '';
+		}
+	};
+
+	// Create the actual CRAM file with seqFetch
+	const cramFile = new CramFile({
+		filehandle: new RemoteFile(url),
+		seqFetch,
+		checkSequenceMD5: false, // Disable MD5 check to avoid fetching entire chromosomes
+	});
+
+	// Create index
+	const indexUrl = url + '.crai';
+	const craiIndex = new CraiIndex({
+		filehandle: new RemoteFile(indexUrl),
+	});
+
+	// Create indexed CRAM file
+	const indexedCram = new IndexedCramFile({
+		cram: cramFile,
+		index: craiIndex,
+	});
+
+	const result = { cram: indexedCram, seqIdToName, nameToSeqId };
+	cramCache.set(cacheKey, result);
+	return result;
+}
+
+/**
+ * Convert CRAM record to BAMReadFeature
+ */
+function cramRecordToFeature(record: CramRecord, chromosome: string): BAMReadFeature {
+	const flags = record.flags || 0;
+
+	// Build CIGAR string from readFeatures
+	// CRAM stores operations differently - we need to reconstruct CIGAR
+	let cigarString = '';
+	const parsedCigar: Array<[string, number]> = [];
+
+	if (record.readFeatures && record.readFeatures.length > 0) {
+		// Sort features by position
+		const sortedFeatures = [...record.readFeatures].sort((a, b) => a.pos - b.pos);
+
+		let lastPos = 1;
+		for (const feature of sortedFeatures) {
+			// Add matches before this feature
+			if (feature.pos > lastPos) {
+				const matchLen = feature.pos - lastPos;
+				cigarString += `${matchLen}M`;
+				parsedCigar.push(['M', matchLen]);
+			}
+
+			// Handle different feature types
+			switch (feature.code) {
+				case 'X': // substitution
+				case 'B': // base
+					cigarString += '1M';
+					parsedCigar.push(['M', 1]);
+					lastPos = feature.pos + 1;
+					break;
+				case 'I': // insertion
+					const insLen = typeof feature.data === 'string' ? feature.data.length : 1;
+					cigarString += `${insLen}I`;
+					parsedCigar.push(['I', insLen]);
+					lastPos = feature.pos;
+					break;
+				case 'D': // deletion
+					const delLen = typeof feature.data === 'number' ? feature.data : 1;
+					cigarString += `${delLen}D`;
+					parsedCigar.push(['D', delLen]);
+					lastPos = feature.pos;
+					break;
+				case 'N': // ref skip
+					const skipLen = typeof feature.data === 'number' ? feature.data : 1;
+					cigarString += `${skipLen}N`;
+					parsedCigar.push(['N', skipLen]);
+					lastPos = feature.pos;
+					break;
+				case 'S': // soft clip
+					const clipLen = typeof feature.data === 'string' ? feature.data.length : 1;
+					cigarString += `${clipLen}S`;
+					parsedCigar.push(['S', clipLen]);
+					lastPos = feature.pos;
+					break;
+				case 'H': // hard clip
+					const hardLen = typeof feature.data === 'number' ? feature.data : 1;
+					cigarString += `${hardLen}H`;
+					parsedCigar.push(['H', hardLen]);
+					break;
+				case 'P': // padding
+					const padLen = typeof feature.data === 'number' ? feature.data : 1;
+					cigarString += `${padLen}P`;
+					parsedCigar.push(['P', padLen]);
+					break;
+				default:
+					// Unknown feature, treat as match
+					lastPos = feature.pos + 1;
+			}
+		}
+
+		// Add trailing matches
+		if (record.readLength && lastPos <= record.readLength) {
+			const matchLen = record.readLength - lastPos + 1;
+			cigarString += `${matchLen}M`;
+			parsedCigar.push(['M', matchLen]);
+		}
+	} else {
+		// No features = simple match
+		const len = record.readLength || record.lengthOnRef || 0;
+		if (len > 0) {
+			cigarString = `${len}M`;
+			parsedCigar.push(['M', len]);
+		}
+	}
+
+	// Calculate end position
+	const alignStart = record.alignmentStart - 1; // Convert 1-based to 0-based
+	const lengthOnRef = record.lengthOnRef || record.readLength || 0;
+	const alignEnd = alignStart + lengthOnRef;
+
+	// Get sequence - use getReadBases() which handles reference-based encoding
+	const seq = record.getReadBases() || '';
+
+	// Convert quality scores
+	let qual: Uint8Array | null = null;
+	if (record.qualityScores && record.qualityScores.length > 0) {
+		qual = new Uint8Array(record.qualityScores);
+	}
+
+	// Get mate info
+	let mate: BAMReadFeature['mate'] | undefined;
+	if (record.mate) {
+		mate = {
+			chromosome: chromosome, // Would need seqIdToName to resolve properly
+			start: record.mate.alignmentStart - 1,
+			isReversed: (record.mate.flags ?? 0 & 0x20) !== 0,
+		};
+	}
+
+	return {
+		id: `${record.readName || record.uniqueId}:${alignStart}-${alignEnd}:${flags}`,
+		chromosome,
+		start: alignStart,
+		end: alignEnd,
+		name: record.readName || undefined,
+		strand: record.isReverseComplemented() ? '-' : '+',
+		seq,
+		qual,
+		cigar: cigarString,
+		parsedCigar,
+		mq: record.mappingQuality || 0,
+		isReversed: record.isReverseComplemented(),
+		mdTag: record.tags?.MD as string | undefined,
+		readName: record.readName || '',
+		mate,
+		templateLength: record.templateSize,
+		flags,
+	};
+}
+
+/**
  * Query features from a remote CRAM file
- * Note: CRAM support requires additional reference sequence handling
- * For now, we return an empty array and log a warning
+ * Returns BAMReadFeature with full sequence data for high-zoom rendering
  */
 export async function queryCram(
 	url: string,
@@ -188,11 +407,85 @@ export async function queryCram(
 	start: number,
 	end: number,
 	options: { signal?: AbortSignal; assemblyId?: string } = {}
-): Promise<BedFeature[]> {
-	// CRAM requires reference sequences which adds complexity
-	// For the initial implementation, we'll just support BAM
-	console.warn('CRAM support is not yet fully implemented. Please use BAM files.');
-	return [];
+): Promise<BAMReadFeature[]> {
+	const assemblyId = options.assemblyId;
+	if (!assemblyId) {
+		console.warn('CRAM requires assemblyId for reference sequence lookup');
+		return [];
+	}
+
+	// Check cache
+	const cacheKey = `cram:${url}:${chromosome}:${start}-${end}`;
+	const cached = featureCache.get(cacheKey);
+	if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+		return cached.features;
+	}
+
+	try {
+		const { cram, nameToSeqId, seqIdToName } = await getCramFile(url, assemblyId);
+
+		// Resolve chromosome name to seqId
+		let seqId = nameToSeqId.get(chromosome);
+		if (seqId === undefined) {
+			// Try common variations
+			const variations = [
+				chromosome.replace(/^chr/i, ''),
+				'chr' + chromosome.replace(/^chr/i, ''),
+			];
+			for (const variant of variations) {
+				seqId = nameToSeqId.get(variant);
+				if (seqId !== undefined) break;
+			}
+		}
+
+		if (seqId === undefined) {
+			return [];
+		}
+
+		// Query records (CRAM uses 1-based coordinates)
+		const records = await cram.getRecordsForRange(seqId, start + 1, end + 1);
+
+		// Convert to BAMReadFeature
+		const features = records.map(record => cramRecordToFeature(record, chromosome));
+
+		// Cache results
+		featureCache.set(cacheKey, { features, timestamp: Date.now() });
+
+		return features;
+	} catch (error) {
+		console.error(`Error querying CRAM ${url}:`, error);
+		throw error;
+	}
+}
+
+/**
+ * Get chromosome list from a CRAM file
+ * Extracts reference sequence names from the SAM header
+ */
+export async function getCramChromosomes(url: string, assemblyId?: string): Promise<string[]> {
+	try {
+		// Read header directly without seqFetch (just need chromosome names)
+		const tempCram = new CramFile({
+			filehandle: new RemoteFile(url),
+		});
+
+		const samHeader = await tempCram.getSamHeader();
+		const chromosomes: string[] = [];
+
+		for (const line of samHeader) {
+			if (line.tag === 'SQ') {
+				const snTag = line.data.find((d: { tag: string; value: string }) => d.tag === 'SN');
+				if (snTag) {
+					chromosomes.push(snTag.value);
+				}
+			}
+		}
+
+		return chromosomes;
+	} catch (error) {
+		console.error(`Error getting chromosomes from CRAM ${url}:`, error);
+		return [];
+	}
 }
 
 /**
@@ -212,9 +505,10 @@ export async function getBamChromosomes(url: string): Promise<string[]> {
 }
 
 /**
- * Clear all BAM caches
+ * Clear all BAM and CRAM caches
  */
 export function clearBamCache(): void {
 	bamCache.clear();
+	cramCache.clear();
 	featureCache.clear();
 }

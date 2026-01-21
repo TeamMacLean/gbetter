@@ -499,8 +499,8 @@
 				if (track.type === 'bigwig') {
 					const rawFeatures = getLocalBinaryRawFeatures(track.id) as SignalFeature[];
 					renderSignalFeatures(ctx, rawFeatures, width, currentY, trackHeight, track.color);
-				} else if (track.type === 'bam') {
-					// BAM tracks use special rendering with sequence at high zoom
+				} else if (track.type === 'bam' || track.type === 'cram') {
+					// BAM/CRAM tracks use special rendering with sequence at high zoom
 					const rawFeatures = getLocalBinaryRawFeatures(track.id) as BAMReadFeature[];
 					renderBamReadsWithSequence(ctx, rawFeatures, width, currentY, trackHeight, track.color);
 					// Record BAM track layout for insertion tooltip hit testing

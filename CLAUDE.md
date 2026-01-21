@@ -191,7 +191,7 @@ src/
 | GFF.gz | ✅ Complete | Local + remote, tabix-indexed annotations (.gff.gz + .tbi) |
 | BED.gz | ✅ Complete | Local + remote, tabix-indexed intervals (.bed.gz + .tbi) |
 | BAM | ✅ Complete | Local + remote, indexed alignments (.bam + .bai), renders as intervals |
-| CRAM | ⚠️ Partial | URL accepted, but requires reference sequence (not yet implemented) |
+| CRAM | ✅ Complete | Local files, indexed alignments (.cram + .crai), uses 2bit reference |
 | FASTA | 🔲 Planned | Sequence display at high zoom |
 
 ## URL Track Loading
@@ -750,6 +750,19 @@ All pan-data-loading tests pass." \
     - Added `renderBamCoverage()` with gradient fill, auto-scaled Y-axis, Y-axis labels
     - Updated `bam-cigar-rendering.test.ts` tests to reflect new coverage mode
     - Added `tests/e2e/bam-coverage-histogram.test.ts` (5 tests)
+
+- **2026-01-21 Session 18**: CRAM file support complete
+  - **CRAM now fully supported** with reference sequence via 2bit files
+  - **Fixed CRAM rendering path**: TrackView.svelte now includes 'cram' in BAM rendering condition
+  - **Fixed CRAM CIGAR parsing**: `cramRecordToFeature()` in localBinaryTracks.ts
+    - Root cause: CRAM readFeatures encode substitutions ('X' code) separately, and code was
+      creating separate `['M', 1]` operations for each, fragmenting CIGAR
+    - Fix: Filter to only CIGAR-affecting features (I, D, N, S, H, P), ignore X/B features
+    - Fix: After insertions, advance `lastPos` by insertion length for correct trailing match
+    - Result: CRAM now produces identical CIGAR to BAM (e.g., `25M2I23M`)
+  - **All CRAM rendering modes work**: sequence (letters), blocks (triangles), coverage (histogram)
+  - **Tests**: `tests/e2e/cram-sequence-rendering.test.ts` (8 tests, all pass)
+  - **Test files**: `scripts/cram-test-files/` with `cigar-test.cram` matching BAM test file
 
 ## Known Issues & Gotchas
 

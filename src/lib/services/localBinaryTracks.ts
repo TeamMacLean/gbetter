@@ -5,6 +5,7 @@
  * - BigBed (.bb, .bigbed) - indexed BED intervals
  * - BigWig (.bw, .bigwig) - indexed signal data
  * - BAM (.bam) - indexed alignments (requires .bai index)
+ * - CRAM (.cram) - indexed alignments (requires .crai index and reference)
  * - Tabix (.vcf.gz, .gff.gz, .bed.gz) - indexed text formats (requires .tbi index)
  *
  * Uses BlobFile from generic-filehandle2 instead of RemoteFile for local access.
@@ -12,12 +13,14 @@
 
 import { BigBed, BigWig } from '@gmod/bbi';
 import { BamFile, BamRecord } from '@gmod/bam';
+import { IndexedCramFile, CraiIndex, CramFile, CramRecord } from '@gmod/cram';
 import { TabixIndexedFile } from '@gmod/tabix';
 import { BlobFile } from 'generic-filehandle2';
 import VCF from '@gmod/vcf';
 import gff from '@gmod/gff';
 import type { BedFeature, GffFeature } from '$lib/types/genome';
 import type { SignalFeature, VariantFeature, BAMReadFeature } from '$lib/types/tracks';
+import { query2bit, get2bitUrl } from '$lib/services/fasta';
 
 // Feature type from @gmod/bbi
 interface BigBedFeature {
@@ -362,6 +365,276 @@ export async function getLocalBamChromosomes(
 }
 
 // ============================================================
+// CRAM - Local File Support (requires index file and reference)
+// ============================================================
+
+/**
+ * Convert CRAM record to BAMReadFeature
+ */
+function cramRecordToFeature(record: CramRecord, chromosome: string): BAMReadFeature {
+	const flags = record.flags || 0;
+
+	// Build CIGAR string from readFeatures
+	let cigarString = '';
+	const parsedCigar: Array<[string, number]> = [];
+
+	if (record.readFeatures && record.readFeatures.length > 0) {
+		// Filter to only CIGAR-affecting features (I, D, N, S, H, P)
+		// X (substitution) and B (base with quality) don't create separate CIGAR ops
+		const sortedFeatures = [...record.readFeatures].sort((a, b) => a.pos - b.pos);
+		const cigarFeatures = sortedFeatures.filter(
+			(f) => ['I', 'D', 'N', 'S', 'H', 'P'].includes(f.code)
+		);
+
+		let lastPos = 1;
+		for (const feature of cigarFeatures) {
+			// Add match block for positions before this feature
+			if (feature.pos > lastPos) {
+				const matchLen = feature.pos - lastPos;
+				cigarString += `${matchLen}M`;
+				parsedCigar.push(['M', matchLen]);
+			}
+
+			switch (feature.code) {
+				case 'I': {
+					const insLen = typeof feature.data === 'string' ? feature.data.length : 1;
+					cigarString += `${insLen}I`;
+					parsedCigar.push(['I', insLen]);
+					// Insertions consume query positions (read positions)
+					// So advance lastPos past the inserted bases
+					lastPos = feature.pos + insLen;
+					break;
+				}
+				case 'D': {
+					const delLen = typeof feature.data === 'number' ? feature.data : 1;
+					cigarString += `${delLen}D`;
+					parsedCigar.push(['D', delLen]);
+					// Deletions don't consume query positions, advance past the deletion
+					lastPos = feature.pos;
+					break;
+				}
+				case 'N': {
+					const skipLen = typeof feature.data === 'number' ? feature.data : 1;
+					cigarString += `${skipLen}N`;
+					parsedCigar.push(['N', skipLen]);
+					lastPos = feature.pos;
+					break;
+				}
+				case 'S': {
+					const clipLen = typeof feature.data === 'string' ? feature.data.length : 1;
+					cigarString += `${clipLen}S`;
+					parsedCigar.push(['S', clipLen]);
+					lastPos = feature.pos + clipLen;
+					break;
+				}
+				case 'H': {
+					const hardLen = typeof feature.data === 'number' ? feature.data : 1;
+					cigarString += `${hardLen}H`;
+					parsedCigar.push(['H', hardLen]);
+					// Hard clips don't affect position
+					break;
+				}
+				case 'P': {
+					const padLen = typeof feature.data === 'number' ? feature.data : 1;
+					cigarString += `${padLen}P`;
+					parsedCigar.push(['P', padLen]);
+					break;
+				}
+			}
+		}
+
+		// Add trailing match for remaining positions
+		if (record.readLength && lastPos <= record.readLength) {
+			const matchLen = record.readLength - lastPos + 1;
+			cigarString += `${matchLen}M`;
+			parsedCigar.push(['M', matchLen]);
+		}
+	} else {
+		const len = record.readLength || record.lengthOnRef || 0;
+		if (len > 0) {
+			cigarString = `${len}M`;
+			parsedCigar.push(['M', len]);
+		}
+	}
+
+	const alignStart = record.alignmentStart - 1;
+	const lengthOnRef = record.lengthOnRef || record.readLength || 0;
+	const alignEnd = alignStart + lengthOnRef;
+
+	const seq = record.getReadBases() || '';
+
+	let qual: Uint8Array | null = null;
+	if (record.qualityScores && record.qualityScores.length > 0) {
+		qual = new Uint8Array(record.qualityScores);
+	}
+
+	let mate: BAMReadFeature['mate'] | undefined;
+	if (record.mate) {
+		mate = {
+			chromosome: chromosome,
+			start: record.mate.alignmentStart - 1,
+			isReversed: (record.mate.flags ?? 0 & 0x20) !== 0,
+		};
+	}
+
+	return {
+		id: `${record.readName || record.uniqueId}:${alignStart}-${alignEnd}:${flags}`,
+		chromosome,
+		start: alignStart,
+		end: alignEnd,
+		name: record.readName || undefined,
+		strand: record.isReverseComplemented() ? '-' : '+',
+		seq,
+		qual,
+		cigar: cigarString,
+		parsedCigar,
+		mq: record.mappingQuality || 0,
+		isReversed: record.isReverseComplemented(),
+		mdTag: record.tags?.MD as string | undefined,
+		readName: record.readName || '',
+		mate,
+		templateLength: record.templateSize,
+		flags,
+	};
+}
+
+/**
+ * Query features from a local CRAM file
+ * Returns BAMReadFeature with full sequence data for high-zoom rendering
+ * @param cramFile - The CRAM data file
+ * @param indexFile - The CRAI index file
+ * @param assemblyId - The assembly ID for reference sequence lookup
+ */
+export async function queryLocalCram(
+	cramFile: File,
+	indexFile: File,
+	chromosome: string,
+	start: number,
+	end: number,
+	options: { signal?: AbortSignal; assemblyId?: string } = {}
+): Promise<BAMReadFeature[]> {
+	const assemblyId = options.assemblyId;
+	if (!assemblyId) {
+		console.warn('CRAM requires assemblyId for reference sequence lookup');
+		return [];
+	}
+
+	const twoBitUrl = get2bitUrl(assemblyId);
+	if (!twoBitUrl) {
+		throw new Error(`No reference sequence available for assembly: ${assemblyId}`);
+	}
+
+	try {
+		// Read SAM header to build seqId -> name mapping
+		const tempCram = new CramFile({
+			filehandle: new BlobFile(cramFile),
+		});
+
+		const samHeader = await tempCram.getSamHeader();
+		const seqIdToName = new Map<number, string>();
+		const nameToSeqId = new Map<string, number>();
+		let seqId = 0;
+
+		for (const line of samHeader) {
+			if (line.tag === 'SQ') {
+				const snTag = line.data.find((d: { tag: string; value: string }) => d.tag === 'SN');
+				if (snTag) {
+					seqIdToName.set(seqId, snTag.value);
+					nameToSeqId.set(snTag.value, seqId);
+					seqId++;
+				}
+			}
+		}
+
+		// Create seqFetch callback to provide reference sequence for CRAM decoding
+		const seqFetch = async (seqId: number, start: number, end: number): Promise<string> => {
+			const chromName = seqIdToName.get(seqId);
+			if (!chromName) {
+				return '';
+			}
+			try {
+				// Convert from 1-based CRAM coords to 0-based 2bit coords
+				return await query2bit(twoBitUrl, chromName, start - 1, end);
+			} catch {
+				return '';
+			}
+		};
+
+		// Create CRAM file with seqFetch
+		const cram = new CramFile({
+			filehandle: new BlobFile(cramFile),
+			seqFetch,
+			checkSequenceMD5: false,
+		});
+
+		const craiIndex = new CraiIndex({
+			filehandle: new BlobFile(indexFile),
+		});
+
+		const indexedCram = new IndexedCramFile({
+			cram,
+			index: craiIndex,
+		});
+
+		// Resolve chromosome name to seqId
+		let resolvedSeqId = nameToSeqId.get(chromosome);
+		if (resolvedSeqId === undefined) {
+			const variations = [
+				chromosome.replace(/^chr/i, ''),
+				'chr' + chromosome.replace(/^chr/i, ''),
+			];
+			for (const variant of variations) {
+				resolvedSeqId = nameToSeqId.get(variant);
+				if (resolvedSeqId !== undefined) break;
+			}
+		}
+
+		if (resolvedSeqId === undefined) {
+			return [];
+		}
+
+		// Query records (CRAM uses 1-based coordinates)
+		const records = await indexedCram.getRecordsForRange(resolvedSeqId, start + 1, end + 1);
+
+		return records.map(record => cramRecordToFeature(record, chromosome));
+	} catch (error) {
+		console.error('Error querying local CRAM:', error);
+		throw error;
+	}
+}
+
+/**
+ * Get chromosome list from a local CRAM file
+ */
+export async function getLocalCramChromosomes(
+	cramFile: File,
+	indexFile: File
+): Promise<string[]> {
+	try {
+		const cram = new CramFile({
+			filehandle: new BlobFile(cramFile),
+		});
+
+		const samHeader = await cram.getSamHeader();
+		const chromosomes: string[] = [];
+
+		for (const line of samHeader) {
+			if (line.tag === 'SQ') {
+				const snTag = line.data.find((d: { tag: string; value: string }) => d.tag === 'SN');
+				if (snTag) {
+					chromosomes.push(snTag.value);
+				}
+			}
+		}
+
+		return chromosomes;
+	} catch (error) {
+		console.error('Error getting chromosomes from local CRAM:', error);
+		return [];
+	}
+}
+
+// ============================================================
 // TABIX - Local File Support (requires index file)
 // ============================================================
 
@@ -670,7 +943,7 @@ export async function getLocalTabixChromosomes(
 // FILE TYPE DETECTION
 // ============================================================
 
-export type LocalBinaryTrackType = 'bigbed' | 'bigwig' | 'bam' | 'vcf' | 'gff' | 'bed';
+export type LocalBinaryTrackType = 'bigbed' | 'bigwig' | 'bam' | 'cram' | 'vcf' | 'gff' | 'bed';
 
 /**
  * Detect track type from file name/extension
@@ -686,6 +959,9 @@ export function detectLocalBinaryType(fileName: string): LocalBinaryTrackType | 
 	}
 	if (lowerName.endsWith('.bam')) {
 		return 'bam';
+	}
+	if (lowerName.endsWith('.cram')) {
+		return 'cram';
 	}
 	if (lowerName.endsWith('.vcf.gz')) {
 		return 'vcf';
@@ -704,7 +980,7 @@ export function detectLocalBinaryType(fileName: string): LocalBinaryTrackType | 
  * Check if a file type requires an index file
  */
 export function requiresIndexFile(type: LocalBinaryTrackType): boolean {
-	return type === 'bam' || type === 'vcf' || type === 'gff' || type === 'bed';
+	return type === 'bam' || type === 'cram' || type === 'vcf' || type === 'gff' || type === 'bed';
 }
 
 /**
@@ -714,6 +990,8 @@ export function getIndexExtension(type: LocalBinaryTrackType): string | null {
 	switch (type) {
 		case 'bam':
 			return '.bai';
+		case 'cram':
+			return '.crai';
 		case 'vcf':
 		case 'gff':
 		case 'bed':

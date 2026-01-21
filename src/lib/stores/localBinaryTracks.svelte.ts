@@ -12,12 +12,14 @@ import {
 	queryLocalBigBed,
 	queryLocalBigWig,
 	queryLocalBam,
+	queryLocalCram,
 	queryLocalTabixVcf,
 	queryLocalTabixGff,
 	queryLocalTabixBed,
 	getLocalBigBedChromosomes,
 	getLocalBigWigChromosomes,
 	getLocalBamChromosomes,
+	getLocalCramChromosomes,
 	getLocalTabixChromosomes,
 	type LocalBinaryTrackType,
 } from '$lib/services/localBinaryTracks';
@@ -169,6 +171,9 @@ async function getChromosomesForTrack(track: LocalBinaryTrack): Promise<string[]
 		case 'bam':
 			if (!track.indexFile) return [];
 			return await getLocalBamChromosomes(track.file, track.indexFile);
+		case 'cram':
+			if (!track.indexFile) return [];
+			return await getLocalCramChromosomes(track.file, track.indexFile);
 		case 'vcf':
 		case 'gff':
 		case 'bed':
@@ -266,6 +271,9 @@ async function fetchTrackFeatures(
 	viewport: Viewport,
 	signal?: AbortSignal
 ): Promise<void> {
+	// Get assembly for CRAM reference sequence lookup
+	const assembly = useAssembly();
+
 	// Calculate fetch region (2x viewport width for panning buffer)
 	const viewWidth = viewport.end - viewport.start;
 	const buffer = viewWidth * 0.5;
@@ -301,6 +309,19 @@ async function fetchTrackFeatures(
 					fetchStart,
 					fetchEnd,
 					{ signal }
+				);
+				break;
+			case 'cram':
+				if (!track.indexFile) {
+					throw new Error('CRAM file requires an index file (.crai)');
+				}
+				features = await queryLocalCram(
+					track.file,
+					track.indexFile,
+					viewport.chromosome,
+					fetchStart,
+					fetchEnd,
+					{ signal, assemblyId: assembly.current.id }
 				);
 				break;
 			case 'vcf':
