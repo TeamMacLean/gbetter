@@ -949,8 +949,8 @@
 			// Medium zoom: show CIGAR blocks
 			renderReadsAsBlocks(ctx, visible, plotY, plotHeight, color);
 		} else {
-			// Low zoom: show as simple rectangles (existing behavior)
-			renderReadsAsRectangles(ctx, visible, plotY, plotHeight, color);
+			// Low zoom: show as coverage histogram
+			renderBamCoverage(ctx, visible, plotY, plotHeight, color);
 		}
 	}
 
@@ -1258,6 +1258,143 @@
 			ctx.fillStyle = read.isReversed ? '#78716c' : (color || '#6366f1');
 			ctx.fillRect(Math.max(0, startX), readY, Math.min(readWidth, containerWidth - Math.max(0, startX)), readHeight);
 		}
+	}
+
+	/**
+	 * Compute binned coverage from BAM reads
+	 * Returns an array of {start, end, value} where value is read count
+	 */
+	function computeBinnedCoverage(
+		reads: BAMReadFeature[],
+		viewStart: number,
+		viewEnd: number,
+		binSize: number
+	): Array<{ start: number; end: number; value: number }> {
+		const bins = new Map<number, number>();
+
+		for (const read of reads) {
+			// Calculate which bins this read overlaps
+			const readStart = Math.max(read.start, viewStart);
+			const readEnd = Math.min(read.end, viewEnd);
+			const startBin = Math.floor(readStart / binSize);
+			const endBin = Math.ceil(readEnd / binSize);
+
+			for (let bin = startBin; bin < endBin; bin++) {
+				bins.set(bin, (bins.get(bin) || 0) + 1);
+			}
+		}
+
+		return Array.from(bins.entries())
+			.map(([bin, count]) => ({
+				start: bin * binSize,
+				end: (bin + 1) * binSize,
+				value: count
+			}))
+			.sort((a, b) => a.start - b.start);
+	}
+
+	/**
+	 * Render BAM coverage as histogram (for low zoom / density mode)
+	 * Shows read depth as an area chart, similar to BigWig
+	 */
+	function renderBamCoverage(
+		ctx: CanvasRenderingContext2D,
+		reads: BAMReadFeature[],
+		plotY: number,
+		plotHeight: number,
+		color: string
+	): void {
+		if (reads.length === 0) return;
+
+		const vpStart = viewport.current.start;
+		const vpEnd = viewport.current.end;
+		const width = containerWidth;
+
+		// Calculate bin size (one bin per pixel)
+		const basesPerPixel = (vpEnd - vpStart) / width;
+		const binSize = Math.max(1, Math.ceil(basesPerPixel));
+
+		// Compute coverage
+		const coverage = computeBinnedCoverage(reads, vpStart, vpEnd, binSize);
+
+		if (coverage.length === 0) return;
+
+		// Calculate Y scale (auto-scale to visible data)
+		let maxCoverage = 0;
+		for (const bin of coverage) {
+			maxCoverage = Math.max(maxCoverage, bin.value);
+		}
+
+		// Add padding to range
+		maxCoverage = Math.ceil(maxCoverage * 1.1) || 1;
+
+		const valueToY = (val: number): number => {
+			const normalized = val / maxCoverage;
+			return plotY + plotHeight - (normalized * plotHeight);
+		};
+
+		const zeroY = plotY + plotHeight;
+
+		// Create gradient for fill
+		const gradient = ctx.createLinearGradient(0, plotY, 0, plotY + plotHeight);
+		gradient.addColorStop(0, color);
+		gradient.addColorStop(1, color + '20'); // Fade to transparent
+
+		// Draw as filled area
+		ctx.beginPath();
+		ctx.moveTo(0, zeroY);
+
+		let lastX = 0;
+
+		for (const bin of coverage) {
+			const x1 = (bin.start - vpStart) * pixelsPerBase;
+			const x2 = (bin.end - vpStart) * pixelsPerBase;
+			const y = valueToY(bin.value);
+
+			if (x1 > lastX + 1) {
+				// Gap - go down to zero and back up
+				ctx.lineTo(lastX, zeroY);
+				ctx.lineTo(x1, zeroY);
+			}
+
+			ctx.lineTo(x1, y);
+			ctx.lineTo(x2, y);
+			lastX = x2;
+		}
+
+		ctx.lineTo(lastX, zeroY);
+		ctx.closePath();
+
+		ctx.fillStyle = gradient;
+		ctx.fill();
+
+		// Draw outline
+		ctx.strokeStyle = color;
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		let started = false;
+
+		for (const bin of coverage) {
+			const x1 = (bin.start - vpStart) * pixelsPerBase;
+			const x2 = (bin.end - vpStart) * pixelsPerBase;
+			const y = valueToY(bin.value);
+
+			if (!started) {
+				ctx.moveTo(x1, y);
+				started = true;
+			} else {
+				ctx.lineTo(x1, y);
+			}
+			ctx.lineTo(x2, y);
+		}
+		ctx.stroke();
+
+		// Draw Y-axis labels (max coverage)
+		ctx.fillStyle = '#666666';
+		ctx.font = '9px Inter, sans-serif';
+		ctx.textAlign = 'left';
+		ctx.fillText(`${maxCoverage}x`, 4, plotY + 8);
+		ctx.fillText('0', 4, plotY + plotHeight - 2);
 	}
 
 	/**

@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 17 (2026-01-21) - BAM CIGAR rendering tests
+**Status**: Active development, Session 17 (2026-01-21) - BAM coverage histogram complete
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -94,9 +94,10 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 - Three zoom levels with automatic transition:
   - **Sequence level** (8+ px/base): Colored nucleotide letters, mismatch highlighting (red background)
   - **Block level** (1-8 px/base): CIGAR blocks with insertion markers (green) and deletion gaps
-  - **Rectangle level** (<1 px/base): Simple rectangles for zoomed-out view
+  - **Coverage level** (<1 px/base): Coverage histogram showing read depth as area chart
 - CIGAR operations: M (match), I (insertion), D (deletion), S (soft clip), N (skip)
 - Quality-based opacity (higher quality = more opaque)
+- Coverage histogram: auto-scaled Y-axis, gradient fill, Y-axis labels (max coverage)
 - Works with local and remote BAM files
 - Visual regression tests for all rendering modes
 
@@ -104,7 +105,6 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
 - **Comparison views** - Side-by-side query results
 - **AI conversation follow-ups** - Reply to clarification questions
-- **BAM coverage histogram** - Coverage plot at very low zoom
 
 ## Architecture Patterns
 
@@ -724,7 +724,7 @@ All pan-data-loading tests pass." \
   - **Remaining issues**:
     - BAM/VCF mismatch visualization not yet implemented (requires comparing reads to reference)
 
-- **2026-01-21 Session 17**: Bug fixes and BAM CIGAR rendering verification
+- **2026-01-21 Session 17**: Bug fixes, BAM CIGAR rendering, and coverage histogram
   - **Fixed coordinate input whitespace bug**: Pasting coordinates with trailing/leading spaces
     caused "Invalid format" error. Fixed by adding `.trim()` in `parseCoordinate()`.
   - **Added tests**: `tests/e2e/coordinate-input.test.ts` (5 tests for NC_ format + whitespace)
@@ -738,12 +738,18 @@ All pan-data-loading tests pass." \
   - **Added BAM visual regression tests**: `tests/e2e/bam-cigar-rendering.test.ts` (13 tests)
     - Sequence-level: colored nucleotides, insertion markers, deletion gaps, mismatches, quality
     - Block-level: CIGAR blocks, insertion lines, deletion connecting lines
-    - Rectangle-level: simple rectangles, dense coverage
+    - Coverage-level: histogram showing read depth
     - Zoom transitions test
   - **Fixed test selector bug**: SessionRestoreBanner file input was being selected instead of
     Sidebar file input. Added `data-testid="sidebar-file-input"` for precise targeting.
   - **BAM rendering verified working** at all zoom levels with full CIGAR support
   - **Created workflow doc**: `semi-autonomous-feature-development.md` (Discuss → TDD → Ralph Loop)
+  - **Implemented BAM coverage histogram**: At low zoom (<1 px/base), BAM tracks now render
+    as coverage histograms instead of tiny rectangles, showing read depth as an area chart
+    - Added `computeBinnedCoverage()` to calculate coverage per bin
+    - Added `renderBamCoverage()` with gradient fill, auto-scaled Y-axis, Y-axis labels
+    - Updated `bam-cigar-rendering.test.ts` tests to reflect new coverage mode
+    - Added `tests/e2e/bam-coverage-histogram.test.ts` (5 tests)
 
 ## Known Issues & Gotchas
 

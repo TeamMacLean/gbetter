@@ -4,7 +4,7 @@
  * Tests BAM read rendering at different zoom levels:
  * - Sequence level (<125bp): colored nucleotide letters, mismatch highlighting
  * - Block level (125bp-1000bp): CIGAR blocks with insertions/deletions
- * - Rectangle level (>1000bp): simple rectangles
+ * - Coverage level (>1000bp): coverage histogram showing read depth
  *
  * Uses cigar-test.bam which contains reads with various CIGAR operations:
  * - Simple matches (50M)
@@ -166,37 +166,37 @@ test.describe('BAM CIGAR Rendering', () => {
 		});
 	});
 
-	test.describe('Rectangle-Level Rendering (low zoom)', () => {
-		test('renders simple rectangles at >1000bp zoom', async ({ page }) => {
+	test.describe('Coverage Histogram (low zoom)', () => {
+		test('renders coverage histogram at >1000bp zoom', async ({ page }) => {
 			await loadLocalBamTrack(page);
 
-			// Navigate to wide view
+			// Navigate to wide view - should show coverage histogram
 			await navigateTo(page, 'NC_000913.3:99000-102000');
 
-			await expect(page).toHaveScreenshot('bam-rectangles-wide.png', {
+			await expect(page).toHaveScreenshot('bam-coverage-wide.png', {
 				maxDiffPixels: 100,
 			});
 		});
 
-		test('shows dense coverage region', async ({ page }) => {
+		test('shows dense coverage region as histogram', async ({ page }) => {
 			await loadLocalBamTrack(page);
 
 			// Navigate to dense coverage region at medium-wide zoom
 			await navigateTo(page, 'NC_000913.3:100300-100500');
 
-			await expect(page).toHaveScreenshot('bam-rectangles-dense.png', {
+			await expect(page).toHaveScreenshot('bam-coverage-dense.png', {
 				maxDiffPixels: 100,
 			});
 		});
 	});
 
 	test.describe('Zoom Transitions', () => {
-		test('transitions smoothly from rectangles to blocks to sequence', async ({ page }) => {
+		test('transitions smoothly from coverage to blocks to sequence', async ({ page }) => {
 			await loadLocalBamTrack(page);
 
-			// Start wide (rectangles)
+			// Start wide (coverage histogram)
 			await navigateTo(page, 'NC_000913.3:99500-101500');
-			await expect(page).toHaveScreenshot('bam-zoom-1-rectangles.png', { maxDiffPixels: 100 });
+			await expect(page).toHaveScreenshot('bam-zoom-1-coverage.png', { maxDiffPixels: 100 });
 
 			// Zoom in (blocks)
 			await navigateTo(page, 'NC_000913.3:100000-100200');
