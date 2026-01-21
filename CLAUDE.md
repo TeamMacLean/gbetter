@@ -833,6 +833,23 @@ When adding new GenArk assemblies, you must add chromosome mappings.
 If a user reports "both tracks look the same" or "genes track shows exons", check whether
 the data source actually has gene-level annotations or just transcript data with gene symbols.
 
+## Planned UI Improvements (Session 19+)
+
+**IMPORTANT**: Use TDD approach - write failing e2e test first, then implement.
+
+### Quick Fixes
+- [ ] **Zoom +/- minimum limit**: Buttons won't zoom below 100bp - remove/lower this floor
+- [ ] **Assembly dropdown order**: Currently arbitrary - sort by category then alphabetically
+
+### Medium Effort
+- [ ] **Move gene style panel**: Currently in sidebar, should be under settings cog
+- [ ] **Track deletion**: User-loaded tracks should have delete button (some already have this)
+- [ ] **Track visibility toggle**: Hide/show tracks without removing them (partially implemented)
+
+### Design Work Needed
+- [ ] **Gene style redesign**: Current themes (dark/flat) need visual improvement
+- [ ] **Track grouping**: Allow grouping related tracks with collapse/expand
+
 ## Key Files for Context
 1. `CLAUDE.md` - This file
 2. `src/lib/services/queryLanguage.ts` - GQL implementation
