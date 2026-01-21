@@ -99,7 +99,7 @@ export function parseCoordinate(coord: string): Viewport | null {
 	// - 17:1000-2000 (numeric)
 	// - NC_000913.3:1000-2000 (NCBI RefSeq accession)
 	// - CM000663.2:1000-2000 (GenBank accession)
-	const match = coord.match(/^([A-Za-z0-9_.]+):(\d[\d,]*)-(\d[\d,]*)$/i);
+	const match = coord.trim().match(/^([A-Za-z0-9_.]+):(\d[\d,]*)-(\d[\d,]*)$/i);
 	if (!match) return null;
 
 	let chr = match[1];
