@@ -10,7 +10,7 @@ const getSearchInput = (page: import('@playwright/test').Page) =>
 	page.locator('input[placeholder*="Search"]');
 
 const getCoordInput = (page: import('@playwright/test').Page) =>
-	page.locator('input[placeholder*="1,000-10,000"]');
+	page.locator('input[placeholder*="chr:start-end"]');
 
 test.describe('Jordan the Bioinformatician - Power user workflow', () => {
 	test('can access full GQL console with keyboard shortcut hint', async ({ page }) => {

@@ -127,6 +127,24 @@
 	let isNearBorder = $state(false);
 	const BORDER_HIT_ZONE = 6; // pixels from border to trigger resize
 
+	// Insertion tooltip state
+	let insertionTooltip = $state<{
+		x: number;
+		y: number;
+		insertedBases: string;
+		readName: string;
+		refPos: number;
+	} | null>(null);
+
+	// Track BAM track layout info for hit testing
+	interface BamTrackLayout {
+		trackId: string;
+		trackType: 'remote' | 'local';
+		y: number;
+		height: number;
+	}
+	let bamTrackLayouts = $state<BamTrackLayout[]>([]);
+
 	// Calculate pixels per base
 	const pixelsPerBase = $derived(containerWidth / viewport.width);
 
@@ -203,6 +221,8 @@
 
 		// Reset track borders for resize hit detection
 		const newBorders: TrackBorder[] = [];
+		// Reset BAM track layouts for tooltip hit testing
+		const newBamLayouts: BamTrackLayout[] = [];
 
 		if (hasLocalContent || hasRemoteContent || hasLocalBinaryContent) {
 			let currentY = rulerHeight;
@@ -212,12 +232,12 @@
 
 			// Render remote tracks first (gene models)
 			if (hasRemoteContent) {
-				currentY = renderRemoteTracks(ctx, width, currentY, newBorders);
+				currentY = renderRemoteTracks(ctx, width, currentY, newBorders, newBamLayouts);
 			}
 
 			// Render local binary tracks
 			if (hasLocalBinaryContent) {
-				currentY = renderLocalBinaryTracks(ctx, width, currentY, newBorders);
+				currentY = renderLocalBinaryTracks(ctx, width, currentY, newBorders, newBamLayouts);
 			}
 
 			// Render local text tracks
@@ -233,6 +253,8 @@
 
 		// Update track borders state for resize detection
 		trackBorders = newBorders;
+		// Update BAM track layouts for tooltip hit testing
+		bamTrackLayouts = newBamLayouts;
 
 		// Draw highlights on top
 		drawHighlights(ctx, width, height, rulerHeight);
@@ -281,7 +303,8 @@
 		ctx: CanvasRenderingContext2D,
 		width: number,
 		startY: number,
-		borders: TrackBorder[]
+		borders: TrackBorder[],
+		bamLayouts: BamTrackLayout[]
 	): number {
 		let currentY = startY;
 
@@ -358,6 +381,13 @@
 					// BAM tracks use special rendering with sequence at high zoom
 					const rawFeatures = getRawFeatures(track.id) as BAMReadFeature[];
 					renderBamReadsWithSequence(ctx, rawFeatures, width, currentY, trackHeight, track.color);
+					// Record BAM track layout for insertion tooltip hit testing
+					bamLayouts.push({
+						trackId: track.id,
+						trackType: 'remote',
+						y: currentY,
+						height: trackHeight
+					});
 				} else {
 					renderBedFeatures(ctx, track.features as import('$lib/types/genome').BedFeature[], width, currentY, trackHeight, track.color);
 				}
@@ -394,7 +424,8 @@
 		ctx: CanvasRenderingContext2D,
 		width: number,
 		startY: number,
-		borders: TrackBorder[]
+		borders: TrackBorder[],
+		bamLayouts: BamTrackLayout[]
 	): number {
 		let currentY = startY;
 
@@ -472,6 +503,13 @@
 					// BAM tracks use special rendering with sequence at high zoom
 					const rawFeatures = getLocalBinaryRawFeatures(track.id) as BAMReadFeature[];
 					renderBamReadsWithSequence(ctx, rawFeatures, width, currentY, trackHeight, track.color);
+					// Record BAM track layout for insertion tooltip hit testing
+					bamLayouts.push({
+						trackId: track.id,
+						trackType: 'local',
+						y: currentY,
+						height: trackHeight
+					});
 				} else {
 					renderBedFeatures(ctx, track.features as import('$lib/types/genome').BedFeature[], width, currentY, trackHeight, track.color);
 				}
@@ -1026,10 +1064,25 @@
 						}
 						refPos += len;
 					} else if (op === 'I') {
-						// Insertion - show indicator
+						// Insertion - two right triangles forming a notch at the insertion point
 						const x = (refPos - viewport.current.start) * pixelsPerBase;
 						ctx.fillStyle = '#22c55e'; // Green
-						ctx.fillRect(x - 1, readY, 2, readHeight);
+						const triHeight = Math.min(readHeight * 0.8, 12);
+						const triWidth = triHeight * 0.58; // Width of each half
+						// Left triangle (slopes from top-left down to insertion point)
+						ctx.beginPath();
+						ctx.moveTo(x - triWidth, readY + 1); // Top left corner
+						ctx.lineTo(x, readY + 1); // Top at insertion
+						ctx.lineTo(x, readY + 1 + triHeight); // Bottom tip at insertion
+						ctx.closePath();
+						ctx.fill();
+						// Right triangle (slopes from top-right down to insertion point - mirrored)
+						ctx.beginPath();
+						ctx.moveTo(x, readY + 1); // Top at insertion
+						ctx.lineTo(x + triWidth, readY + 1); // Top right corner
+						ctx.lineTo(x, readY + 1 + triHeight); // Bottom tip at insertion
+						ctx.closePath();
+						ctx.fill();
 						queryPos += len;
 					} else if (op === 'D' || op === 'N') {
 						// Deletion/skip - draw gap line
@@ -1114,10 +1167,25 @@
 					ctx.fillRect(Math.max(0, x1), readY, Math.min(x2, containerWidth) - Math.max(0, x1), readHeight);
 					refPos += len;
 				} else if (op === 'I') {
-					// Insertion marker
+					// Insertion - two right triangles forming a notch at the insertion point
 					const x = (refPos - viewport.current.start) * pixelsPerBase;
 					ctx.fillStyle = '#22c55e';
-					ctx.fillRect(x - 1, readY - 1, 2, readHeight + 2);
+					const triHeight = Math.min(readHeight * 0.9, 10);
+					const triWidth = triHeight * 0.58; // Width of each half
+					// Left triangle
+					ctx.beginPath();
+					ctx.moveTo(x - triWidth, readY);
+					ctx.lineTo(x, readY);
+					ctx.lineTo(x, readY + triHeight);
+					ctx.closePath();
+					ctx.fill();
+					// Right triangle (mirrored)
+					ctx.beginPath();
+					ctx.moveTo(x, readY);
+					ctx.lineTo(x + triWidth, readY);
+					ctx.lineTo(x, readY + triHeight);
+					ctx.closePath();
+					ctx.fill();
 				} else if (op === 'D' || op === 'N') {
 					// Deletion/intron line
 					const x1 = (refPos - viewport.current.start) * pixelsPerBase;
@@ -1495,6 +1563,119 @@
 		return track?.height ?? 100;
 	}
 
+	// Find insertion marker at mouse position (for tooltip)
+	function findInsertionAtPosition(mouseX: number, mouseY: number): {
+		insertedBases: string;
+		readName: string;
+		refPos: number;
+	} | null {
+		const HIT_DISTANCE = 4; // pixels
+
+		// Only works at sequence or block level zoom
+		const renderMode = getReadRenderingMode(pixelsPerBase);
+		if (renderMode === 'density') return null;
+
+		// Find which BAM track the mouse is over
+		let matchedLayout: BamTrackLayout | null = null;
+		for (const layout of bamTrackLayouts) {
+			if (mouseY >= layout.y && mouseY < layout.y + layout.height) {
+				matchedLayout = layout;
+				break;
+			}
+		}
+		if (!matchedLayout) return null;
+
+		// Get reads for this track
+		let reads: BAMReadFeature[];
+		if (matchedLayout.trackType === 'remote') {
+			reads = (getRawFeatures(matchedLayout.trackId) as BAMReadFeature[]) || [];
+		} else {
+			reads = (getLocalBinaryRawFeatures(matchedLayout.trackId) as BAMReadFeature[]) || [];
+		}
+
+		// Filter to visible reads
+		const visible = reads.filter(f =>
+			f.end > viewport.current.start && f.start < viewport.current.end
+		);
+		if (visible.length === 0) return null;
+
+		// Recompute row positions (same algorithm as render)
+		const labelOffset = 18;
+		const plotY = matchedLayout.y + labelOffset;
+		const plotHeight = matchedLayout.height - labelOffset - 4;
+
+		const readHeight = renderMode === 'sequence' ? Math.min(16, Math.min(12, Math.max(6, pixelsPerBase * 0.7)) + 4) : 8;
+		const readSpacing = 2;
+
+		const rows: Array<{ end: number }> = [];
+		const readRows: Map<string, number> = new Map();
+
+		for (const read of visible) {
+			const startX = (read.start - viewport.current.start) * pixelsPerBase;
+			let rowIndex = 0;
+
+			for (let i = 0; i < rows.length; i++) {
+				if (rows[i].end < startX - 2) {
+					rowIndex = i;
+					break;
+				}
+				rowIndex = i + 1;
+			}
+
+			const endX = (read.end - viewport.current.start) * pixelsPerBase;
+			if (rows[rowIndex]) {
+				rows[rowIndex].end = endX;
+			} else {
+				rows[rowIndex] = { end: endX };
+			}
+
+			readRows.set(read.id, rowIndex);
+		}
+
+		// Check each read for insertion markers near mouse
+		for (const read of visible) {
+			const rowIndex = readRows.get(read.id) ?? 0;
+			const readY = plotY + rowIndex * (readHeight + readSpacing);
+
+			// Check if mouse Y is within this read's bounds
+			if (mouseY < readY || mouseY > readY + readHeight) continue;
+			if (readY + readHeight > plotY + plotHeight) continue;
+
+			// Walk CIGAR looking for insertions
+			if (!read.parsedCigar || !read.seq) continue;
+
+			let refPos = read.start;
+			let queryPos = 0;
+
+			for (const [op, len] of read.parsedCigar) {
+				if (op === 'M' || op === '=' || op === 'X') {
+					refPos += len;
+					queryPos += len;
+				} else if (op === 'I') {
+					// Check if mouse is near this insertion marker
+					const markerX = (refPos - viewport.current.start) * pixelsPerBase;
+					if (Math.abs(mouseX - markerX) <= HIT_DISTANCE) {
+						// Found it! Extract inserted bases
+						const insertedBases = read.seq.substring(queryPos, queryPos + len);
+						return {
+							insertedBases,
+							readName: read.name || read.id,
+							refPos
+						};
+					}
+					queryPos += len;
+				} else if (op === 'D' || op === 'N') {
+					refPos += len;
+				} else if (op === 'S') {
+					queryPos += len;
+				}
+				// H (hard clip) consumes nothing
+			}
+		}
+
+		return null;
+	}
+
 	// Mouse handlers for panning and resizing
 	function handleMouseDown(event: MouseEvent) {
 		const rect = canvasEl.getBoundingClientRect();
@@ -1553,10 +1734,26 @@
 			isNearBorder = true;
 			resizeTrackId = border.trackId;
 			canvasEl.style.cursor = 'ns-resize';
+			insertionTooltip = null;
 		} else {
 			isNearBorder = false;
 			resizeTrackId = null;
 			canvasEl.style.cursor = '';
+
+			// Check for insertion marker hover (for BAM tracks)
+			const mouseX = event.clientX - rect.left;
+			const insertion = findInsertionAtPosition(mouseX, mouseY);
+			if (insertion) {
+				insertionTooltip = {
+					x: event.clientX,
+					y: event.clientY,
+					insertedBases: insertion.insertedBases,
+					readName: insertion.readName,
+					refPos: insertion.refPos
+				};
+			} else {
+				insertionTooltip = null;
+			}
 		}
 	}
 
@@ -1604,6 +1801,10 @@
 			await tracks.addTrackFromFile(file);
 		}
 	}
+
+	function handleMouseLeave() {
+		insertionTooltip = null;
+	}
 </script>
 
 <svelte:window
@@ -1625,6 +1826,7 @@
 		bind:this={canvasEl}
 		onmousedown={handleMouseDown}
 		onwheel={handleWheel}
+		onmouseleave={handleMouseLeave}
 		class="block w-full h-full"
 	></canvas>
 
@@ -1696,4 +1898,15 @@
 			</button>
 		</div>
 	{/each}
+
+	<!-- BAM insertion tooltip -->
+	{#if insertionTooltip}
+		<div
+			class="fixed bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs pointer-events-none z-50 shadow-lg"
+			style="left: {insertionTooltip.x + 12}px; top: {insertionTooltip.y - 8}px;"
+		>
+			<div class="font-medium text-green-400">Insertion: {insertionTooltip.insertedBases}</div>
+			<div class="text-gray-400">{insertionTooltip.insertedBases.length} bp at {insertionTooltip.refPos.toLocaleString()}</div>
+		</div>
+	{/if}
 </div>

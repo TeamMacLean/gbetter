@@ -8,7 +8,7 @@ import path from 'path';
 
 // Helper to get the coordinate input
 const getCoordInput = (page: import('@playwright/test').Page) =>
-	page.locator('input[placeholder*="1,000-10,000"]');
+	page.locator('input[placeholder*="chr:start-end"]');
 
 test.describe('Visual Regression - Default State', () => {
 	test('homepage renders correctly', async ({ page }) => {

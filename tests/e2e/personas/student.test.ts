@@ -11,7 +11,7 @@ const getSearchInput = (page: import('@playwright/test').Page) =>
 	page.locator('input[placeholder*="Search"]');
 
 const getCoordInput = (page: import('@playwright/test').Page) =>
-	page.locator('input[placeholder*="1,000-10,000"]');
+	page.locator('input[placeholder*="chr:start-end"]');
 
 test.describe('Sam the Student - First-time user journey', () => {
 	test('app loads cleanly for first-time user', async ({ page }) => {

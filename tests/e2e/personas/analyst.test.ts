@@ -10,7 +10,7 @@ const getSearchInput = (page: import('@playwright/test').Page) =>
 	page.locator('input[placeholder*="Search"]');
 
 const getCoordInput = (page: import('@playwright/test').Page) =>
-	page.locator('input[placeholder*="1,000-10,000"]');
+	page.locator('input[placeholder*="chr:start-end"]');
 
 test.describe('Alex the Analyst - Reproducibility workflow', () => {
 	test('can access query console with keyboard shortcut hint', async ({ page }) => {
@@ -139,7 +139,7 @@ test.describe('Alex the Analyst - Reproducibility workflow', () => {
 
 		// Can copy/share coordinates - check placeholder indicates format
 		const placeholder = await coordInput.getAttribute('placeholder');
-		expect(placeholder).toContain('1,000-10,000');
+		expect(placeholder).toContain('chr:start-end');
 	});
 
 	test('viewport width indicator for precision', async ({ page }) => {

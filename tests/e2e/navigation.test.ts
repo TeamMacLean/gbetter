@@ -6,7 +6,7 @@ import { test, expect } from '@playwright/test';
 
 // Helper to get the coordinate input
 const getCoordInput = (page: import('@playwright/test').Page) =>
-	page.locator('input[placeholder*="1,000-10,000"]');
+	page.locator('input[placeholder*="chr:start-end"]');
 
 // Helper to get the search input
 const getSearchInput = (page: import('@playwright/test').Page) =>
