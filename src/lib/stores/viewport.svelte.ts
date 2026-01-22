@@ -174,7 +174,7 @@ function pan(deltaPixels: number, pixelsPerBase: number): void {
 
 function zoom(factor: number, centerBase?: number): void {
 	const center = centerBase ?? viewportCenter;
-	const newWidth = Math.max(100, Math.round(viewportWidth * factor));
+	const newWidth = Math.max(1, Math.round(viewportWidth * factor));
 	const newStart = Math.max(0, Math.round(center - newWidth / 2));
 	const newEnd = newStart + newWidth;
 	setViewport({ ...viewport, start: newStart, end: newEnd });

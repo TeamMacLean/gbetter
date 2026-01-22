@@ -20,8 +20,8 @@ test.describe('BigWig Visual Rendering', () => {
 		// Verify BigWig track appears in sidebar
 		await expect(page.getByText('PhyloP Conservation')).toBeVisible({ timeout: 10000 });
 
-		// Verify track shows as BIGWIG type
-		await expect(page.getByText(/BIGWIG/i)).toBeVisible({ timeout: 5000 });
+		// Verify track shows as BIGWIG type (use exact match to avoid matching file format hint)
+		await expect(page.getByText('bigwig', { exact: true })).toBeVisible({ timeout: 5000 });
 	});
 
 	test('BigWig track loads features and displays feature count', async ({ page }) => {

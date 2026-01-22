@@ -107,20 +107,27 @@
 			</svg>
 		</button>
 		{#if showAssemblyMenu}
-			<div class="absolute top-full left-0 mt-1 py-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded shadow-lg z-50 min-w-48 max-h-96 overflow-y-auto">
-				{#each [...assembly.assembliesBySpecies] as [species, assemblies]}
-					<div class="px-3 py-1 text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide bg-[var(--color-bg-secondary)]">
-						{species}
+			<div class="absolute top-full left-0 mt-1 py-1 bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded shadow-lg z-50 min-w-52 max-h-96 overflow-y-auto">
+				{#each assembly.assembliesByCategory as { category, species }}
+					<!-- Category header -->
+					<div class="px-3 py-1.5 text-[10px] font-bold text-[var(--color-accent)] uppercase tracking-wider bg-[var(--color-bg-primary)] border-b border-[var(--color-border)] sticky top-0">
+						{category}
 					</div>
-					{#each assemblies as asm}
-						<button
-							onclick={() => handleAssemblyChange(asm.id)}
-							class="w-full px-3 py-1.5 text-left text-xs hover:bg-[var(--color-border)] transition-colors flex justify-between items-center"
-							class:bg-[var(--color-accent)]={assembly.current.id === asm.id}
-							class:text-white={assembly.current.id === asm.id}
-						>
-							<span class="font-medium">{asm.name}</span>
-						</button>
+					{#each species as { name: speciesName, assemblies }}
+						<!-- Species subheader -->
+						<div class="px-3 py-1 text-[10px] text-[var(--color-text-muted)] bg-[var(--color-bg-secondary)]">
+							{speciesName}
+						</div>
+						{#each assemblies as asm}
+							<button
+								onclick={() => handleAssemblyChange(asm.id)}
+								class="w-full pl-5 pr-3 py-1 text-left text-xs hover:bg-[var(--color-border)] transition-colors flex justify-between items-center"
+								class:bg-[var(--color-accent)]={assembly.current.id === asm.id}
+								class:text-white={assembly.current.id === asm.id}
+							>
+								<span class="font-medium">{asm.name}</span>
+							</button>
+						{/each}
 					{/each}
 				{/each}
 				{#if assembly.hasInferred}

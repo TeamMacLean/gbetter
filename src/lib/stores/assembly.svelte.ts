@@ -254,11 +254,103 @@ function clearInferred(): void {
 }
 
 /**
- * Get assemblies grouped by species for UI
+ * Taxonomic categories for the assembly dropdown
+ */
+export type TaxonomicCategory = 'Animals' | 'Plants' | 'Fungi' | 'Protists' | 'Bacteria' | 'Viruses';
+
+/**
+ * Category display order
+ */
+const CATEGORY_ORDER: TaxonomicCategory[] = ['Animals', 'Plants', 'Fungi', 'Protists', 'Bacteria', 'Viruses'];
+
+/**
+ * Map species to their taxonomic category
+ */
+const SPECIES_TO_CATEGORY: Record<string, TaxonomicCategory> = {
+	// Animals
+	'Human': 'Animals',
+	'Mouse': 'Animals',
+	'Rat': 'Animals',
+	'Chicken': 'Animals',
+	'Zebrafish': 'Animals',
+	'Drosophila melanogaster': 'Animals',
+	'C. elegans': 'Animals',
+	// Plants
+	'Arabidopsis thaliana': 'Plants',
+	'Barley (Hordeum vulgare)': 'Plants',
+	'Maize (Zea mays)': 'Plants',
+	'Rice (Oryza sativa)': 'Plants',
+	'Wheat (Triticum aestivum)': 'Plants',
+	// Fungi
+	'Botrytis cinerea (Grey Mold)': 'Fungi',
+	'Fission Yeast (S. pombe)': 'Fungi',
+	'Rice Blast (Magnaporthe oryzae)': 'Fungi',
+	'S. cerevisiae (Yeast)': 'Fungi',
+	'Stem Rust (Puccinia graminis)': 'Fungi',
+	'Wheat Septoria (Zymoseptoria tritici)': 'Fungi',
+	// Protists
+	'Late Blight (Phytophthora infestans)': 'Protists',
+	// Bacteria
+	'E. coli': 'Bacteria',
+	// Viruses
+	'SARS-CoV-2': 'Viruses'
+};
+
+/**
+ * Species order within each category
+ */
+const SPECIES_ORDER: string[] = [
+	// Animals - Mammals (alphabetical)
+	'Human',
+	'Mouse',
+	'Rat',
+	// Animals - Birds
+	'Chicken',
+	// Animals - Fish
+	'Zebrafish',
+	// Animals - Insects
+	'Drosophila melanogaster',
+	// Animals - Nematodes
+	'C. elegans',
+	// Plants (alphabetical)
+	'Arabidopsis thaliana',
+	'Barley (Hordeum vulgare)',
+	'Maize (Zea mays)',
+	'Rice (Oryza sativa)',
+	'Wheat (Triticum aestivum)',
+	// Fungi (alphabetical)
+	'Botrytis cinerea (Grey Mold)',
+	'Fission Yeast (S. pombe)',
+	'Rice Blast (Magnaporthe oryzae)',
+	'S. cerevisiae (Yeast)',
+	'Stem Rust (Puccinia graminis)',
+	'Wheat Septoria (Zymoseptoria tritici)',
+	// Protists
+	'Late Blight (Phytophthora infestans)',
+	// Bacteria
+	'E. coli',
+	// Viruses
+	'SARS-CoV-2'
+];
+
+/**
+ * Structure for categorized assemblies
+ */
+export interface CategorizedAssemblies {
+	category: TaxonomicCategory;
+	species: Array<{
+		name: string;
+		assemblies: GenomeAssembly[];
+	}>;
+}
+
+/**
+ * Get assemblies grouped by species for UI, sorted taxonomically
  */
 function getAssembliesBySpecies(): Map<string, GenomeAssembly[]> {
 	const grouped = new Map<string, GenomeAssembly[]>();
 
+	// First, group all assemblies by species
 	for (const assembly of BUILTIN_ASSEMBLIES) {
 		const species = assembly.species ?? 'Other';
 		const list = grouped.get(species) ?? [];
@@ -266,7 +358,64 @@ function getAssembliesBySpecies(): Map<string, GenomeAssembly[]> {
 		grouped.set(species, list);
 	}
 
-	return grouped;
+	// Sort assemblies within each species alphabetically by name
+	for (const [species, assemblies] of grouped) {
+		assemblies.sort((a, b) => a.name.localeCompare(b.name));
+	}
+
+	// Create a new Map with taxonomic ordering
+	const sorted = new Map<string, GenomeAssembly[]>();
+
+	// Add species in taxonomic order
+	for (const species of SPECIES_ORDER) {
+		if (grouped.has(species)) {
+			sorted.set(species, grouped.get(species)!);
+		}
+	}
+
+	// Add any remaining species not in the order list (shouldn't happen, but safe)
+	for (const [species, assemblies] of grouped) {
+		if (!sorted.has(species)) {
+			sorted.set(species, assemblies);
+		}
+	}
+
+	return sorted;
+}
+
+/**
+ * Get assemblies grouped by taxonomic category, then by species
+ * Returns a structured array for rendering nested dropdown
+ */
+function getAssembliesByCategory(): CategorizedAssemblies[] {
+	// First get assemblies by species (already sorted)
+	const bySpecies = getAssembliesBySpecies();
+
+	// Group species by category
+	const categoryMap = new Map<TaxonomicCategory, Array<{ name: string; assemblies: GenomeAssembly[] }>>();
+
+	// Initialize categories in order
+	for (const category of CATEGORY_ORDER) {
+		categoryMap.set(category, []);
+	}
+
+	// Assign each species to its category
+	for (const [species, assemblies] of bySpecies) {
+		const category = SPECIES_TO_CATEGORY[species] ?? 'Animals';
+		const speciesList = categoryMap.get(category)!;
+		speciesList.push({ name: species, assemblies });
+	}
+
+	// Convert to array, filtering out empty categories
+	const result: CategorizedAssemblies[] = [];
+	for (const category of CATEGORY_ORDER) {
+		const species = categoryMap.get(category)!;
+		if (species.length > 0) {
+			result.push({ category, species });
+		}
+	}
+
+	return result;
 }
 
 // Export as a reactive store object
@@ -277,6 +426,7 @@ export function useAssembly() {
 		get hasInferred() { return hasInferredData; },
 		get builtinAssemblies() { return BUILTIN_ASSEMBLIES; },
 		get assembliesBySpecies() { return getAssembliesBySpecies(); },
+		get assembliesByCategory() { return getAssembliesByCategory(); },
 		setAssembly,
 		setAssemblyById,
 		getChromosome,
