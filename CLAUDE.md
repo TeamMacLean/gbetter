@@ -165,6 +165,7 @@ npx playwright test theme-visual.test.ts --update-snapshots
 ### Key Test Files
 - `tests/e2e/theme-switching.test.ts` - Theme functionality (7 tests)
 - `tests/e2e/theme-visual.test.ts` - Theme visual regression (12 tests)
+- `tests/e2e/signal-visual.test.ts` - Signal track visual regression (3 tests)
 - `tests/e2e/visual.test.ts` - General visual regression (32 tests)
 - `tests/e2e/bam-cigar-rendering.test.ts` - BAM rendering (13 tests)
 
@@ -192,14 +193,18 @@ Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 
 ### Recent Sessions
 
-**Session 20 (2026-01-22)**: Theme system implementation
+**Session 20 (2026-01-22)**: Theme system + signal color ramps
 - Implemented accessibility-first color system with light/dark/high-contrast modes
 - Created `palette.ts` with ColorBrewer Set2, Dark2, Paired palettes
 - Created `theme.svelte.ts` for theme state management
 - Updated all canvas rendering in TrackView.svelte to use theme-aware colors
 - Added theme/palette selectors to Settings > Display tab
 - Added visual regression tests for all theme/palette combinations (12 tests)
+- Added sequential color ramps for signal tracks (Blues, Greens, Purples, Oranges, Viridis)
+- Signal tracks now render with value-based coloring (light→dark for low→high values)
+- Added signal track visual regression tests (3 tests)
 - Updated all existing visual snapshots for light theme default
+- Completed all phases of visual design spec (docs/VISUAL-DESIGN.md)
 
 **Session 19 (2026-01-22)**: UI improvements
 - Zoom minimum changed to 1bp (single-base resolution)
