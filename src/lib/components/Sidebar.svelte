@@ -4,7 +4,6 @@
 	import { useRemoteTracks } from '$lib/stores/remoteTracks.svelte';
 	import { useLocalBinaryTracks } from '$lib/stores/localBinaryTracks.svelte';
 	import { getSupportedExtensions } from '$lib/services/trackRegistry';
-	import { getGeneModelThemes, getCurrentThemeName, setGeneModelTheme } from '$lib/services/trackTypes/geneModel';
 	import {
 		detectLocalBinaryType,
 		requiresIndexFile,
@@ -17,17 +16,6 @@
 	const viewport = useViewport();
 	const remoteTracks = useRemoteTracks();
 	const localBinaryTracks = useLocalBinaryTracks();
-
-	// Gene model theme state
-	let currentGeneTheme = $state(getCurrentThemeName());
-	const availableThemes = getGeneModelThemes();
-
-	function handleThemeChange(themeName: string) {
-		setGeneModelTheme(themeName);
-		currentGeneTheme = themeName;
-		// Force tracks to re-render
-		tracks.invalidateRender();
-	}
 
 	// Get supported extensions for file input (text formats + binary formats)
 	const textExtensions = getSupportedExtensions().map(ext => `.${ext}`);
@@ -536,30 +524,11 @@
 			</div>
 		</div>
 
-		<!-- Gene Model Theme Selector -->
-		<div class="p-3 border-t border-[var(--color-border)]">
-			<h3 class="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">
-				Gene Style
-			</h3>
-			<div class="flex gap-1">
-				{#each availableThemes as themeName}
-					<button
-						onclick={() => handleThemeChange(themeName)}
-						class="flex-1 px-2 py-1.5 text-xs rounded transition-colors capitalize"
-						class:bg-[var(--color-accent)]={currentGeneTheme === themeName}
-						class:text-white={currentGeneTheme === themeName}
-						class:bg-[var(--color-bg-tertiary)]={currentGeneTheme !== themeName}
-						class:text-[var(--color-text-secondary)]={currentGeneTheme !== themeName}
-						class:hover:bg-[var(--color-border)]={currentGeneTheme !== themeName}
-					>
-						{themeName}
-					</button>
-				{/each}
-			</div>
-		</div>
-
 		<!-- Add track section -->
 		<div class="p-3 border-t border-[var(--color-border)]">
+			<h3 class="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider mb-2">
+				Add Tracks
+			</h3>
 			<!-- Tab buttons -->
 			<div class="flex mb-3 bg-[var(--color-bg-tertiary)] rounded-lg p-0.5">
 				<button

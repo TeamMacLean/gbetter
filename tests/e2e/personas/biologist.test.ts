@@ -133,8 +133,15 @@ test.describe('Maya the Biologist - Variant analysis workflow', () => {
 	test('gene style options available for visualization', async ({ page }) => {
 		await page.goto('/');
 
-		// Gene style section in sidebar
-		await expect(page.getByText(/Gene Style/i)).toBeVisible();
+		// Open settings panel (cog icon)
+		const settingsButton = page.locator('button[title="Settings"]');
+		await settingsButton.click();
+
+		// Switch to Display tab
+		await page.getByRole('button', { name: 'Display' }).click();
+
+		// Gene style section in settings Display tab
+		await expect(page.getByText(/Gene Model Style/i)).toBeVisible();
 
 		// Style buttons
 		const darkButton = page.locator('button:has-text("dark")');

@@ -764,6 +764,20 @@ All pan-data-loading tests pass." \
   - **Tests**: `tests/e2e/cram-sequence-rendering.test.ts` (8 tests, all pass)
   - **Test files**: `scripts/cram-test-files/` with `cigar-test.cram` matching BAM test file
 
+- **2026-01-22 Session 19**: UI improvements - zoom, assembly dropdown, settings panel
+  - **Zoom minimum removed**: Changed from 100bp to 1bp minimum, allowing single-base resolution
+  - **Assembly dropdown taxonomic ordering**: Species grouped by kingdom (Animals → Plants → Fungi → Protists → Bacteria → Viruses) with category headers
+  - **New Settings panel**: Replaced AISettings.svelte with tabbed Settings.svelte
+    - AI tab: Provider selection, API key, model (existing functionality)
+    - Display tab: Gene model style selector (moved from sidebar)
+    - Extensible for future settings
+  - **Sidebar cleanup**: Removed gene style section, added "Add Tracks" heading
+  - **Tests**:
+    - `tests/e2e/zoom-minimum.test.ts` (4 tests)
+    - `tests/e2e/assembly-dropdown-order.test.ts` (5 tests)
+    - Updated persona tests to find gene style in Settings panel
+  - **Known issue**: 9 persona tests fail checking for UI text that doesn't exist (pre-existing)
+
 ## Known Issues & Gotchas
 
 ### RESOLVED: Coordinate Input Whitespace (Session 17)
@@ -833,18 +847,22 @@ When adding new GenArk assemblies, you must add chromosome mappings.
 If a user reports "both tracks look the same" or "genes track shows exons", check whether
 the data source actually has gene-level annotations or just transcript data with gene symbols.
 
-## Planned UI Improvements (Session 19+)
+## Planned UI Improvements (Session 20+)
 
 **IMPORTANT**: Use TDD approach - write failing e2e test first, then implement.
 
-### Quick Fixes
-- [ ] **Zoom +/- minimum limit**: Buttons won't zoom below 100bp - remove/lower this floor
-- [ ] **Assembly dropdown order**: Currently arbitrary - sort by category then alphabetically
+### Completed (Session 19)
+- [x] **Zoom +/- minimum limit**: Now allows zoom to 1bp (single-base resolution)
+- [x] **Assembly dropdown order**: Taxonomic ordering with category headers
+- [x] **Move gene style panel**: Now in Settings > Display tab
 
-### Medium Effort
-- [ ] **Move gene style panel**: Currently in sidebar, should be under settings cog
-- [ ] **Track deletion**: User-loaded tracks should have delete button (some already have this)
-- [ ] **Track visibility toggle**: Hide/show tracks without removing them (partially implemented)
+### Already Implemented
+- [x] **Track deletion**: Delete button (X) on hover for all user-loaded tracks
+- [x] **Track visibility toggle**: Checkbox toggles, persisted to localStorage
+
+### Test Suite Cleanup Needed
+- [ ] **Fix persona tests**: 9 tests check for UI text that doesn't exist ("No tracks loaded", "Drop files on canvas", etc.)
+- [ ] **Review test coverage**: Ensure new Settings panel has adequate test coverage
 
 ### Design Work Needed
 - [ ] **Gene style redesign**: Current themes (dark/flat) need visual improvement
@@ -867,5 +885,6 @@ the data source actually has gene-level annotations or just transcript data with
 14. `src/lib/services/fasta.ts` - Reference sequence queries (2bit + indexed FASTA)
 15. `src/lib/stores/referenceSequence.svelte.ts` - Reference sequence state
 16. `src/lib/components/TrackView.svelte` - Canvas rendering (BAM CIGAR rendering at lines ~800-1200)
+17. `src/lib/components/Settings.svelte` - Tabbed settings panel (AI + Display)
 17. `tests/e2e/bam-cigar-rendering.test.ts` - BAM visual regression tests
 18. `scripts/bam-test-files/create-cigar-test-bam.sh` - Creates test BAM with varied CIGAR ops

@@ -62,8 +62,15 @@ test.describe('Jordan the Bioinformatician - Power user workflow', () => {
 	test('can switch gene visualization themes', async ({ page }) => {
 		await page.goto('/');
 
-		// Theme controls in sidebar
-		await expect(page.getByText(/Gene Style/i)).toBeVisible();
+		// Open settings panel (cog icon)
+		const settingsButton = page.locator('button[title="Settings"]');
+		await settingsButton.click();
+
+		// Switch to Display tab
+		await page.getByRole('button', { name: 'Display' }).click();
+
+		// Theme controls in settings Display tab
+		await expect(page.getByText(/Gene Model Style/i)).toBeVisible();
 
 		const darkButton = page.locator('button:has-text("dark")');
 		const flatButton = page.locator('button:has-text("flat")');
@@ -78,6 +85,9 @@ test.describe('Jordan the Bioinformatician - Power user workflow', () => {
 		// Switch to dark
 		await darkButton.click();
 		await page.waitForTimeout(200);
+
+		// Close settings
+		await page.locator('button[title="Close"]').click();
 
 		// Canvas should still render
 		await expect(page.locator('canvas').first()).toBeVisible();
