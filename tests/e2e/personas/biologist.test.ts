@@ -17,19 +17,15 @@ test.describe('Maya the Biologist - Variant analysis workflow', () => {
 	test('can see tracks section ready for files', async ({ page }) => {
 		await page.goto('/');
 
-		// Maya sees the tracks panel
+		// Maya sees the tracks panel with default gene tracks
 		await expect(page.getByText(/Tracks/i).first()).toBeVisible();
+		await expect(page.getByText(/Transcripts/i).first()).toBeVisible({ timeout: 10000 });
 
-		// Empty state message
-		await expect(page.getByText(/No tracks loaded/i)).toBeVisible();
+		// Add Tracks section available
+		await expect(page.getByText(/Add Tracks/i)).toBeVisible();
 
-		// Add track button available
-		const addTrackButton = page.locator('button').filter({ hasText: /Add track/i }).first();
-		await expect(addTrackButton).toBeVisible();
-
-		// Supports relevant file formats
-		await expect(page.getByText(/\.bed/i)).toBeVisible();
-		await expect(page.getByText(/\.vcf/i)).toBeVisible();
+		// File upload area shows supported formats
+		await expect(page.getByText(/BED, GFF, VCF/i)).toBeVisible();
 	});
 
 	test('can access GQL console for complex queries', async ({ page }) => {
@@ -83,14 +79,15 @@ test.describe('Maya the Biologist - Variant analysis workflow', () => {
 	test('understands file format support for her workflow', async ({ page }) => {
 		await page.goto('/');
 
-		// Check file format hints in add track button
-		const addTrackButton = page.locator('button').filter({ hasText: /Add track/i }).first();
-		await expect(addTrackButton).toBeVisible();
+		// Add Tracks section shows supported formats
+		await expect(page.getByText(/Add Tracks/i)).toBeVisible();
 
-		// Supported formats visible
-		await expect(page.getByText(/\.bed/)).toBeVisible();
-		await expect(page.getByText(/\.gff/)).toBeVisible();
-		await expect(page.getByText(/\.vcf/)).toBeVisible();
+		// File tab shows format support
+		await expect(page.getByText(/BED, GFF, VCF/i)).toBeVisible();
+
+		// URL tab shows additional indexed format support
+		await page.getByRole('button', { name: 'URL' }).click();
+		await expect(page.getByText(/\.bb, \.bw, \.vcf\.gz/i)).toBeVisible();
 	});
 
 	test('can navigate to specific gene regions', async ({ page }) => {
@@ -136,16 +133,18 @@ test.describe('Maya the Biologist - Variant analysis workflow', () => {
 		// Open settings panel (cog icon)
 		const settingsButton = page.locator('button[title="Settings"]');
 		await settingsButton.click();
+		await page.waitForTimeout(200);
 
 		// Switch to Display tab
 		await page.getByRole('button', { name: 'Display' }).click();
+		await page.waitForTimeout(100);
 
 		// Gene style section in settings Display tab
 		await expect(page.getByText(/Gene Model Style/i)).toBeVisible();
 
-		// Style buttons
-		const darkButton = page.locator('button:has-text("dark")');
-		const flatButton = page.locator('button:has-text("flat")');
+		// Style buttons (Dark and Flat)
+		const darkButton = page.locator('button').filter({ hasText: 'Dark' }).first();
+		const flatButton = page.locator('button').filter({ hasText: 'Flat' }).first();
 
 		await expect(darkButton).toBeVisible();
 		await expect(flatButton).toBeVisible();
@@ -154,5 +153,8 @@ test.describe('Maya the Biologist - Variant analysis workflow', () => {
 		await flatButton.click();
 		await page.waitForTimeout(200);
 		await darkButton.click();
+
+		// Close settings
+		await page.keyboard.press('Escape');
 	});
 });

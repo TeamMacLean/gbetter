@@ -8,6 +8,11 @@
 	import { useTheme, type ThemeMode } from '$lib/stores/theme.svelte';
 	import { PALETTES, type PaletteName } from '$lib/services/palette';
 	import { useTracks } from '$lib/stores/tracks.svelte';
+	import {
+		setGeneModelTheme,
+		getGeneModelThemes,
+		getCurrentThemeName as getCurrentGeneModelTheme
+	} from '$lib/services/trackTypes/geneModel';
 
 	let { isOpen = $bindable(false) } = $props();
 
@@ -315,6 +320,33 @@
 								style="background-color: {color}"
 								title={color}
 							></div>
+						{/each}
+					</div>
+				</div>
+
+				<!-- Gene Model Style -->
+				<div>
+					<label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-2">
+						Gene Model Style
+					</label>
+					<p class="text-xs text-[var(--color-text-muted)] mb-3">
+						Choose rendering style for gene models (GFF/GTF tracks).
+					</p>
+					<div class="flex gap-2">
+						{#each getGeneModelThemes() as styleName}
+							<button
+								onclick={() => setGeneModelTheme(styleName)}
+								class="flex-1 px-3 py-2 text-sm rounded border transition-colors capitalize"
+								class:bg-[var(--color-accent)]={getCurrentGeneModelTheme() === styleName}
+								class:text-white={getCurrentGeneModelTheme() === styleName}
+								class:border-[var(--color-accent)]={getCurrentGeneModelTheme() === styleName}
+								class:bg-[var(--color-bg-tertiary)]={getCurrentGeneModelTheme() !== styleName}
+								class:text-[var(--color-text-primary)]={getCurrentGeneModelTheme() !== styleName}
+								class:border-[var(--color-border)]={getCurrentGeneModelTheme() !== styleName}
+								class:hover:border-[var(--color-accent)]={getCurrentGeneModelTheme() !== styleName}
+							>
+								{styleName.charAt(0).toUpperCase() + styleName.slice(1)}
+							</button>
 						{/each}
 					</div>
 				</div>

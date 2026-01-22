@@ -153,11 +153,12 @@ test.describe('Alex the Analyst - Reproducibility workflow', () => {
 	test('multiple file format support for complex analyses', async ({ page }) => {
 		await page.goto('/');
 
-		// Can load various formats
-		await expect(page.getByText(/\.bed/)).toBeVisible();
-		await expect(page.getByText(/\.gff/)).toBeVisible();
-		await expect(page.getByText(/\.vcf/)).toBeVisible();
-		await expect(page.getByText(/\.bedgraph|\.bg/i)).toBeVisible();
+		// File tab shows supported formats (BED, GFF, VCF, BigBed, BigWig, BAM)
+		await expect(page.getByText(/BED, GFF, VCF/i)).toBeVisible();
+
+		// URL tab shows indexed formats
+		await page.getByRole('button', { name: 'URL' }).click();
+		await expect(page.getByText(/\.bb, \.bw, \.vcf\.gz/i)).toBeVisible();
 	});
 
 	test('GQL supports natural language translation', async ({ page }) => {
@@ -179,8 +180,18 @@ test.describe('Alex the Analyst - Reproducibility workflow', () => {
 	test('AI configuration status indicator', async ({ page }) => {
 		await page.goto('/');
 
-		// AI status shown in header - use title attribute
-		const aiButton = page.locator('button[title*="AI"]').first();
-		await expect(aiButton).toBeVisible();
+		// Settings button gives access to AI configuration
+		const settingsButton = page.locator('button[title="Settings"]');
+		await expect(settingsButton).toBeVisible();
+
+		// Click to verify AI tab is accessible
+		await settingsButton.click();
+		await page.waitForTimeout(200);
+
+		// AI tab should be visible in settings
+		await expect(page.getByRole('button', { name: 'AI', exact: true })).toBeVisible();
+
+		// Close settings
+		await page.keyboard.press('Escape');
 	});
 });

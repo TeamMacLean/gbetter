@@ -29,9 +29,10 @@ test.describe('Sam the Student - First-time user journey', () => {
 		await expect(page.locator('button:has-text("+")').first()).toBeVisible();
 		await expect(page.locator('button:has-text("−")').first()).toBeVisible();
 
-		// Sidebar shows helpful hints
+		// Sidebar shows tracks section with default gene tracks loaded
 		await expect(page.getByText(/Tracks/i).first()).toBeVisible();
-		await expect(page.getByText(/No tracks loaded/i)).toBeVisible();
+		// Remote gene/transcript tracks load by default for the assembly
+		await expect(page.getByText(/Transcripts/i).first()).toBeVisible({ timeout: 10000 });
 	});
 
 	test('can search for and navigate to TP53', async ({ page }) => {
@@ -115,12 +116,16 @@ test.describe('Sam the Student - First-time user journey', () => {
 	test('discovers how to add tracks via sidebar hint', async ({ page }) => {
 		await page.goto('/');
 
-		// Student sees hint about loading tracks
-		await expect(page.getByText(/Drop files on canvas/i)).toBeVisible();
+		// Student sees "Add Tracks" section in sidebar
+		await expect(page.getByText(/Add Tracks/i)).toBeVisible();
 
-		// Add track button is visible
-		const addTrackButton = page.locator('button').filter({ hasText: /Add track/i }).first();
-		await expect(addTrackButton).toBeVisible();
+		// File/URL tabs are visible
+		await expect(page.getByRole('button', { name: 'File' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'URL' })).toBeVisible();
+
+		// Drop or browse button is visible with format hints
+		await expect(page.getByText(/Drop or browse/i)).toBeVisible();
+		await expect(page.getByText(/BED, GFF, VCF/i)).toBeVisible();
 	});
 
 	test('can use natural language zoom commands', async ({ page }) => {

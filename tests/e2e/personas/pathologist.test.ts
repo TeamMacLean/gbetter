@@ -86,20 +86,21 @@ test.describe('Elena the Pathologist - Non-model organism workflow', () => {
 	test('file format support includes GFF3 for annotations', async ({ page }) => {
 		await page.goto('/');
 
-		// GFF3 is important for gene annotations
-		await expect(page.getByText(/\.gff3|\.gff/i)).toBeVisible();
+		// GFF format visible in supported formats (BED, GFF, VCF, BigBed, BigWig, BAM)
+		await expect(page.getByText(/GFF/i)).toBeVisible();
 	});
 
 	test('can load custom annotation files', async ({ page }) => {
 		await page.goto('/');
 
-		// Add track button
-		const addTrackButton = page.locator('button').filter({ hasText: /Add track/i }).first();
-		await expect(addTrackButton).toBeVisible();
+		// Add Tracks section visible
+		await expect(page.getByText(/Add Tracks/i)).toBeVisible();
 
-		// Supported formats include what Elena needs
-		await expect(page.getByText(/\.gff/)).toBeVisible();
-		await expect(page.getByText(/\.bed/)).toBeVisible();
+		// Supported formats include what Elena needs (BED, GFF)
+		await expect(page.getByText(/BED, GFF, VCF/i)).toBeVisible();
+
+		// File upload button is available
+		await expect(page.getByText(/Drop or browse/i)).toBeVisible();
 	});
 
 	test('viewport shows base pair width', async ({ page }) => {

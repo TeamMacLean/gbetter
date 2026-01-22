@@ -50,13 +50,12 @@ test.describe('Jordan the Bioinformatician - Power user workflow', () => {
 	test('supports multiple track types for analysis', async ({ page }) => {
 		await page.goto('/');
 
-		// Add track button shows supported formats
-		const formatInfo = page.getByText(/\.bed.*\.gff.*\.bedgraph.*\.vcf/i);
+		// File tab shows supported formats
+		await expect(page.getByText(/BED, GFF, VCF/i)).toBeVisible();
 
-		// At minimum, formats are mentioned
-		await expect(page.getByText(/\.bed/)).toBeVisible();
-		await expect(page.getByText(/\.bedgraph|\.bg/i)).toBeVisible();
-		await expect(page.getByText(/\.gff/)).toBeVisible();
+		// URL tab shows indexed formats
+		await page.getByRole('button', { name: 'URL' }).click();
+		await expect(page.getByText(/\.bb, \.bw/i)).toBeVisible();
 	});
 
 	test('can switch gene visualization themes', async ({ page }) => {
@@ -65,15 +64,18 @@ test.describe('Jordan the Bioinformatician - Power user workflow', () => {
 		// Open settings panel (cog icon)
 		const settingsButton = page.locator('button[title="Settings"]');
 		await settingsButton.click();
+		await page.waitForTimeout(200);
 
 		// Switch to Display tab
 		await page.getByRole('button', { name: 'Display' }).click();
+		await page.waitForTimeout(100);
 
 		// Theme controls in settings Display tab
 		await expect(page.getByText(/Gene Model Style/i)).toBeVisible();
 
-		const darkButton = page.locator('button:has-text("dark")');
-		const flatButton = page.locator('button:has-text("flat")');
+		// Style buttons (capitalized: Dark, Flat)
+		const darkButton = page.locator('button').filter({ hasText: 'Dark' }).first();
+		const flatButton = page.locator('button').filter({ hasText: 'Flat' }).first();
 
 		await expect(darkButton).toBeVisible();
 		await expect(flatButton).toBeVisible();
