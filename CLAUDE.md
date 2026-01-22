@@ -193,6 +193,18 @@ Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 
 ### Recent Sessions
 
+**Session 23 (2026-01-22)**: Tutorial planning and style guide
+- Created `docs/TUTORIAL-STYLE-GUIDE.md` - permanent style standards for tutorials
+  - Standard header format (audience, time, prerequisites, version)
+  - Standalone tutorials (no assumed prior reading)
+  - Real R2 test URLs for hands-on exercises
+  - GitHub markdown features: alerts (`[!TIP]`, `[!NOTE]`, etc.), collapsible sections
+- Created `docs/plans/` with 8 detailed tutorial plans:
+  - 5 plans for updating existing tutorials (01-05)
+  - 3 plans for new tutorials: Remote Tracks, Alignments, Themes
+- Plans include specific GitHub markdown enhancements for each tutorial
+- Plans are temporary - delete after executing
+
 **Session 22 (2026-01-22)**: README update
 - Updated feature list: themes, 27+ assemblies, fixed typo
 - Updated format table: all formats now supported (was showing BigWig/BAM as "Planned")
@@ -253,6 +265,7 @@ Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 - **Session 15-18**: Local binary files, reference sequence, CRAM
 - **Session 19-20**: Theme system, visual design overhaul
 - **Session 21-22**: CI green, README updated
+- **Session 23**: Tutorial style guide and plans created
 
 ## Key Files
 1. `src/lib/stores/theme.svelte.ts` - Theme state management
