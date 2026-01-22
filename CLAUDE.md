@@ -3,20 +3,20 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 19 (2026-01-22) - UI improvements + visual design planning
+**Status**: Active development, Session 20 (2026-01-22) - Theme system complete
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
 2. **AI-native** - Natural language as first-class input, but REPRODUCIBLE
 3. **Web-first** - No install, shareable URLs
-4. **Beautiful** - Dark mode, modern aesthetics, themeable gene models
+4. **Accessible** - Light theme default (print-ready), colorblind-safe palettes
 5. **Species-agnostic** - Works for any genome (27+ assemblies built-in)
 
 ## Tech Stack
 - **Language**: TypeScript (strict)
 - **Framework**: Svelte 5 + SvelteKit
 - **Rendering**: Canvas (tracks) + SVG (overlays)
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS + CSS custom properties for theming
 - **Build**: Vite
 - **AI**: Pluggable (Claude/OpenAI with provider abstraction)
 
@@ -25,7 +25,7 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 ### ✅ Complete
 
 **Core Browser**
-- Dark theme UI with header, sidebar, canvas viewport
+- Light/dark/high-contrast themes with Settings > Display panel
 - Pan (drag) and zoom (scroll wheel) on canvas
 - Coordinate input with navigation
 - Track type registry (extensible architecture)
@@ -33,84 +33,76 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 - URL input for remote tracks (BigBed/BigWig/VCF/GFF/BED tabix via sidebar File|URL tabs)
 - Keyboard shortcuts (Cmd+` for query console)
 
+**Theme System**
+- Three theme modes: Light (default), Dark, High-Contrast
+- ColorBrewer palettes: Set2 (default), Dark2, Paired - all colorblind-safe
+- Accessible nucleotide colors: A=blue, C=orange, G=purple, T=teal
+- Theme and palette persist to localStorage
+- Canvas rendering adapts to current theme
+
 **Track Types**
 - BED (intervals) - BED3-BED12 support
-- GFF3 (gene models) - Parent-child linking, themeable rendering
+- GFF3 (gene models) - Parent-child linking, palette-based coloring
 - bedGraph (signal) - Peak/coverage visualization
 - VCF (variants) - Zoom-dependent rendering
-
-**Gene Model Themes**
-- Theme system with switchable styles (sidebar "Gene Style" buttons)
-- **Dark theme** (default): Glows, gradients, peaked introns (GBrowse hat style)
-- **Flat theme**: FlatUI colors, no gradients, peaked introns
-- Inner chevrons showing strand direction
 
 **AI Integration**
 - Multi-provider support: Claude (Sonnet 4, Haiku, Opus 4) and OpenAI (GPT-4o, etc.)
 - Settings panel with API key storage, model selection, connection test
 - Natural language → GQL translation with context awareness
-- Scope clarification (AI asks when view/chromosome/global is ambiguous)
-- Fallback to regex-based translation when AI unavailable
 
 **Query System (GQL)**
 - Commands: NAVIGATE, SEARCH, ZOOM, PAN, LIST, SELECT, FILTER, HIGHLIGHT, CLEAR
 - SELECT with WHERE, ORDER BY, LIMIT, FROM track, INTERSECT, WITHIN
 - FILTER dims/hides features by attributes (type, strand, etc.)
-- HIGHLIGHT draws semi-transparent overlay on genomic regions
-- Query history with localStorage persistence (max 50)
-- Save/load named queries
-- Export/import .gql files
-- Shareable URLs with encoded queries (?gql=...)
-- Query console (Cmd+`) with results table, history panel
-
-**State Persistence**
-- URL state: `?chr=chr17&start=7668421&end=7687490` or `?loc=chr17:7668421-7687490`
-- localStorage session restore with banner prompt
-- Track metadata persistence (re-upload files on restore)
+- Query history with localStorage persistence
 
 **Assembly System**
-- 27+ built-in assemblies grouped by species:
-  - Human: GRCh38, GRCh37, T2T-CHM13
-  - Mouse: mm39, mm10
-  - Plants: Arabidopsis, Rice, Maize, Wheat, Barley
-  - Pathogens: Botrytis, Magnaporthe, Puccinia, Zymoseptoria, Phytophthora
-  - Microbes: E. coli K-12, SARS-CoV-2, S. pombe
-  - Model organisms: Zebrafish, C. elegans, Drosophila, Yeast
+- 27+ built-in assemblies grouped taxonomically (Animals → Plants → Fungi → Bacteria → Viruses)
+- Reference sequence (2bit) for all assemblies via UCSC + R2
 - Chromosome inference from loaded data
-- Custom .chrom.sizes file loading
-- Chromosome name normalization and aliases
 
-**Data Validation**
-- Chromosome mismatch warnings when loading tracks
-- Suggests switching assemblies or using "inferred from data"
-
-**Reference Sequence**
-- 2bit file support for all 27 assemblies (UCSC + R2-hosted)
-- Sequence display at high zoom (< 125bp, 8+ pixels/base)
-- Colored nucleotides: A=green, C=blue, G=amber, T=red
-- Auto-fetches from UCSC or R2 based on assembly
-
-**BAM Read Rendering**
-- Three zoom levels with automatic transition:
-  - **Sequence level** (8+ px/base): Colored nucleotide letters, mismatch highlighting (red background)
-  - **Block level** (1-8 px/base): CIGAR blocks with insertion markers (green) and deletion gaps
-  - **Coverage level** (<1 px/base): Coverage histogram showing read depth as area chart
-- CIGAR operations: M (match), I (insertion), D (deletion), S (soft clip), N (skip)
-- Quality-based opacity (higher quality = more opaque)
-- Coverage histogram: auto-scaled Y-axis, gradient fill, Y-axis labels (max coverage)
-- Works with local and remote BAM files
-- Visual regression tests for all rendering modes
+**BAM/CRAM Rendering**
+- Three zoom levels: sequence (nucleotides), blocks (CIGAR), coverage (histogram)
+- CIGAR operations: M, I, D, S, N with visual indicators
+- Quality-based opacity, mismatch highlighting
+- CRAM support with 2bit reference
 
 ### 🔲 Not Yet Implemented
+- Comparison views (side-by-side query results)
+- AI conversation follow-ups
 
-- **Comparison views** - Side-by-side query results
-- **AI conversation follow-ups** - Reply to clarification questions
+## Commands
+```bash
+npm run dev          # Dev server (port 5173)
+npm run build        # Production build
+npm run check        # TypeScript check
+npm test             # Run all tests
+npm run test:e2e     # Playwright e2e tests
+npm run test:e2e:ui  # Playwright with interactive UI
+```
 
-## Architecture Patterns
+## Architecture
+
+### Theme System
+```typescript
+// src/lib/stores/theme.svelte.ts
+import { useTheme } from '$lib/stores/theme.svelte';
+const theme = useTheme();
+theme.setMode('dark');      // 'light' | 'dark' | 'high-contrast'
+theme.setPalette('dark2');  // 'set2' | 'dark2' | 'paired'
+```
+
+### Palette Colors
+```typescript
+// src/lib/services/palette.ts
+import { getColors, NUCLEOTIDE_COLORS } from '$lib/services/palette';
+const colors = getColors(); // Returns current palette's semantic colors
+// colors.cds, colors.utr, colors.exon, colors.gene, etc.
+```
 
 ### Track Type Registry
 ```typescript
-// Add new track types without touching core code
 registerTrackType({
   id: 'my-type',
   extensions: ['ext'],
@@ -119,24 +111,9 @@ registerTrackType({
 });
 ```
 
-### Gene Model Themes
-```typescript
-// Switch themes programmatically
-import { setGeneModelTheme, getGeneModelThemes } from '$lib/services/trackTypes/geneModel';
-setGeneModelTheme('flat'); // or 'dark'
-```
-
-### State Management (Svelte 5 Runes)
-```typescript
-// viewport.svelte.ts
-let viewport = $state<Viewport>({ chr: 'chr1', start: 0, end: 100000 });
-const width = $derived(viewport.end - viewport.start);
-```
-
 ### Coordinate System
 - **Internal**: 0-based, half-open (like BED, BAM)
 - **Display**: 1-based (genomics convention)
-- **GFF3 → Internal**: Subtract 1 from start
 
 ## Project Structure
 ```
@@ -145,785 +122,118 @@ src/
 │   ├── components/
 │   │   ├── Header.svelte           # Assembly selector, coordinate input
 │   │   ├── SearchBar.svelte        # Natural language + GQL input
-│   │   ├── Sidebar.svelte          # Track list, theme selector
+│   │   ├── Sidebar.svelte          # Track list
 │   │   ├── TrackView.svelte        # Canvas viewport
 │   │   ├── QueryConsole.svelte     # GQL console (Cmd+`)
-│   │   ├── AISettings.svelte       # Provider/key configuration
-│   │   └── SessionRestoreBanner.svelte
+│   │   └── Settings.svelte         # Tabbed settings (AI + Display)
 │   ├── stores/
 │   │   ├── viewport.svelte.ts      # Pan, zoom, URL sync
 │   │   ├── tracks.svelte.ts        # Track loading, validation
-│   │   ├── assembly.svelte.ts      # Genome assemblies
-│   │   └── queryHistory.svelte.ts  # Query history
+│   │   ├── theme.svelte.ts         # Theme mode + palette state
+│   │   └── assembly.svelte.ts      # Genome assemblies
 │   ├── services/
-│   │   ├── ai/
-│   │   │   ├── index.ts            # Provider abstraction
-│   │   │   ├── anthropic.ts        # Claude integration
-│   │   │   ├── openai.ts           # OpenAI integration
-│   │   │   └── prompt.ts           # System prompts
+│   │   ├── palette.ts              # Color palette definitions
+│   │   ├── ai/                     # AI provider system
 │   │   ├── queryLanguage.ts        # GQL parser/executor
-│   │   ├── savedQueries.ts         # Query persistence
-│   │   ├── persistence.ts          # Session storage
-│   │   ├── trackRegistry.ts        # Track type system
-│   │   └── trackTypes/
-│   │       ├── geneModel.ts        # GFF3 + themes
-│   │       ├── intervals.ts        # BED
-│   │       ├── signal.ts           # bedGraph
-│   │       └── variants.ts         # VCF
-│   ├── data/
-│   │   └── assemblies.json         # Built-in genome definitions
-│   └── types/
-│       ├── genome.ts
-│       └── tracks.ts
+│   │   └── trackTypes/             # Track renderers
+│   └── constants/
+│       └── zoom.ts                 # Zoom thresholds, nucleotide colors
 ```
 
 ## File Format Support
 
 | Format | Status | Notes |
 |--------|--------|-------|
-| BED | ✅ Complete | BED3-BED12, local text files |
-| GFF3 | ✅ Complete | Parent-child linking, themes, local text files |
-| bedGraph | ✅ Complete | Signal/peak data, local text files |
-| VCF | ✅ Complete | Zoom-dependent rendering, local text files |
-| BigBed | ✅ Complete | Local + remote, indexed BED (.bb), HTTP range requests |
-| BigWig | ✅ Complete | Local + remote, indexed signal (.bw), HTTP range requests |
-| VCF.gz | ✅ Complete | Local + remote, tabix-indexed variants (.vcf.gz + .tbi) |
-| GFF.gz | ✅ Complete | Local + remote, tabix-indexed annotations (.gff.gz + .tbi) |
-| BED.gz | ✅ Complete | Local + remote, tabix-indexed intervals (.bed.gz + .tbi) |
-| BAM | ✅ Complete | Local + remote, indexed alignments (.bam + .bai), renders as intervals |
-| CRAM | ✅ Complete | Local files, indexed alignments (.cram + .crai), uses 2bit reference |
-| FASTA | 🔲 Planned | Sequence display at high zoom |
-
-## URL Track Loading
-
-Users can load remote indexed tracks by pasting URLs in the sidebar. The sidebar has **File** and **URL** tabs for adding tracks.
-
-### Supported URL Formats
-
-| Extension | Type | Index | Library |
-|-----------|------|-------|---------|
-| `.bb`, `.bigbed` | BigBed | Built-in | `@gmod/bbi` |
-| `.bw`, `.bigwig` | BigWig | Built-in | `@gmod/bbi` |
-| `.vcf.gz` | VCF | `.vcf.gz.tbi` | `@gmod/tabix` + `@gmod/vcf` |
-| `.gff.gz`, `.gff3.gz` | GFF | `.gff.gz.tbi` | `@gmod/tabix` + `@gmod/gff` |
-| `.bed.gz` | BED | `.bed.gz.tbi` | `@gmod/tabix` |
-| `.bam` | BAM | `.bam.bai` | `@gmod/bam` |
-| `.cram` | CRAM | `.cram.crai` | `@gmod/cram` (partial) |
-
-### How It Works
-
-1. **BigBed/BigWig**: Self-contained index, single file needed
-2. **Tabix formats**: Require companion `.tbi` index file at same URL path
-   - `https://example.com/data.vcf.gz` → index at `https://example.com/data.vcf.gz.tbi`
-
-### Index Discovery
-
-For tabix-indexed files, the index URL is auto-discovered by appending `.tbi`:
-```
-Data file:  https://server.com/path/file.vcf.gz
-Index file: https://server.com/path/file.vcf.gz.tbi  (auto-discovered)
-```
-
-### CORS Requirements
-
-Remote URLs must be CORS-enabled. Options:
-1. **Cloudflare R2** - Public buckets have CORS enabled by default
-2. **AWS S3** - Configure CORS policy on bucket
-3. **Your server** - Add `Access-Control-Allow-Origin: *` headers
-
-### Test Files (E. coli K-12)
-
-Test indexed format support with these R2-hosted files:
-
-| Format | URL |
-|--------|-----|
-| VCF | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.vcf.gz` |
-| GFF | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.gff3.gz` |
-| BED | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.bed.gz` |
-| BAM | `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.bam` |
-
-**Test procedure:**
-1. Switch assembly to "E. coli K-12 MG1655"
-2. Click URL tab in sidebar
-3. Paste one of the URLs above
-4. Click + to add track
-5. Navigate to `NC_000913.3:100000-300000` to see test features
-
-### Creating Tabix Files
-
-To create your own tabix-indexed files:
-
-```bash
-# Install htslib (provides bgzip and tabix)
-brew install htslib  # macOS
-apt install tabix    # Ubuntu/Debian
-
-# Compress and index VCF
-bgzip myfile.vcf
-tabix -p vcf myfile.vcf.gz
-
-# Compress and index GFF
-bgzip myfile.gff3
-tabix -p gff myfile.gff3.gz
-
-# Compress and index BED (must be sorted)
-sort -k1,1 -k2,2n myfile.bed > myfile.sorted.bed
-bgzip myfile.sorted.bed
-tabix -p bed myfile.sorted.bed.gz
-```
-
-### Key Files
-
-- `src/lib/services/tabix.ts` - Tabix query functions
-- `src/lib/services/bigbed.ts` - BigBed query functions
-- `src/lib/services/bigwig.ts` - BigWig query functions
-- `src/lib/stores/remoteTracks.svelte.ts` - Remote track state management
-- `src/lib/components/Sidebar.svelte` - URL input UI
-
-## Remote Gene/Transcript Tracks
-
-Remote tracks are loaded automatically based on the selected assembly. They use BigBed format
-with HTTP range requests for efficient region-based queries.
-
-### Track Types
-
-| Track | Data Level | Visual | Source |
-|-------|------------|--------|--------|
-| **Genes** | Gene-level | Single continuous box per gene | R2-hosted `.genes.bb` files |
-| **Transcripts** | Transcript-level | Compound model with exon blocks | UCSC `knownGene.bb` or R2 `.transcripts.bb` |
-
-### What Each Track Shows
-
-**Genes Track** (when available):
-- One feature per gene (e.g., "TP53", "BRCA1")
-- Single continuous rectangle spanning gene extent
-- No internal exon/intron structure shown
-- Useful for: gene density, gene-level annotations, simple overviews
-
-**Transcripts Track**:
-- One feature per transcript isoform (e.g., "ENST00000413465.6")
-- Compound structure with exon blocks connected by intron lines
-- Shows splicing patterns, UTRs, coding regions
-- Multiple transcripts per gene (alternative splicing)
-- Useful for: detailed gene structure, isoform analysis
-
-### Assembly Track Availability
-
-| Assembly Type | Genes Track | Transcripts Track | Notes |
-|---------------|-------------|-------------------|-------|
-| UCSC (GRCh38, hg19, etc.) | ❌ | ✅ | UCSC only provides transcript-level data |
-| R2 Plants (TAIR10, etc.) | ✅ | ✅ | Separate gene-level and transcript files |
-| R2 Fungi (S. pombe, etc.) | ✅ | ✅ | Separate gene-level and transcript files |
-| R2 Bacteria (E. coli, etc.) | ✅ | ❌ | No alternative splicing in prokaryotes |
-
-### Data Structure (BigBed BED12+)
-
-```
-chrom  start   end     name              score strand thickStart thickEnd rgb blockCount blockSizes    blockStarts   ... geneSymbol
-chr17  7661778 7676594 ENST00000413465.6 1     -      7661778    7676594  0   7          236,110,113,  0,1234,5678,  ... TP53
-```
-
-- `name` (field 4): Transcript ID for transcripts, Gene ID for genes
-- `blockCount/blockSizes/blockStarts` (fields 10-12): Exon structure
-- `geneSymbol` (extended field 15): Human-readable gene name (UCSC only)
-
-## GQL Quick Reference
-```
-# Navigation
-NAVIGATE chr17:7668421-7687490
-ZOOM IN | ZOOM OUT | ZOOM 2x
-PAN LEFT 10kb | PAN RIGHT 1000bp
-
-# Search
-SEARCH GENE TP53
-LIST GENES | LIST VARIANTS
-
-# Filter & Highlight
-FILTER type=exon strand=+     # Dim non-matching features
-HIGHLIGHT chr17:7670000-7675000  # Highlight a region
-CLEAR filters | CLEAR highlights | CLEAR all
-
-# Queries
-SELECT GENES FROM my-track WHERE strand = '+' ORDER BY length DESC LIMIT 10
-SELECT GENES INTERSECT variants IN VIEW
-SELECT VARIANTS WITHIN TP53
-LIST GENES WITH VARIANTS
-```
-
-## Commands
-```bash
-npm run dev          # Dev server (port 5173)
-npm run build        # Production build
-npm run check        # TypeScript check
-npm test             # Run all tests (unit + e2e)
-npm run test:unit    # Vitest unit tests only
-npm run test:e2e     # Playwright e2e tests only
-npm run test:e2e:ui  # Playwright with interactive UI
-```
+| BED | ✅ | BED3-BED12, local + tabix remote |
+| GFF3 | ✅ | Parent-child linking, local + tabix remote |
+| bedGraph | ✅ | Signal/peak data |
+| VCF | ✅ | Zoom-dependent, local + tabix remote |
+| BigBed | ✅ | Local + remote, HTTP range requests |
+| BigWig | ✅ | Local + remote, HTTP range requests |
+| BAM | ✅ | Local + remote, indexed |
+| CRAM | ✅ | Local, uses 2bit reference |
 
 ## Testing
 
-### Philosophy
-Tests are a **development tool**, not just CI validation. Use them to:
-1. Verify changes work before committing
-2. Understand expected behavior by reading test descriptions
-3. Debug issues by running specific tests with `--headed` or `--ui`
-
-### Test Structure
-```
-tests/
-├── e2e/
-│   ├── smoke.test.ts          # Basic app loads, no crashes
-│   ├── navigation.test.ts     # Pan, zoom, coordinate input
-│   ├── gene-tracks.test.ts    # BigBed loading, assembly switching
-│   ├── visual.test.ts         # Screenshot regression
-│   └── personas/              # User journey tests
-│       ├── biologist.test.ts
-│       ├── bioinformatician.test.ts
-│       └── ...
-```
-
-### Running Tests
+### Visual Regression Tests
+Theme changes require updating visual snapshots:
 ```bash
-# Full suite (CI-style)
-npm test
-
-# Just e2e tests
-npm run test:e2e
-
-# Interactive debugging - see browser, step through
-npm run test:e2e:ui
-
-# Run specific test file
-npx playwright test gene-tracks.test.ts
-
-# Run with visible browser
-npx playwright test --headed
-
-# Update visual snapshots after intentional UI changes
-npm run test:visual:update
+npx playwright test visual.test.ts --update-snapshots
+npx playwright test theme-visual.test.ts --update-snapshots
 ```
 
-### Development Workflow
-1. **Before starting work**: Run `npm run test:e2e` to ensure baseline passes
-2. **After making changes**: Run relevant tests to verify
-3. **Before committing**: Run `npm test` (full suite)
-4. **If tests fail**: Use `--ui` mode to debug visually
-
-### Writing New Tests
-- Add e2e tests for user-visible features
-- Test file naming: `{feature}.test.ts`
-- Use descriptive test names that document behavior
-- Example pattern from gene-tracks.test.ts:
-```typescript
-test('TAIR10 shows both genes and transcript tracks', async ({ page }) => {
-  await page.goto('/');
-  // Switch assembly
-  const assemblyButton = page.locator('button').filter({ hasText: /GRCh|Human/i }).first();
-  await assemblyButton.click();
-  await page.getByText('TAIR10').click();
-  // Verify both tracks loaded
-  await expect(page.getByText('Genes').first()).toBeVisible({ timeout: 10000 });
-  await expect(page.getByText('Transcripts').first()).toBeVisible({ timeout: 10000 });
-});
-```
-
-### Port Configuration
-Default dev server runs on port 5173. For multiple terminals:
-```bash
-npm run dev -- --port 5174  # Second terminal
-npm run dev -- --port 5175  # Third terminal
-```
-
-## Ralph Loop (Iterative Development)
-
-Ralph Loop is a Claude Code plugin for autonomous iterative development. It feeds the same prompt
-back to Claude after each response, allowing multi-iteration refinement until completion.
-
-### Basic Usage
-```bash
-/ralph-loop "Your task description" --completion-promise "DONE" --max-iterations 25
-```
-
-### Key Flags
-- `--completion-promise "TEXT"` - Claude outputs `<promise>TEXT</promise>` when truly complete
-- `--max-iterations N` - Safety limit (required unless you want infinite loop)
-
-### Correct Prompt Structure
-```bash
-# ✅ CORRECT - Promise as separate flag
-/ralph-loop "Implement feature X. Tasks: 1. Create service 2. Add tests. Verify: npm test" \
-  --completion-promise "FEATURE-COMPLETE" \
-  --max-iterations 20
-
-# ❌ WRONG - Promise embedded in prompt (won't be detected!)
-/ralph-loop "Implement feature X. Output: <promise>DONE</promise>" --max-iterations 20
-```
-
-### Example: Multi-Phase Implementation
-```bash
-/ralph-loop "Implement BigWig support for genome browser.
-
-## Tasks
-1. Create src/lib/services/bigwig.ts using @gmod/bbi
-2. Update remoteTracks.svelte.ts for bigwig type
-3. Update TrackView.svelte for signal rendering
-4. Add e2e test
-
-## Verification
-- npm run check (must pass)
-- npm run test:e2e (must pass)
-
-## Success Criteria
-All tasks complete and verified." \
-  --completion-promise "PHASE-COMPLETE" \
-  --max-iterations 25
-```
-
-### How It Works
-1. Claude receives prompt, works on task
-2. On exit attempt, stop hook checks for `<promise>YOUR_TEXT</promise>` in output
-3. If promise matches `--completion-promise` value → loop stops
-4. If no match → same prompt fed back, Claude sees previous work in files
-5. Continues until promise detected or max iterations reached
-
-### Monitoring
-```bash
-# Check current iteration
-grep '^iteration:' .claude/ralph-loop.local.md
-
-# View full state
-head -10 .claude/ralph-loop.local.md
-```
-
-### Common Mistakes
-1. **Promise in prompt text** - Use `--completion-promise` flag, not `<promise>` in the prompt
-2. **No max iterations** - Always set `--max-iterations` unless you want infinite loop
-3. **Vague completion criteria** - Be specific about what "done" means
-
-### TDD + Ralph Loop Pattern
-
-The most effective way to use Ralph Loop is with Test-Driven Development:
-
-**Pattern**:
-1. Write a failing test that captures the bug/feature
-2. Run test to confirm it fails (red)
-3. Use Ralph Loop with that test as verification criteria
-4. Loop iterates until tests pass (green)
-5. Human does final smoke test (minimal involvement)
-
-**Why this works**:
-- Tests provide objective, automated verification
-- No human needed in the loop until completion
-- Each iteration builds on previous work
-- Clear completion criteria (tests pass)
-
-**Example: Bug Fix**
-```bash
-# 1. First, write a test that captures the bug (should FAIL)
-#    tests/e2e/pan-data-loading.test.ts
-
-# 2. Verify it fails
-npx playwright test pan-data-loading.test.ts
-# Expected: 1 failed
-
-# 3. Run Ralph Loop to fix
-/ralph-loop "Fix the remote track panning bug.
-
-## Bug Description
-Mouse panning doesn't load new data for remote tracks (BigWig/BigBed).
-After panning to a new region, the feature count stays the same.
-
-## Failing Test
-tests/e2e/pan-data-loading.test.ts - 'panning loads new data in different genomic region'
-
-## Relevant Files
-- src/lib/stores/remoteTracks.svelte.ts (main logic)
-- src/lib/components/TrackView.svelte (viewport effect)
-
-## Verification
-npx playwright test pan-data-loading.test.ts
-Must show: 3 passed
-
-## Success Criteria
-All pan-data-loading tests pass." \
-  --completion-promise "BUG-FIXED" \
-  --max-iterations 15
-```
-
-**Key Principles**:
-1. **Failing test first** - Don't start Ralph Loop until you have a test that FAILS
-2. **Specific test file** - Run only the relevant test, not the full suite (faster iterations)
-3. **Clear file scope** - List the files Claude should modify
-4. **Objective verification** - Test pass/fail is unambiguous
-
-**Benefits over manual iteration**:
-- Human can walk away while Claude iterates
-- No back-and-forth asking "is this fixed?"
-- Tests prove the fix works, not just that code was changed
-- History of attempts preserved in files for debugging
-
-## Session Log
-- **2026-01-08 Session 1**: Project kickoff
-  - Created spec and architecture
-  - Built track type registry
-  - Implemented 4 track types (BED, GFF3, bedGraph, VCF)
-
-- **2026-01-09 Session 2**: Major feature completion
-  - AI integration with provider abstraction (Claude/OpenAI)
-  - GQL query language with full parser/executor
-  - Query console with history, save/load, export
-  - URL state persistence + localStorage session restore
-  - Assembly system with 27+ genomes, inference, custom loading
-  - Gene model theme system (dark/flat) with peaked introns
-  - Chromosome validation warnings
-  - ORDER BY, LIMIT in GQL
-  - Track-aware SELECT queries (FROM clause)
-
-- **2026-01-15 Session 5**: Gene tracks setup (had bugs)
-  - Added 13 R2-hosted gene track URLs to bigbed.ts
-  - Fixed case-insensitive assembly ID lookup
-  - Added viewport update after assembly switch
-
-- **2026-01-15 Session 6**: Fixed gene tracks - all working now
-  - Fixed Svelte 5 reactivity bug: read dependencies before early return in render effect
-  - Fixed R2 bucket URL (was pointing to wrong bucket ID)
-  - Fixed chromosome name resolution: actually use resolved name in BigBed query
-  - Fixed Puccinia chromosome names (supercont1.X -> supercont2.X)
-  - Gene tracks now work for 15 assemblies
-
-- **2026-01-15 Session 7**: Complete model organism coverage
-  - Clarified Genes vs Transcripts tracks (see docs/GENE-TRACKS.md)
-  - UCSC knownGene.bb only has transcript-level data (exon blocks), not gene-level
-  - Removed UCSC from GENE_BIGBED_URLS - they only go in TRANSCRIPT_BIGBED_URLS
-  - Restored track height resize (sidebar slider + drag border on canvas)
-  - Added UCSC/GenArk transcript tracks for 9 model organisms:
-    - mm10, mm39 (mouse), T2T-CHM13 (human), danRer11 (zebrafish),
-    - dm6 (fly), ce11 (worm), sacCer3 (yeast), rn7 (rat), galGal6 (chicken)
-  - Added GENARK_CHROMOSOME_MAPS for NC_ accession number mapping
-  - All 24 assemblies now have working gene/transcript tracks
-
-- **2026-01-16 Session 8**: BigWig support
-  - Created `src/lib/services/bigwig.ts` with `queryBigWig()` function
-  - Uses `@gmod/bbi` library (already installed for BigBed)
-  - Updated `remoteTracks.svelte.ts` to support `type: 'bigwig'`
-  - Added `renderSignalFeatures()` to TrackView for area chart visualization
-  - Added `tests/e2e/bigwig.test.ts` with 4 passing tests
-  - First use of Ralph Loop for iterative development (documented above)
-
-- **2026-01-16 Session 9**: Remote track loading fixes - FAILED
-  - **Problem**: Panning doesn't load new data for BigWig/BigBed tracks
-  - **Attempted fixes** (all tests pass, manual testing fails):
-    1. Clear rawFeaturesStore when tracks removed
-    2. Refetch when features empty (regardless of lastViewport)
-    3. Use getRawFeatures() for hasRemoteContent check
-    4. Add remoteRenderVersion counter for reactivity
-    5. Use untrack() in viewport $effect to prevent infinite loop
-  - **Result**: 7 automated e2e tests pass, manual browser testing FAILS
-  - **Key insight**: Automated tests don't replicate actual user interaction
-  - **Next steps**: See `docs/DEBUG-REMOTE-TRACKS.md` for diagnostic plan
-  - Created `tests/e2e/remote-track-loading.test.ts`
-
-- **2026-01-19 Session 10**: Remote track panning bug FIXED + URL input
-  - **Panning bug fix**:
-    - Root cause: Svelte 5 fine-grained reactivity issue
-    - `$effect` only read `viewport.current` (object), not `.start`/`.end` properties
-    - Fix: Explicitly read properties to create fine-grained dependencies
-    - Also fixed stale closure in debounce by capturing viewport values immediately
-  - **TDD + Ralph Loop**: Wrote failing test first, used Ralph Loop to iterate until pass
-  - **Committed BigWig support** (from Session 8): `src/lib/services/bigwig.ts`
-  - **URL input for remote tracks**: Sidebar now has File|URL tabs
-    - File tab: local file picker (.bed, .gff3, .vcf, etc.)
-    - URL tab: paste URL for remote indexed formats (.bb, .bw)
-    - Auto-detects format from extension, extracts track name from filename
-
-- **2026-01-19 Session 11**: Tabix URL support for VCF/GFF/BED
-  - **Tabix support**: Added support for remote tabix-indexed files via URL input
-    - VCF.gz (.vcf.gz + .tbi) - variants
-    - GFF.gz (.gff.gz/.gff3.gz + .tbi) - gene annotations
-    - BED.gz (.bed.gz + .tbi) - intervals
-  - **New service**: `src/lib/services/tabix.ts` with query functions
-    - Uses `@gmod/tabix`, `@gmod/vcf`, `@gmod/gff` libraries
-    - Auto-discovers index files by appending `.tbi` to URL
-    - Handles chromosome name variations
-  - **Updated stores**: `remoteTracks.svelte.ts` now supports 5 track types:
-    - `'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed'`
-  - **Test files**: Created E. coli K-12 test files on R2 for visual testing
-    - `scripts/tabix-test-files/` - script to generate test files
-    - Uploaded to `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/`
-  - **TDD**: Used Ralph Loop with `tests/e2e/indexed-formats.test.ts`
-
-- **2026-01-19 Session 12**: BAM/CRAM URL support
-  - **BAM support**: Added support for remote BAM files via URL input
-    - `.bam` files with `.bam.bai` index (auto-discovered)
-    - Renders reads as simple BED-style intervals (basic implementation)
-  - **New service**: `src/lib/services/bam.ts` with `queryBam()` and `queryCram()`
-    - Uses `@gmod/bam` library
-    - Auto-discovers index by appending `.bai` to URL
-    - CRAM support is partial (returns empty, needs reference sequence)
-  - **Updated stores**: `remoteTracks.svelte.ts` now supports 7 track types:
-    - `'bigbed' | 'bigwig' | 'vcf' | 'gff' | 'bed' | 'bam' | 'cram'`
-  - **Tests**: BAM/CRAM URL acceptance tests pass (2 tests)
-
-- **2026-01-20 Session 13**: BAM human testing complete
-  - **Test BAM created**: `scripts/bam-test-files/create-bam.sh`
-    - Generates synthetic E. coli K-12 BAM with 20 reads
-    - Uploaded to R2: `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.bam`
-  - **Human testing verified**:
-    - Track loads and displays in sidebar
-    - Reads render as intervals on canvas
-    - Panning loads new data correctly
-    - Feature count updates
-  - **Indexed formats plan complete**: All URL-loadable formats working (BigBed, BigWig, VCF, GFF, BED, BAM)
-
-- **2026-01-20 Session 14**: Remote track chromosome validation
-  - **Problem**: Loading remote URL track with wrong assembly shows 0 features with no explanation
-  - **Solution**: Validate file chromosomes against assembly after first fetch, show warning if no overlap
-  - **New functions**:
-    - `getTabixChromosomes(url)` in tabix.ts - extracts ref names from tabix index
-    - `getBamChromosomes(url)` in bam.ts - extracts ref names from BAM header
-    - `validateTrackChromosomes()` in remoteTracks.svelte.ts - compares and warns
-    - `clearRemoteTrackWarning()` - dismisses warning
-  - **UI**: Amber warning banner in TrackView (reuses existing pattern)
-  - **Tests**: `tests/e2e/chromosome-validation.test.ts` (3 tests, all pass)
-
-- **2026-01-20 Session 15**: Local binary file support
-  - **Feature**: Load binary genomics formats from local files (not just URLs)
-    - BigBed (.bb, .bigbed) - self-indexed, no additional files needed
-    - BigWig (.bw, .bigwig) - self-indexed, no additional files needed
-    - BAM (.bam) - requires .bai index file
-    - Tabix VCF/GFF/BED (.vcf.gz, .gff.gz, .bed.gz) - requires .tbi index file
-  - **New service**: `src/lib/services/localBinaryTracks.ts`
-    - Uses `BlobFile` from `generic-filehandle2` instead of `RemoteFile`
-    - `queryLocalBigBed()`, `queryLocalBigWig()`, `queryLocalBam()`
-    - `queryLocalTabixVcf()`, `queryLocalTabixGff()`, `queryLocalTabixBed()`
-    - Helper functions: `detectLocalBinaryType()`, `requiresIndexFile()`, `matchIndexFile()`
-  - **New store**: `src/lib/stores/localBinaryTracks.svelte.ts`
-    - Manages local File references and viewport-based fetching
-    - Similar API to remoteTracks store
-  - **UI updates**:
-    - Sidebar file input now accepts binary extensions (.bb, .bw, .bam, etc.)
-    - Index file pairing: auto-matches when multi-selected, prompts when needed
-    - Local binary tracks shown in sidebar with "(local)" badge
-    - TrackView renders local binary tracks with same styling as remote
-  - **Tests**: `tests/e2e/local-binary-files.test.ts` (6 tests, all pass)
-
-- **2026-01-20 Session 16**: Reference sequence 2bit files for all assemblies
-  - **Created 2bit files for 12 assemblies** without UCSC coverage:
-    - Plants: Rice (89M), Wheat (3.4G), Maize (520M), Barley (1.0G)
-    - Fungi: S. pombe (3M), Botrytis (10M), Magnaporthe (9.8M), Puccinia (21M), Zymoseptoria (9.5M)
-    - Protists: Phytophthora (55M)
-    - Microbes: E. coli K-12 (1.1M), SARS-CoV-2 (7.3K)
-  - **New scripts**: `scripts/create-2bit-files/`
-    - `create-2bit.sh` - Downloads FASTA from NCBI/Ensembl, converts to 2bit using UCSC faToTwoBit
-    - `upload-r2.sh` - Uploads to R2 using rclone
-  - **Uploaded to R2**: Total ~5.1 GB (within 10 GB free tier)
-    - URL pattern: `https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/reference/{assembly}.2bit`
-  - **Updated `src/lib/services/fasta.ts`**: Added R2 URLs for all 12 assemblies
-  - **All 27 assemblies now have reference sequence support**
-  - **Remaining issues**:
-    - BAM/VCF mismatch visualization not yet implemented (requires comparing reads to reference)
-
-- **2026-01-22 Session 19**: UI improvements and visual design planning
-  - **Zoom minimum removed**: Changed from 100bp to 1bp minimum in viewport.svelte.ts
-  - **Assembly dropdown taxonomic ordering**: Added `SPECIES_ORDER` array and `SPECIES_TO_CATEGORY`
-    mapping for organized dropdown (Animals → Plants → Fungi → Protists → Bacteria → Viruses)
-  - **Category headers in assembly dropdown**: Nested structure with bold category headers
-  - **New Settings panel**: Replaced AISettings.svelte with tabbed Settings.svelte (AI + Display tabs)
-  - **Moved gene style**: From sidebar to Settings > Display tab
-  - **Added "Add Tracks" heading**: To sidebar file/URL selector
-  - **Visual design specification**: Created `docs/VISUAL-DESIGN.md` with:
-    - ColorBrewer Set2 as default palette (colorblind-safe)
-    - Light theme primary (print-ready)
-    - Geometric strand indication (not color)
-    - Phased implementation plan
-
-- **2026-01-21 Session 18**: CRAM file support complete
-  - **CRAM fully supported** with reference sequence via 2bit files
-  - **Fixed CRAM rendering path**: TrackView.svelte includes 'cram' in BAM rendering condition
-  - **Fixed CRAM CIGAR parsing**: `cramRecordToFeature()` in localBinaryTracks.ts
-    - Root cause: CRAM readFeatures encode substitutions ('X' code) separately
-    - Fix: Filter to only CIGAR-affecting features (I, D, N, S, H, P)
-  - **All CRAM rendering modes work**: sequence (letters), blocks (triangles), coverage (histogram)
-  - **Tests**: `tests/e2e/cram-sequence-rendering.test.ts` (8 tests)
-  - **Test files**: `scripts/cram-test-files/` with `cigar-test.cram`
-
-- **2026-01-21 Session 17**: Bug fixes, BAM CIGAR rendering, and coverage histogram
-  - **Fixed coordinate input whitespace bug**: Pasting coordinates with trailing/leading spaces
-    caused "Invalid format" error. Fixed by adding `.trim()` in `parseCoordinate()`.
-  - **Added tests**: `tests/e2e/coordinate-input.test.ts` (5 tests for NC_ format + whitespace)
-  - **Verified FASTA/sequence display**: Confirmed working, updated docs
-  - **Created comprehensive CIGAR test BAM**: `scripts/bam-test-files/create-cigar-test-bam.sh`
-    - 30 reads with varied CIGAR operations: simple matches, insertions, deletions, soft clips
-    - Mismatch regions (all T's, G's, C's vs reference)
-    - Quality score variations (high, medium, low)
-    - Complex CIGAR patterns (multiple operations)
-    - Dense coverage region
-  - **Added BAM visual regression tests**: `tests/e2e/bam-cigar-rendering.test.ts` (13 tests)
-    - Sequence-level: colored nucleotides, insertion markers, deletion gaps, mismatches, quality
-    - Block-level: CIGAR blocks, insertion lines, deletion connecting lines
-    - Coverage-level: histogram showing read depth
-    - Zoom transitions test
-  - **Fixed test selector bug**: SessionRestoreBanner file input was being selected instead of
-    Sidebar file input. Added `data-testid="sidebar-file-input"` for precise targeting.
-  - **BAM rendering verified working** at all zoom levels with full CIGAR support
-  - **Created workflow doc**: `semi-autonomous-feature-development.md` (Discuss → TDD → Ralph Loop)
-  - **Implemented BAM coverage histogram**: At low zoom (<1 px/base), BAM tracks now render
-    as coverage histograms instead of tiny rectangles, showing read depth as an area chart
-    - Added `computeBinnedCoverage()` to calculate coverage per bin
-    - Added `renderBamCoverage()` with gradient fill, auto-scaled Y-axis, Y-axis labels
-    - Updated `bam-cigar-rendering.test.ts` tests to reflect new coverage mode
-    - Added `tests/e2e/bam-coverage-histogram.test.ts` (5 tests)
-
-- **2026-01-21 Session 18**: CRAM file support complete
-  - **CRAM now fully supported** with reference sequence via 2bit files
-  - **Fixed CRAM rendering path**: TrackView.svelte now includes 'cram' in BAM rendering condition
-  - **Fixed CRAM CIGAR parsing**: `cramRecordToFeature()` in localBinaryTracks.ts
-    - Root cause: CRAM readFeatures encode substitutions ('X' code) separately, and code was
-      creating separate `['M', 1]` operations for each, fragmenting CIGAR
-    - Fix: Filter to only CIGAR-affecting features (I, D, N, S, H, P), ignore X/B features
-    - Fix: After insertions, advance `lastPos` by insertion length for correct trailing match
-    - Result: CRAM now produces identical CIGAR to BAM (e.g., `25M2I23M`)
-  - **All CRAM rendering modes work**: sequence (letters), blocks (triangles), coverage (histogram)
-  - **Tests**: `tests/e2e/cram-sequence-rendering.test.ts` (8 tests, all pass)
-  - **Test files**: `scripts/cram-test-files/` with `cigar-test.cram` matching BAM test file
-
-- **2026-01-22 Session 19**: UI improvements - zoom, assembly dropdown, settings panel
-  - **Zoom minimum removed**: Changed from 100bp to 1bp minimum, allowing single-base resolution
-  - **Assembly dropdown taxonomic ordering**: Species grouped by kingdom (Animals → Plants → Fungi → Protists → Bacteria → Viruses) with category headers
-  - **New Settings panel**: Replaced AISettings.svelte with tabbed Settings.svelte
-    - AI tab: Provider selection, API key, model (existing functionality)
-    - Display tab: Gene model style selector (moved from sidebar)
-    - Extensible for future settings
-  - **Sidebar cleanup**: Removed gene style section, added "Add Tracks" heading
-  - **Tests**:
-    - `tests/e2e/zoom-minimum.test.ts` (4 tests)
-    - `tests/e2e/assembly-dropdown-order.test.ts` (5 tests)
-    - Updated persona tests to find gene style in Settings panel
-  - **Known issue**: 9 persona tests fail checking for UI text that doesn't exist (pre-existing)
+### Key Test Files
+- `tests/e2e/theme-switching.test.ts` - Theme functionality (7 tests)
+- `tests/e2e/theme-visual.test.ts` - Theme visual regression (12 tests)
+- `tests/e2e/visual.test.ts` - General visual regression (32 tests)
+- `tests/e2e/bam-cigar-rendering.test.ts` - BAM rendering (13 tests)
 
 ## Known Issues & Gotchas
 
-### RESOLVED: Coordinate Input Whitespace (Session 17)
-**Status**: FIXED in commit 087b1e9
-
-Pasting `NC_000913.3:100000-100100 ` (with trailing space) into coordinate input gave error.
-Root cause: Regex `$` anchor requires string to end immediately after digits.
-
-**Fix**: Added `.trim()` before regex match in `parseCoordinate()`:
-```typescript
-const match = coord.trim().match(/^([A-Za-z0-9_.]+):(\d[\d,]*)-(\d[\d,]*)$/i);
-```
-
-### RESOLVED: Remote Track Panning Bug (Session 10)
-**Status**: FIXED in commit c2ddc8d
-
-**Root cause**: Svelte 5 fine-grained reactivity. The `$effect` in TrackView.svelte
-only read `viewport.current` (object reference), not the individual properties.
-Svelte didn't detect `.start`/`.end` mutations during panning.
-
-**Fix**: Explicitly read properties to create fine-grained dependencies:
+### Svelte 5 Fine-Grained Reactivity
+In Svelte 5, reading an object doesn't track nested property changes. You must read specific properties:
 ```typescript
 $effect(() => {
   const vp = viewport.current;
-  const _chr = vp.chromosome;  // Create dependency
-  const _start = vp.start;     // Create dependency
-  const _end = vp.end;         // Create dependency
-  untrack(() => remoteTracks.updateForViewport(vp));
+  const _start = vp.start;  // Create dependency on .start
+  const _end = vp.end;      // Create dependency on .end
+  // Now effect re-runs when start/end change
 });
 ```
 
-**Lesson**: In Svelte 5, reading an object doesn't track nested property changes.
-You must read the specific properties you depend on.
-
-### Testing Strategy Lesson (Session 9)
-**Two-layer testing is essential for UI features:**
-
-1. **Data tests** - Verify fetch/parse logic works (these passed)
-2. **Visual tests** - Verify rendering shows the data (would have failed)
-
-A visual regression test comparing "loaded state" vs "after pan state" would have caught
-this bug immediately - the panned view would show blank while baseline shows data.
-
-For interaction-dependent features, always combine:
-- Automated data/state tests
-- Screenshot comparison tests
-- Manual smoke test before declaring "done"
-
-### Cloudflare R2 URL Format
-The R2 public bucket URL format is: `https://pub-{bucket_id}.r2.dev/{file}`
-
-**Important**: The bucket ID shown in Cloudflare dashboard may differ from the actual public URL.
-When troubleshooting R2 404 errors, verify the actual bucket URL by checking an existing working
-file, not by looking at the dashboard. The current correct bucket is:
-`pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
-
 ### GenArk Chromosome Names
-UCSC GenArk hubs use NCBI RefSeq accession numbers (NC_000067.7) instead of chr-prefixed names.
-The `GENARK_CHROMOSOME_MAPS` in `bigbed.ts` maps from standard chr names to NC_ accessions.
-When adding new GenArk assemblies, you must add chromosome mappings.
+UCSC GenArk uses NCBI RefSeq accessions (NC_000067.7) not chr-prefixed names.
+See `GENARK_CHROMOSOME_MAPS` in `bigbed.ts` for mappings.
 
-### UCSC vs R2 Track Data
-- **UCSC knownGene.bb**: Contains transcript-level data only (blockCount > 1 for most features)
-- **R2 .genes.bb**: Contains gene-level data (blockCount = 1, single continuous feature)
-- **R2 .transcripts.bb**: Contains transcript-level data with exon structure
+### R2 Bucket URL
+Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 
-If a user reports "both tracks look the same" or "genes track shows exons", check whether
-the data source actually has gene-level annotations or just transcript data with gene symbols.
+## Session Log
 
-## Planned UI Improvements (Session 20+)
+### Recent Sessions
 
-**IMPORTANT**: Use TDD approach - write failing e2e test first, then implement.
+**Session 20 (2026-01-22)**: Theme system implementation
+- Implemented accessibility-first color system with light/dark/high-contrast modes
+- Created `palette.ts` with ColorBrewer Set2, Dark2, Paired palettes
+- Created `theme.svelte.ts` for theme state management
+- Updated all canvas rendering in TrackView.svelte to use theme-aware colors
+- Added theme/palette selectors to Settings > Display tab
+- Added visual regression tests for all theme/palette combinations (12 tests)
+- Updated all existing visual snapshots for light theme default
 
-### Completed (Session 19)
-- [x] **Zoom +/- minimum limit**: Now allows zoom to 1bp (single-base resolution)
-- [x] **Assembly dropdown order**: Taxonomic ordering with category headers
-- [x] **Move gene style panel**: Now in Settings > Display tab
+**Session 19 (2026-01-22)**: UI improvements
+- Zoom minimum changed to 1bp (single-base resolution)
+- Assembly dropdown with taxonomic ordering and category headers
+- New tabbed Settings panel (AI + Display tabs)
+- Created visual design specification (`docs/VISUAL-DESIGN.md`)
 
-### Already Implemented
-- [x] **Track deletion**: Delete button (X) on hover for all user-loaded tracks
-- [x] **Track visibility toggle**: Checkbox toggles, persisted to localStorage
+**Session 17-18 (2026-01-21)**: BAM/CRAM rendering
+- Full CIGAR rendering at all zoom levels
+- Coverage histogram at low zoom
+- CRAM support with 2bit reference sequence
+- Comprehensive visual regression tests
 
-### Test Suite Cleanup Needed
-- [ ] **Fix persona tests**: 9 tests check for UI text that doesn't exist ("No tracks loaded", "Drop files on canvas", etc.)
-- [ ] **Review test coverage**: Ensure new Settings panel has adequate test coverage
+**Session 15-16 (2026-01-20)**: Local binary files + Reference sequence
+- Local BigBed/BigWig/BAM/tabix file support
+- 2bit reference files for all 27 assemblies
 
-### Visual Design Overhaul (See docs/VISUAL-DESIGN.md)
+**Session 10-14 (2026-01-19-20)**: Remote tracks
+- BigWig, tabix (VCF/GFF/BED), BAM URL support
+- Fixed panning bug (Svelte 5 reactivity)
+- Chromosome validation warnings
 
-Design specification created. Key decisions:
-- **Accessibility first**: ColorBrewer palettes (Set2 default), colorblind-safe
-- **Light theme primary**: Print-ready, publication quality
-- **Geometry for strand**: Use chevrons/arrows, not color
-- **Distinct colors**: No saturation-only differences between feature types
-- **Palette switching**: Allow users to select from multiple palettes
+### Milestones
+- **Session 1-2**: Core browser, GQL, AI integration, 27 assemblies
+- **Session 5-7**: Remote gene/transcript tracks for all assemblies
+- **Session 8-14**: All indexed format support (BigBed/BigWig/tabix/BAM)
+- **Session 15-18**: Local binary files, reference sequence, CRAM
+- **Session 19-20**: Theme system, visual design overhaul
 
-Implementation phases:
-- [ ] **Phase 1**: Light theme with Set2 palette, geometric strand indicators
-- [ ] **Phase 2**: Dark theme derived from light (same hues, adjusted lightness)
-- [ ] **Phase 3**: Palette switcher in Settings > Display
-- [ ] **Phase 4**: Polish nucleotides, BAM colors, signal ramps
-
-### Other Design Work
-- [ ] **Track grouping**: Allow grouping related tracks with collapse/expand
-
-## Key Files for Context
-1. `CLAUDE.md` - This file
-2. `src/lib/services/queryLanguage.ts` - GQL implementation
-3. `src/lib/services/ai/` - AI provider system
-4. `src/lib/stores/viewport.svelte.ts` - Core state + URL sync
-5. `src/lib/services/trackTypes/geneModel.ts` - Theme system
-6. `src/lib/data/assemblies.json` - Genome definitions
-7. `src/lib/services/bigbed.ts` - BigBed URL mapping (R2 + UCSC)
-8. `src/lib/services/bigwig.ts` - BigWig remote signal data
-9. `src/lib/services/tabix.ts` - Tabix query functions (VCF, GFF, BED)
-10. `src/lib/services/bam.ts` - BAM/CRAM query functions
-11. `src/lib/stores/remoteTracks.svelte.ts` - Remote track state
-12. `src/lib/services/localBinaryTracks.ts` - Local binary file queries (BlobFile-based)
-13. `src/lib/stores/localBinaryTracks.svelte.ts` - Local binary track state
-14. `src/lib/services/fasta.ts` - Reference sequence queries (2bit + indexed FASTA)
-15. `src/lib/stores/referenceSequence.svelte.ts` - Reference sequence state
-16. `src/lib/components/TrackView.svelte` - Canvas rendering (BAM CIGAR rendering at lines ~800-1200)
-17. `src/lib/components/Settings.svelte` - Tabbed settings panel (AI + Display)
-18. `tests/e2e/bam-cigar-rendering.test.ts` - BAM visual regression tests
-19. `scripts/bam-test-files/create-cigar-test-bam.sh` - Creates test BAM with varied CIGAR ops
-20. `docs/VISUAL-DESIGN.md` - Visual design specification (colors, palettes, accessibility)
+## Key Files
+1. `src/lib/stores/theme.svelte.ts` - Theme state management
+2. `src/lib/services/palette.ts` - Color palette definitions
+3. `src/lib/components/TrackView.svelte` - Canvas rendering
+4. `src/lib/components/Settings.svelte` - Settings panel
+5. `src/lib/services/trackTypes/geneModel.ts` - Gene model renderer
+6. `src/lib/stores/viewport.svelte.ts` - Viewport state + URL sync
+7. `docs/VISUAL-DESIGN.md` - Visual design specification
