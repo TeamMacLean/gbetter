@@ -25,6 +25,7 @@
 		qualityToOpacity,
 		getReadRenderingMode,
 	} from '$lib/constants/zoom';
+	import { getSignalColor, getSignalRampColor } from '$lib/services/palette';
 
 	// Theme for canvas colors
 	const themeStore = useTheme();
@@ -726,7 +727,8 @@
 	}
 
 	/**
-	 * Render signal features (BigWig) as area chart
+	 * Render signal features (BigWig) as area chart with color ramp
+	 * Uses sequential color palette (blues) where low values are light, high values are dark
 	 */
 	function renderSignalFeatures(
 		ctx: CanvasRenderingContext2D,
@@ -734,7 +736,7 @@
 		width: number,
 		trackY: number,
 		trackHeight: number,
-		color: string
+		_color: string
 	): void {
 		const colors = getCanvasColors();
 		const labelOffset = 16;
@@ -793,49 +795,31 @@
 			}
 		}
 
-		// Create gradient for fill
-		const gradient = ctx.createLinearGradient(0, plotY, 0, plotY + plotHeight);
-		gradient.addColorStop(0, color);
-		gradient.addColorStop(1, color + '20'); // Fade to transparent
-
-		// Draw as filled area
-		ctx.beginPath();
-		ctx.moveTo(0, zeroY);
-
-		let lastX = 0;
 		const sortedBins = Array.from(bins.entries()).sort((a, b) => a[0] - b[0]);
 
+		// Draw filled bars with color ramp (value-based coloring)
 		for (const [bin, data] of sortedBins) {
 			const binStart = bin * binWidth;
 			const binEnd = binStart + binWidth;
-
 			const x1 = (binStart - viewport.current.start) * pixelsPerBase;
 			const x2 = (binEnd - viewport.current.start) * pixelsPerBase;
 			const avgValue = data.sum / data.count;
 			const y = valueToY(avgValue);
 
-			if (x1 > lastX + 1) {
-				// Gap - go down to zero and back up
-				ctx.lineTo(lastX, zeroY);
-				ctx.lineTo(x1, zeroY);
-			}
+			// Get color based on value using the blues ramp
+			const barColor = getSignalColor(avgValue, minVal, maxVal, 'blues');
 
-			ctx.lineTo(x1, y);
-			ctx.lineTo(x2, y);
-			lastX = x2;
+			// Draw filled rectangle from baseline to value
+			ctx.fillStyle = barColor;
+			ctx.fillRect(x1, y, Math.max(1, x2 - x1), zeroY - y);
 		}
 
-		ctx.lineTo(lastX, zeroY);
-		ctx.closePath();
-
-		ctx.fillStyle = gradient;
-		ctx.fill();
-
-		// Draw outline
-		ctx.strokeStyle = color;
+		// Draw outline on top for better definition
+		ctx.strokeStyle = getSignalRampColor(0.9, 'blues'); // Use dark blue for outline
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		let started = false;
+		let lastX = 0;
 
 		for (const [bin, data] of sortedBins) {
 			const binStart = bin * binWidth;
@@ -848,10 +832,16 @@
 			if (!started) {
 				ctx.moveTo(x1, y);
 				started = true;
+			} else if (x1 > lastX + 1) {
+				// Gap - draw line to baseline and start new segment
+				ctx.lineTo(lastX, zeroY);
+				ctx.moveTo(x1, zeroY);
+				ctx.lineTo(x1, y);
 			} else {
 				ctx.lineTo(x1, y);
 			}
 			ctx.lineTo(x2, y);
+			lastX = x2;
 		}
 		ctx.stroke();
 

@@ -184,11 +184,101 @@ export const BAM_COLORS = {
 };
 
 // =============================================================================
-// SIGNAL TRACK COLORS
+// SIGNAL TRACK COLORS & RAMPS
 // =============================================================================
 
+/**
+ * Sequential color ramps for signal tracks (BigWig/bedGraph)
+ * Each ramp is an array of colors from low to high values
+ * Based on ColorBrewer sequential palettes (colorblind-safe)
+ */
+export interface SignalRamp {
+	name: string;
+	colors: string[]; // Array of colors from low (light) to high (dark/saturated)
+}
+
+export const SIGNAL_RAMPS: Record<string, SignalRamp> = {
+	blues: {
+		name: 'Blues',
+		colors: ['#f7fbff', '#c6dbef', '#6baed6', '#2171b5', '#084594'],
+	},
+	greens: {
+		name: 'Greens',
+		colors: ['#f7fcf5', '#c7e9c0', '#74c476', '#238b45', '#00441b'],
+	},
+	purples: {
+		name: 'Purples',
+		colors: ['#fcfbfd', '#dadaeb', '#9e9ac8', '#6a51a3', '#3f007d'],
+	},
+	oranges: {
+		name: 'Oranges',
+		colors: ['#fff5eb', '#fdd49e', '#fdae6b', '#e6550d', '#8c2d04'],
+	},
+	viridis: {
+		name: 'Viridis',
+		colors: ['#fde725', '#5ec962', '#21918c', '#3b528b', '#440154'],
+	},
+};
+
+export type SignalRampName = keyof typeof SIGNAL_RAMPS;
+
+/**
+ * Get a color from a signal ramp based on normalized value (0-1)
+ */
+export function getSignalRampColor(normalizedValue: number, rampName: SignalRampName = 'blues'): string {
+	const ramp = SIGNAL_RAMPS[rampName] || SIGNAL_RAMPS.blues;
+	const colors = ramp.colors;
+
+	// Clamp to 0-1
+	const t = Math.max(0, Math.min(1, normalizedValue));
+
+	// Find the two colors to interpolate between
+	const scaledIndex = t * (colors.length - 1);
+	const lowerIndex = Math.floor(scaledIndex);
+	const upperIndex = Math.min(lowerIndex + 1, colors.length - 1);
+	const localT = scaledIndex - lowerIndex;
+
+	// Interpolate between the two colors
+	return interpolateColor(colors[lowerIndex], colors[upperIndex], localT);
+}
+
+/**
+ * Interpolate between two hex colors
+ */
+function interpolateColor(color1: string, color2: string, t: number): string {
+	const r1 = parseInt(color1.slice(1, 3), 16);
+	const g1 = parseInt(color1.slice(3, 5), 16);
+	const b1 = parseInt(color1.slice(5, 7), 16);
+
+	const r2 = parseInt(color2.slice(1, 3), 16);
+	const g2 = parseInt(color2.slice(3, 5), 16);
+	const b2 = parseInt(color2.slice(5, 7), 16);
+
+	const r = Math.round(r1 + (r2 - r1) * t);
+	const g = Math.round(g1 + (g2 - g1) * t);
+	const b = Math.round(b1 + (b2 - b1) * t);
+
+	return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+}
+
+/**
+ * Get signal ramp color with explicit min/max range
+ */
+export function getSignalColor(value: number, min: number, max: number, rampName: SignalRampName = 'blues'): string {
+	const range = max - min || 1;
+	const normalized = (value - min) / range;
+	return getSignalRampColor(normalized, rampName);
+}
+
+/**
+ * Get all available signal ramp names
+ */
+export function getSignalRampNames(): SignalRampName[] {
+	return Object.keys(SIGNAL_RAMPS) as SignalRampName[];
+}
+
 export const SIGNAL_COLORS = {
-	// Default signal fill
+	// Default signal fill (legacy, kept for compatibility)
 	light: {
 		fill: '#3b82f6',
 		fillGradient: ['rgba(59, 130, 246, 0.8)', 'rgba(59, 130, 246, 0.2)'],
