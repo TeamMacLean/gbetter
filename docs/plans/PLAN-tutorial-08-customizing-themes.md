@@ -261,3 +261,74 @@ Settings: Light theme, Set2 palette
 - [ ] Settings persistence explained
 - [ ] "Try It Yourself" covers key features
 - [ ] Follows style guide structure
+
+## GitHub Markdown Enhancements
+
+Add these alerts throughout the tutorial:
+
+### Tips
+```markdown
+> [!TIP]
+> Use Light theme for publication figures - it's print-ready with maximum contrast.
+```
+
+```markdown
+> [!TIP]
+> All three palettes are colorblind-safe. Choose based on aesthetic preference.
+```
+
+### Important
+```markdown
+> [!IMPORTANT]
+> Settings are saved in browser localStorage and persist across sessions.
+```
+
+### Notes
+```markdown
+> [!NOTE]
+> Settings are browser-specific. Different browsers or devices will have separate settings.
+```
+
+```markdown
+> [!NOTE]
+> GBetter uses shape (chevrons, arrows) not just color to indicate strand direction.
+```
+
+### Collapsible Accessibility Details
+```markdown
+<details>
+<summary>Accessibility features in detail</summary>
+
+**Color vision support:**
+- All palettes tested with protanopia, deuteranopia, and tritanopia simulations
+- Shape and position convey information, not just color
+
+**Visual impairment support:**
+- High-Contrast theme meets WCAG AAA contrast ratios
+- Bold borders on all interactive elements
+- Clear, readable text at all sizes
+
+**Testing tools we use:**
+- Coblis colorblind simulator
+- WCAG contrast checker
+- Screen reader compatibility testing
+
+</details>
+```
+
+### Collapsible Theme Comparison
+```markdown
+<details>
+<summary>When to use each theme</summary>
+
+| Situation | Recommended Theme |
+|-----------|-------------------|
+| Publication figures | Light |
+| Presentations (projector) | High-Contrast |
+| Working in low light | Dark |
+| Long analysis sessions | Dark |
+| Accessibility needs | High-Contrast |
+| Default/general use | Light |
+
+</details>
+```

@@ -163,3 +163,44 @@ After editing:
 - [ ] "Try It Yourself" uses working R2 URLs
 - [ ] All GQL examples are correct
 - [ ] UI references match current app
+
+## GitHub Markdown Enhancements
+
+Add these alerts throughout the tutorial:
+
+### Tips
+```markdown
+> [!TIP]
+> Click any result in the query output to navigate directly to that location.
+```
+
+```markdown
+> [!TIP]
+> Use `COUNT` instead of `list` to quickly see how many matches exist without loading all results.
+```
+
+### Notes
+```markdown
+> [!NOTE]
+> Gene tracks load automatically - you only need to load your variant data.
+```
+
+### Important
+```markdown
+> [!IMPORTANT]
+> Ensure your VCF uses the same chromosome naming convention as the assembly (chr1 vs 1).
+```
+
+### Collapsible Solutions
+For exercises, use collapsible solutions:
+
+```markdown
+<details>
+<summary>Solution</summary>
+
+```
+list genes with variants
+```
+
+</details>
+```

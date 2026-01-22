@@ -237,3 +237,72 @@ CRAM files are smaller than BAM but require reference sequence.
 - [ ] Screenshots/descriptions match actual rendering
 - [ ] CRAM section explains reference requirement
 - [ ] Follows style guide structure
+
+## GitHub Markdown Enhancements
+
+Add these alerts throughout the tutorial:
+
+### Tips
+```markdown
+> [!TIP]
+> Start zoomed out to find interesting regions via the coverage histogram, then zoom in for details.
+```
+
+```markdown
+> [!TIP]
+> If many reads show the same mismatch, it's likely a real variant. Single-read mismatches may be sequencing errors.
+```
+
+### Important
+```markdown
+> [!IMPORTANT]
+> GBetter automatically switches between coverage, block, and sequence rendering based on zoom level.
+```
+
+```markdown
+> [!IMPORTANT]
+> CRAM files require reference sequence. GBetter auto-fetches from 2bit files for built-in assemblies.
+```
+
+### Notes
+```markdown
+> [!NOTE]
+> Green triangles mark insertions. Gaps in reads indicate deletions.
+```
+
+### Warnings
+```markdown
+> [!WARNING]
+> For custom assemblies, CRAM decoding requires a 2bit reference file.
+```
+
+### Collapsible CIGAR Reference
+```markdown
+<details>
+<summary>CIGAR Operation Reference</summary>
+
+| Code | Name | Meaning | Visual |
+|------|------|---------|--------|
+| M | Match/Mismatch | Aligned to reference | Normal block/letter |
+| I | Insertion | Extra bases in read | Green triangle |
+| D | Deletion | Missing bases | Gap in read |
+| S | Soft clip | Unaligned ends | Shown at read ends |
+| N | Skip | Large gap (intron) | Connecting line |
+| H | Hard clip | Trimmed from read | Not shown |
+
+</details>
+```
+
+### Collapsible Zoom Level Details
+```markdown
+<details>
+<summary>Rendering mode details</summary>
+
+| Mode | Pixels/base | What you see |
+|------|-------------|--------------|
+| Coverage | < 1 | Histogram of read depth |
+| Block | 1-8 | Read rectangles with CIGAR decorations |
+| Sequence | 8+ | Nucleotide letters, mismatches highlighted |
+
+</details>
+```

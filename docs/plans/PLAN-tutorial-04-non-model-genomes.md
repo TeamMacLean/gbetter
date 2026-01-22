@@ -150,3 +150,61 @@ After editing:
 - [ ] Mentions automatic gene tracks
 - [ ] "Try It Yourself" uses real assemblies (no external files needed)
 - [ ] Chromosome naming examples are accurate
+
+## GitHub Markdown Enhancements
+
+Add these alerts throughout the tutorial:
+
+### Notes
+```markdown
+> [!NOTE]
+> GBetter includes 27+ built-in assemblies. Check the dropdown before loading custom chromosome sizes.
+```
+
+```markdown
+> [!NOTE]
+> For most built-in assemblies, gene tracks load automatically.
+```
+
+### Important
+```markdown
+> [!IMPORTANT]
+> All your data files must use the **same** chromosome naming convention.
+```
+
+### Warnings
+```markdown
+> [!WARNING]
+> Chromosome names are case-sensitive. `Chr1` and `chr1` are different!
+```
+
+### Caution
+```markdown
+> [!CAUTION]
+> If chromosomes don't match, features won't display. Always verify after loading.
+```
+
+### Collapsible Organism-Specific Tips
+Put organism-specific tips in collapsible sections:
+
+```markdown
+<details>
+<summary>Tips for bacterial genomes</summary>
+
+- Usually single circular chromosome
+- Plasmids as separate sequences
+- Often no "chr" prefix
+- Gene density is high - zoom out to see patterns
+
+</details>
+
+<details>
+<summary>Tips for plant genomes</summary>
+
+- Can be large with many scaffolds
+- May have organelle genomes (chloroplast, mitochondria)
+- Naming varies: Chr1, chr1, 1, scaffold_123
+- Check assembly documentation for conventions
+
+</details>
+```

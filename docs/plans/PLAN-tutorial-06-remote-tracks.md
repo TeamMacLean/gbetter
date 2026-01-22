@@ -136,3 +136,63 @@ Common issues:
 - [ ] CORS explanation is clear
 - [ ] Troubleshooting covers common issues
 - [ ] Follows style guide structure
+
+## GitHub Markdown Enhancements
+
+Add these alerts throughout the tutorial:
+
+### Tips
+```markdown
+> [!TIP]
+> Remote loading only fetches data for the current viewport - perfect for huge files.
+```
+
+```markdown
+> [!TIP]
+> BigBed and BigWig files are self-indexed - no separate index file needed.
+```
+
+### Important
+```markdown
+> [!IMPORTANT]
+> Index files must be at the same URL path: `file.bam` needs `file.bam.bai` alongside it.
+```
+
+### Warnings
+```markdown
+> [!WARNING]
+> Remote URLs must be CORS-enabled. If you get errors, check your server's CORS configuration.
+```
+
+### Notes
+```markdown
+> [!NOTE]
+> Public repositories like UCSC and Ensembl are already CORS-enabled.
+```
+
+### Collapsible CORS Setup
+```markdown
+<details>
+<summary>Setting up CORS for your own server</summary>
+
+For **Cloudflare R2**:
+- Public buckets have CORS enabled by default
+
+For **AWS S3**:
+```json
+{
+  "CORSRules": [{
+    "AllowedOrigins": ["*"],
+    "AllowedMethods": ["GET", "HEAD"],
+    "AllowedHeaders": ["*"]
+  }]
+}
+```
+
+For **nginx**:
+```
+add_header Access-Control-Allow-Origin *;
+```
+
+</details>
+```

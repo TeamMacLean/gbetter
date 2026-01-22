@@ -96,6 +96,72 @@ https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/example.bw
 
 ---
 
+## GitHub Markdown Features
+
+Use these GitHub-flavored markdown features for better readability. They render automatically on GitHub with styled boxes and colors.
+
+### Alerts (Callout Boxes)
+
+Use alerts to highlight important information:
+
+```markdown
+> [!NOTE]
+> Useful background information the user should know.
+
+> [!TIP]
+> Helpful advice for doing things more efficiently.
+
+> [!IMPORTANT]
+> Key information essential to success.
+
+> [!WARNING]
+> Common pitfalls or things that cause confusion.
+
+> [!CAUTION]
+> Actions that could cause problems if done incorrectly.
+```
+
+**When to use each:**
+
+| Alert | Use for |
+|-------|---------|
+| `[!NOTE]` | Context, background, "good to know" info |
+| `[!TIP]` | Pro tips, shortcuts, best practices |
+| `[!IMPORTANT]` | Must-know info, key concepts |
+| `[!WARNING]` | Common mistakes, confusing areas |
+| `[!CAUTION]` | Destructive actions, data loss risks |
+
+### Collapsible Sections
+
+Use for optional detail, solutions to exercises, or lengthy reference info:
+
+```markdown
+<details>
+<summary>Click to see the solution</summary>
+
+The answer is:
+```
+SELECT GENES WHERE strand = '+' ORDER BY length DESC LIMIT 5
+```
+
+</details>
+```
+
+### Task Lists
+
+Use for hands-on exercises where users should check off steps:
+
+```markdown
+Try this exercise:
+
+- [ ] Navigate to TP53
+- [ ] Zoom in twice
+- [ ] Filter to show exons only
+- [ ] Take a screenshot
+```
+
+---
+
 ## UI References
 
 ### Buttons and Controls
@@ -164,4 +230,7 @@ For human examples, use GRCh38 coordinates for well-known genes (TP53, BRCA1, et
 - [ ] GQL examples tested and working
 - [ ] No screenshots (text descriptions only)
 - [ ] Version/session number in header
+- [ ] Uses GitHub alerts appropriately (`[!TIP]`, `[!NOTE]`, `[!WARNING]`, etc.)
+- [ ] Long reference sections in collapsible `<details>` blocks
+- [ ] Exercise solutions in collapsible blocks
 - [ ] Spelling and grammar checked

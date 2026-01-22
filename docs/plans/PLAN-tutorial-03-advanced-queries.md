@@ -135,3 +135,54 @@ After editing:
 - [ ] "Try It Yourself" has working R2 URL
 - [ ] All GQL examples are syntactically correct
 - [ ] Performance tips section is accurate
+
+## GitHub Markdown Enhancements
+
+Add these alerts throughout the tutorial:
+
+### Tips
+```markdown
+> [!TIP]
+> Use `IN VIEW` to limit queries to the current viewport - much faster for large datasets.
+```
+
+```markdown
+> [!TIP]
+> Add `LIMIT 100` to prevent slow queries when exploring unfamiliar data.
+```
+
+### Important
+```markdown
+> [!IMPORTANT]
+> Track names in `FROM` clauses must match exactly what's shown in the sidebar.
+```
+
+### Warnings
+```markdown
+> [!WARNING]
+> Queries without `IN VIEW` or `LIMIT` may be slow on large datasets.
+```
+
+### Collapsible Reference
+Put the full SELECT syntax reference in a collapsible section:
+
+```markdown
+<details>
+<summary>SELECT Query Syntax Reference</summary>
+
+```
+SELECT <what> [FROM <track>] [WHERE <conditions>] [INTERSECT <track>] [WITHIN <region>] [IN <scope>] [ORDER BY <field>] [LIMIT <n>]
+```
+
+| Clause | Purpose |
+|--------|---------|
+| FROM | Source track |
+| WHERE | Filter conditions |
+| INTERSECT | Require overlap |
+| WITHIN | Inside region/gene |
+| IN | Scope (VIEW, CHROMOSOME) |
+| ORDER BY | Sort results |
+| LIMIT | Max results |
+
+</details>
+```

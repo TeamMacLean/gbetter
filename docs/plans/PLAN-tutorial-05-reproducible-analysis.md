@@ -206,3 +206,53 @@ After editing:
 - [ ] GQL Console shortcuts verified
 - [ ] "Try It Yourself" is a complete workflow
 - [ ] Reproducibility checklist is comprehensive
+
+## GitHub Markdown Enhancements
+
+Add these alerts throughout the tutorial:
+
+### Tips
+```markdown
+> [!TIP]
+> Save GQL commands, not natural language - GQL is guaranteed to reproduce the same result.
+```
+
+```markdown
+> [!TIP]
+> Use version control (git) for your `.gql` script files.
+```
+
+### Important
+```markdown
+> [!IMPORTANT]
+> URL state captures viewport only, not loaded tracks. Share data files separately.
+```
+
+```markdown
+> [!IMPORTANT]
+> Display settings (theme, palette) are stored in browser localStorage, not in URLs.
+```
+
+### Notes
+```markdown
+> [!NOTE]
+> Settings persist across sessions in the same browser but don't sync across devices.
+```
+
+### Collapsible Checklist
+Put the full reproducibility checklist in a visible but organized way:
+
+```markdown
+<details>
+<summary>Full Reproducibility Checklist</summary>
+
+- [ ] **Assembly**: Document which genome assembly
+- [ ] **Display settings**: Note theme and palette
+- [ ] **Data files**: Share or document all sources
+- [ ] **GQL script**: Save all commands in order
+- [ ] **URL state**: Capture key viewport positions
+- [ ] **Results**: Export or screenshot query results
+- [ ] **Documentation**: Write README explaining workflow
+
+</details>
+```

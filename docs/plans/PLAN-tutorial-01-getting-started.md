@@ -164,3 +164,45 @@ After editing:
 - [ ] Themes section exists
 - [ ] "Try It Yourself" has working R2 URL
 - [ ] All UI references match current app
+
+## GitHub Markdown Enhancements
+
+Add these alerts throughout the tutorial:
+
+### Tips
+```markdown
+> [!TIP]
+> Press `/` on your keyboard to quickly focus the search bar.
+```
+
+```markdown
+> [!TIP]
+> Scroll with your mouse wheel to zoom in and out quickly.
+```
+
+### Notes
+```markdown
+> [!NOTE]
+> Gene tracks load automatically for most assemblies. You don't need to find gene annotations yourself.
+```
+
+### Warnings
+```markdown
+> [!WARNING]
+> Chromosome names must match between your files and the assembly (e.g., `chr1` vs `1`).
+```
+
+### Collapsible FAQ
+Convert the "Common Questions" section to collapsible items:
+
+```markdown
+<details>
+<summary>Why can't I find my gene?</summary>
+
+GBetter has a built-in index of common genes. If your gene isn't found:
+- Check the spelling
+- Try the official gene symbol (BRCA1, not "breast cancer gene")
+- Load a GFF3 file containing your gene annotations
+
+</details>
+```
