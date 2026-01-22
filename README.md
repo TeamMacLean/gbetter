@@ -20,29 +20,76 @@ No installation required. Just open in your browser and start exploring genomes.
 - **Fast by default** - Sub-second load, 60fps pan and zoom
 - **AI-native** - Natural language queries with reproducible GQL output
 - **Web-first** - No installation, works in any modern browser
-- **Beautiful** - Dark mode interface, modern aesthetics
-- **Species-agnostic** - Works with any genome, not just human
-- **Private** - All data stays in your browserin h
+- **Beautiful** - Light/dark/high-contrast themes, colorblind-safe palettes
+- **Species-agnostic** - 27+ built-in assemblies, works with any genome
+- **Private** - All data stays in your browser
 
 ## Supported File Formats
 
-| Format | Description | Status |
-|--------|-------------|--------|
-| BED | Interval features (BED3-BED12) | Supported |
-| GFF3 | Gene annotations with hierarchies | Supported |
-| bedGraph | Signal/coverage data | Supported |
-| VCF | Variant calls | Supported |
-| BigWig | Binary signal data | Planned |
-| BAM/CRAM | Alignments | Planned |
+### Local Files (drag & drop)
+
+| Format | Description |
+|--------|-------------|
+| BED | Interval features (BED3-BED12) |
+| GFF3 | Gene annotations with hierarchies |
+| bedGraph | Signal/coverage data |
+| VCF | Variant calls |
+| BigBed (.bb) | Indexed BED (requires no index file) |
+| BigWig (.bw) | Indexed signal (requires no index file) |
+| BAM | Alignments (requires .bai index) |
+| CRAM | Alignments with reference (requires .crai index) |
+| VCF.gz | Tabix-indexed variants (requires .tbi index) |
+| GFF.gz | Tabix-indexed annotations (requires .tbi index) |
+| BED.gz | Tabix-indexed intervals (requires .tbi index) |
+
+### Remote URLs (paste in sidebar)
+
+All indexed formats above can also be loaded from URLs. The index file must be at the same URL path (e.g., `file.bam` + `file.bam.bai`).
 
 ## Quick Start
 
 1. Open [GBetter](https://teammaclean.github.io/gbetter/) in your browser
-2. Drag and drop a genomic file (BED, GFF3, VCF, or bedGraph)
-3. Use the search bar to navigate:
-   - Type a gene name: `TP53`
-   - Type coordinates: `chr17:7668421-7687490`
-   - Use simple commands: `zoom in`, `pan left 10kb`
+2. Gene tracks load automatically for the selected assembly
+3. Add your own data:
+   - **Local files**: Drag & drop or use File tab in sidebar
+   - **Remote URLs**: Paste BigBed/BigWig/BAM URLs in URL tab
+4. Navigate using the search bar:
+   - Gene name: `TP53`
+   - Coordinates: `chr17:7668421-7687490`
+   - Commands: `zoom in`, `pan left 10kb`
+5. Customize appearance in Settings (gear icon):
+   - Theme: Light / Dark / High-Contrast
+   - Palette: Set2 / Dark2 / Paired (all colorblind-safe)
+
+---
+
+## Built-in Assemblies
+
+GBetter includes 27+ genome assemblies with automatic gene/transcript tracks:
+
+| Category | Assemblies |
+|----------|------------|
+| **Human** | GRCh38 (hg38), GRCh37 (hg19), T2T-CHM13 |
+| **Mouse** | mm39, mm10 |
+| **Model Organisms** | Zebrafish (danRer11), Fly (dm6), Worm (ce11), Yeast (sacCer3) |
+| **Plants** | Arabidopsis (TAIR10), Rice (IRGSP-1.0), Maize (Zm-B73), Wheat, Barley |
+| **Fungi** | S. pombe, Botrytis, Magnaporthe, Puccinia, Zymoseptoria |
+| **Microbes** | E. coli K-12, SARS-CoV-2 |
+
+Reference sequences (2bit) are available for all assemblies, enabling nucleotide display at high zoom.
+
+---
+
+## Themes & Accessibility
+
+GBetter is designed with accessibility in mind:
+
+- **Three themes**: Light (default, print-ready), Dark, High-Contrast
+- **Colorblind-safe palettes**: Set2, Dark2, Paired (all from ColorBrewer)
+- **Geometric strand indication**: Chevrons show direction, not colors
+- **High contrast mode**: Maximum contrast for low-vision users
+
+All themes and palettes are in Settings > Display tab.
 
 ---
 
@@ -219,8 +266,8 @@ Step-by-step guides for different use cases:
 npm run dev          # Development server (localhost:5173)
 npm run build        # Production build
 npm run check        # TypeScript type checking
-npm run test:unit    # Run unit tests (280 tests)
-npm run test:e2e     # Run end-to-end tests (76 tests)
+npm run test:unit    # Run unit tests (~280 tests)
+npm run test:e2e     # Run end-to-end tests (~160 tests)
 ```
 
 ### Project Structure
