@@ -106,12 +106,11 @@ describe('parseCoordinate', () => {
 			});
 		});
 
-		it('handles uppercase CHR prefix (adds chr)', () => {
-			// Note: current behavior adds 'chr' prefix to 'CHR1' making 'chrCHR1'
-			// This could be considered a bug but we test actual behavior
+		it('handles uppercase CHR prefix (preserves as-is)', () => {
+			// CHR1 is not a simple numeric chromosome, so it's preserved as-is
 			const result = parseCoordinate('CHR1:1-1000');
 			expect(result).not.toBeNull();
-			expect(result?.chromosome).toBe('chrCHR1');
+			expect(result?.chromosome).toBe('CHR1');
 		});
 
 		it('handles lowercase chr prefix', () => {
