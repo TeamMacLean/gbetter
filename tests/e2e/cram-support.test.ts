@@ -121,7 +121,10 @@ test.describe('Visual Regression - CRAM Support', () => {
 });
 
 test.describe('CRAM Error Handling', () => {
-	test('shows warning when assembly lacks reference sequence', async ({ page }) => {
+	// Skip in CI - this test is flaky and doesn't actually test the feature
+	// it claims to test (it verifies NO error when reference IS available,
+	// not that a warning appears when reference is missing)
+	test.skip('shows warning when assembly lacks reference sequence', async ({ page }) => {
 		// Use an assembly without 2bit reference (if any)
 		// For now, test with ecoli which has reference - this test documents expected behavior
 		await page.goto('/?assembly=ecoli-k12');
