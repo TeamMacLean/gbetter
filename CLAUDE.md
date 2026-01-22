@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 17 (2026-01-21) - BAM coverage histogram complete
+**Status**: Active development, Session 19 (2026-01-22) - UI improvements + visual design planning
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -724,6 +724,30 @@ All pan-data-loading tests pass." \
   - **Remaining issues**:
     - BAM/VCF mismatch visualization not yet implemented (requires comparing reads to reference)
 
+- **2026-01-22 Session 19**: UI improvements and visual design planning
+  - **Zoom minimum removed**: Changed from 100bp to 1bp minimum in viewport.svelte.ts
+  - **Assembly dropdown taxonomic ordering**: Added `SPECIES_ORDER` array and `SPECIES_TO_CATEGORY`
+    mapping for organized dropdown (Animals → Plants → Fungi → Protists → Bacteria → Viruses)
+  - **Category headers in assembly dropdown**: Nested structure with bold category headers
+  - **New Settings panel**: Replaced AISettings.svelte with tabbed Settings.svelte (AI + Display tabs)
+  - **Moved gene style**: From sidebar to Settings > Display tab
+  - **Added "Add Tracks" heading**: To sidebar file/URL selector
+  - **Visual design specification**: Created `docs/VISUAL-DESIGN.md` with:
+    - ColorBrewer Set2 as default palette (colorblind-safe)
+    - Light theme primary (print-ready)
+    - Geometric strand indication (not color)
+    - Phased implementation plan
+
+- **2026-01-21 Session 18**: CRAM file support complete
+  - **CRAM fully supported** with reference sequence via 2bit files
+  - **Fixed CRAM rendering path**: TrackView.svelte includes 'cram' in BAM rendering condition
+  - **Fixed CRAM CIGAR parsing**: `cramRecordToFeature()` in localBinaryTracks.ts
+    - Root cause: CRAM readFeatures encode substitutions ('X' code) separately
+    - Fix: Filter to only CIGAR-affecting features (I, D, N, S, H, P)
+  - **All CRAM rendering modes work**: sequence (letters), blocks (triangles), coverage (histogram)
+  - **Tests**: `tests/e2e/cram-sequence-rendering.test.ts` (8 tests)
+  - **Test files**: `scripts/cram-test-files/` with `cigar-test.cram`
+
 - **2026-01-21 Session 17**: Bug fixes, BAM CIGAR rendering, and coverage histogram
   - **Fixed coordinate input whitespace bug**: Pasting coordinates with trailing/leading spaces
     caused "Invalid format" error. Fixed by adding `.trim()` in `parseCoordinate()`.
@@ -864,8 +888,22 @@ the data source actually has gene-level annotations or just transcript data with
 - [ ] **Fix persona tests**: 9 tests check for UI text that doesn't exist ("No tracks loaded", "Drop files on canvas", etc.)
 - [ ] **Review test coverage**: Ensure new Settings panel has adequate test coverage
 
-### Design Work Needed
-- [ ] **Gene style redesign**: Current themes (dark/flat) need visual improvement
+### Visual Design Overhaul (See docs/VISUAL-DESIGN.md)
+
+Design specification created. Key decisions:
+- **Accessibility first**: ColorBrewer palettes (Set2 default), colorblind-safe
+- **Light theme primary**: Print-ready, publication quality
+- **Geometry for strand**: Use chevrons/arrows, not color
+- **Distinct colors**: No saturation-only differences between feature types
+- **Palette switching**: Allow users to select from multiple palettes
+
+Implementation phases:
+- [ ] **Phase 1**: Light theme with Set2 palette, geometric strand indicators
+- [ ] **Phase 2**: Dark theme derived from light (same hues, adjusted lightness)
+- [ ] **Phase 3**: Palette switcher in Settings > Display
+- [ ] **Phase 4**: Polish nucleotides, BAM colors, signal ramps
+
+### Other Design Work
 - [ ] **Track grouping**: Allow grouping related tracks with collapse/expand
 
 ## Key Files for Context
@@ -886,5 +924,6 @@ the data source actually has gene-level annotations or just transcript data with
 15. `src/lib/stores/referenceSequence.svelte.ts` - Reference sequence state
 16. `src/lib/components/TrackView.svelte` - Canvas rendering (BAM CIGAR rendering at lines ~800-1200)
 17. `src/lib/components/Settings.svelte` - Tabbed settings panel (AI + Display)
-17. `tests/e2e/bam-cigar-rendering.test.ts` - BAM visual regression tests
-18. `scripts/bam-test-files/create-cigar-test-bam.sh` - Creates test BAM with varied CIGAR ops
+18. `tests/e2e/bam-cigar-rendering.test.ts` - BAM visual regression tests
+19. `scripts/bam-test-files/create-cigar-test-bam.sh` - Creates test BAM with varied CIGAR ops
+20. `docs/VISUAL-DESIGN.md` - Visual design specification (colors, palettes, accessibility)
