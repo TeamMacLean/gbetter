@@ -1,5 +1,8 @@
 <script lang="ts">
 	import '../app.css';
+	// Initialize theme store - this applies the saved theme class to document root
+	import { useTheme } from '$lib/stores/theme.svelte';
+	const _theme = useTheme();
 
 	let { children } = $props();
 </script>

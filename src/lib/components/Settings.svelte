@@ -5,11 +5,8 @@
 		saveAISettings,
 		type AISettings
 	} from '$lib/services/ai';
-	import {
-		getGeneModelThemes,
-		getCurrentThemeName,
-		setGeneModelTheme
-	} from '$lib/services/trackTypes/geneModel';
+	import { useTheme, type ThemeMode } from '$lib/stores/theme.svelte';
+	import { PALETTES, type PaletteName } from '$lib/services/palette';
 	import { useTracks } from '$lib/stores/tracks.svelte';
 
 	let { isOpen = $bindable(false) } = $props();
@@ -29,10 +26,16 @@
 		providers.find(p => p.id === settings.activeProvider) || providers[0]
 	);
 
-	// Display Settings state
+	// Theme and Display Settings
+	const theme = useTheme();
 	const tracks = useTracks();
-	const availableThemes = getGeneModelThemes();
-	let currentGeneTheme = $state(getCurrentThemeName());
+
+	// Theme mode display names
+	const themeModeLabels: Record<ThemeMode, string> = {
+		'light': 'Light',
+		'dark': 'Dark',
+		'high-contrast': 'High Contrast',
+	};
 
 	// AI Settings functions
 	function selectProvider(providerId: string) {
@@ -86,9 +89,13 @@
 	}
 
 	// Display Settings functions
-	function handleThemeChange(themeName: string) {
-		setGeneModelTheme(themeName);
-		currentGeneTheme = themeName;
+	function handleThemeModeChange(mode: ThemeMode) {
+		theme.setMode(mode);
+		tracks.invalidateRender();
+	}
+
+	function handlePaletteChange(name: PaletteName) {
+		theme.setPalette(name);
 		tracks.invalidateRender();
 	}
 
@@ -234,8 +241,8 @@
 					{#if testResult}
 						<span
 							class="text-sm"
-							class:text-green-400={testResult.success}
-							class:text-red-400={!testResult.success}
+							class:text-green-500={testResult.success}
+							class:text-red-500={!testResult.success}
 						>
 							{testResult.message}
 						</span>
@@ -243,38 +250,73 @@
 				</div>
 			{:else if activeTab === 'display'}
 				<!-- Display Settings Tab -->
-				<!-- Gene Model Theme -->
+
+				<!-- Theme Mode -->
 				<div>
 					<label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-2">
-						Gene Model Style
+						Theme
 					</label>
 					<p class="text-xs text-[var(--color-text-muted)] mb-3">
-						Choose how gene and transcript tracks are rendered on the canvas.
+						Choose light (default, print-ready), dark, or high-contrast for accessibility.
 					</p>
 					<div class="flex gap-2">
-						{#each availableThemes as themeName}
+						{#each theme.getAvailableModes() as mode}
 							<button
-								onclick={() => handleThemeChange(themeName)}
-								class="flex-1 px-4 py-3 text-sm rounded border transition-colors capitalize"
-								class:bg-[var(--color-accent)]={currentGeneTheme === themeName}
-								class:text-white={currentGeneTheme === themeName}
-								class:border-[var(--color-accent)]={currentGeneTheme === themeName}
-								class:bg-[var(--color-bg-tertiary)]={currentGeneTheme !== themeName}
-								class:text-[var(--color-text-primary)]={currentGeneTheme !== themeName}
-								class:border-[var(--color-border)]={currentGeneTheme !== themeName}
-								class:hover:border-[var(--color-accent)]={currentGeneTheme !== themeName}
+								onclick={() => handleThemeModeChange(mode)}
+								class="flex-1 px-3 py-2 text-sm rounded border transition-colors"
+								class:bg-[var(--color-accent)]={theme.mode === mode}
+								class:text-white={theme.mode === mode}
+								class:border-[var(--color-accent)]={theme.mode === mode}
+								class:bg-[var(--color-bg-tertiary)]={theme.mode !== mode}
+								class:text-[var(--color-text-primary)]={theme.mode !== mode}
+								class:border-[var(--color-border)]={theme.mode !== mode}
+								class:hover:border-[var(--color-accent)]={theme.mode !== mode}
 							>
-								{themeName}
+								{themeModeLabels[mode]}
+							</button>
+						{/each}
+					</div>
+				</div>
+
+				<!-- Color Palette -->
+				<div>
+					<label class="block text-xs font-medium text-[var(--color-text-secondary)] mb-2">
+						Color Palette
+					</label>
+					<p class="text-xs text-[var(--color-text-muted)] mb-3">
+						Choose a color palette for genomic features. All palettes are colorblind-safe.
+					</p>
+					<div class="flex gap-2">
+						{#each theme.getAvailablePalettes() as paletteName}
+							{@const palette = PALETTES[paletteName]}
+							<button
+								onclick={() => handlePaletteChange(paletteName)}
+								class="flex-1 px-3 py-2 text-sm rounded border transition-colors"
+								class:bg-[var(--color-accent)]={theme.paletteName === paletteName}
+								class:text-white={theme.paletteName === paletteName}
+								class:border-[var(--color-accent)]={theme.paletteName === paletteName}
+								class:bg-[var(--color-bg-tertiary)]={theme.paletteName !== paletteName}
+								class:text-[var(--color-text-primary)]={theme.paletteName !== paletteName}
+								class:border-[var(--color-border)]={theme.paletteName !== paletteName}
+								class:hover:border-[var(--color-accent)]={theme.paletteName !== paletteName}
+							>
+								{palette.name}
 							</button>
 						{/each}
 					</div>
 					<p class="mt-2 text-xs text-[var(--color-text-muted)]">
-						{#if currentGeneTheme === 'dark'}
-							Dark theme: Glowing gradients with peaked intron lines (GBrowse style).
-						{:else}
-							Flat theme: Clean flat colors with peaked intron lines.
-						{/if}
+						{PALETTES[theme.paletteName]?.description || ''}
 					</p>
+					<!-- Palette Preview -->
+					<div class="mt-3 flex gap-1">
+						{#each PALETTES[theme.paletteName]?.colors.slice(0, 8) || [] as color}
+							<div
+								class="w-6 h-6 rounded"
+								style="background-color: {color}"
+								title={color}
+							></div>
+						{/each}
+					</div>
 				</div>
 			{/if}
 		</div>

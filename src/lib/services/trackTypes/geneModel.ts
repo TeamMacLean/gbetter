@@ -1,24 +1,18 @@
 /**
  * Gene Model Track Type (GFF3)
- * Themeable gene visualization with multiple styles
+ * Uses the centralized palette system for colors
  */
 
 import type { TrackTypeConfig, RenderContext, ParseResult, GeneModelFeature } from '$lib/types/tracks';
 import type { Viewport } from '$lib/types/genome';
+import { theme } from '$lib/stores/theme.svelte';
+import { INTRON_COLORS } from '$lib/services/palette';
 
 // =============================================================================
-// THEME SYSTEM
+// STYLE CONFIGURATION
 // =============================================================================
 
-interface ColorDef {
-	fill: string;
-	gradient?: [string, string];  // Optional gradient (top, bottom)
-	stroke: string;
-	glow?: string;  // Optional glow color
-}
-
-interface GeneModelTheme {
-	name: string;
+interface GeneModelStyle {
 	// Dimensions
 	cdsHeight: number;
 	utrHeight: number;
@@ -27,29 +21,15 @@ interface GeneModelTheme {
 	rowHeight: number;
 	labelHeight: number;
 	cornerRadius: number;
-	// Colors
-	cds: ColorDef;
-	utr: ColorDef;
-	exon: ColorDef;
-	gene: ColorDef;
-	intron: string;
-	chevronColor: string;
-	label: string;
-	labelSecondary: string;
-	labelBg: string;
-	// Style options
+	// Style options (geometry, not colors)
 	useGlow: boolean;
 	useGradients: boolean;
 	useInnerChevrons: boolean;
 	intronStyle: 'peaked' | 'flat' | 'dashed';
 }
 
-// -----------------------------------------------------------------------------
-// DARK THEME (Default) - Modern with glow effects and peaked introns
-// -----------------------------------------------------------------------------
-const DARK_THEME: GeneModelTheme = {
-	name: 'dark',
-	// Dimensions
+// Default style - can be toggled via settings
+const DEFAULT_STYLE: GeneModelStyle = {
 	cdsHeight: 16,
 	utrHeight: 8,
 	exonHeight: 12,
@@ -57,126 +37,157 @@ const DARK_THEME: GeneModelTheme = {
 	rowHeight: 26,
 	labelHeight: 18,
 	cornerRadius: 4,
-	// Colors - vibrant on dark
-	cds: {
-		fill: '#06b6d4',
-		gradient: ['#22d3ee', '#0891b2'],
-		stroke: '#0e7490',
-		glow: 'rgba(6, 182, 212, 0.3)',
-	},
-	utr: {
-		fill: '#8b5cf6',
-		gradient: ['#a78bfa', '#7c3aed'],
-		stroke: '#6d28d9',
-		glow: 'rgba(139, 92, 246, 0.2)',
-	},
-	exon: {
-		fill: '#3b82f6',
-		gradient: ['#60a5fa', '#2563eb'],
-		stroke: '#1d4ed8',
-		glow: 'rgba(59, 130, 246, 0.25)',
-	},
-	gene: {
-		fill: '#6366f1',
-		gradient: ['#818cf8', '#4f46e5'],
-		stroke: '#4338ca',
-		glow: 'rgba(99, 102, 241, 0.25)',
-	},
-	intron: '#475569',
-	chevronColor: 'rgba(255, 255, 255, 0.4)',
-	label: '#f1f5f9',
-	labelSecondary: '#94a3b8',
-	labelBg: 'rgba(15, 23, 42, 0.75)',
-	// Style
-	useGlow: true,
-	useGradients: true,
+	useGlow: false, // Disabled for cleaner look with new palette
+	useGradients: false, // Flat style default
 	useInnerChevrons: true,
 	intronStyle: 'peaked',
 };
 
-// -----------------------------------------------------------------------------
-// FLAT THEME - Clean FlatUI style, no gradients or shadows
-// -----------------------------------------------------------------------------
-const FLAT_THEME: GeneModelTheme = {
-	name: 'flat',
-	// Dimensions - slightly smaller, tighter
-	cdsHeight: 14,
-	utrHeight: 7,
-	exonHeight: 10,
-	intronHeight: 2,
-	rowHeight: 22,
-	labelHeight: 16,
-	cornerRadius: 2,
-	// Colors - FlatUI palette
-	cds: {
-		fill: '#1abc9c',  // Turquoise
-		stroke: '#16a085',
-	},
-	utr: {
-		fill: '#9b59b6',  // Amethyst
-		stroke: '#8e44ad',
-	},
-	exon: {
-		fill: '#3498db',  // Peter River
-		stroke: '#2980b9',
-	},
-	gene: {
-		fill: '#2ecc71',  // Emerald
-		stroke: '#27ae60',
-	},
-	intron: '#7f8c8d',  // Asbestos
-	chevronColor: 'rgba(255, 255, 255, 0.5)',
-	label: '#ecf0f1',  // Clouds
-	labelSecondary: '#bdc3c7',  // Silver
-	labelBg: 'rgba(44, 62, 80, 0.8)',  // Wet Asphalt
-	// Style
-	useGlow: false,
-	useGradients: false,
-	useInnerChevrons: true,
-	intronStyle: 'peaked',
-};
-
-// Theme registry
-const THEMES: Record<string, GeneModelTheme> = {
-	dark: DARK_THEME,
-	flat: FLAT_THEME,
-};
-
-// Current active theme
-let currentTheme: GeneModelTheme = DARK_THEME;
+// Current style (mutable for settings)
+let currentStyle: GeneModelStyle = { ...DEFAULT_STYLE };
 
 /**
- * Set the active gene model theme
+ * Get colors from the active palette
+ */
+function getColors() {
+	const palette = theme.palette;
+	const isDark = theme.isDark;
+	const isHighContrast = theme.isHighContrast;
+
+	// Get intron color based on theme
+	const intronColor = isDark ? INTRON_COLORS.dark : INTRON_COLORS.light;
+
+	// Chevron color - semi-transparent white on dark, black on light
+	const chevronColor = isDark
+		? 'rgba(255, 255, 255, 0.4)'
+		: 'rgba(0, 0, 0, 0.3)';
+
+	// Label colors
+	const labelColor = isDark ? '#f1f5f9' : '#1f2937';
+	const labelSecondary = isDark ? '#94a3b8' : '#6b7280';
+	const labelBg = isDark
+		? 'rgba(15, 23, 42, 0.75)'
+		: 'rgba(255, 255, 255, 0.85)';
+
+	// Create color definitions from palette
+	const cds = {
+		fill: palette.cds,
+		stroke: adjustColor(palette.cds, -20),
+		glow: isHighContrast ? undefined : `${palette.cds}40`,
+	};
+
+	const utr = {
+		fill: palette.utr,
+		stroke: adjustColor(palette.utr, -20),
+		glow: isHighContrast ? undefined : `${palette.utr}30`,
+	};
+
+	const exon = {
+		fill: palette.exon,
+		stroke: adjustColor(palette.exon, -20),
+		glow: isHighContrast ? undefined : `${palette.exon}35`,
+	};
+
+	const gene = {
+		fill: palette.gene,
+		stroke: adjustColor(palette.gene, -20),
+		glow: isHighContrast ? undefined : `${palette.gene}35`,
+	};
+
+	return {
+		cds,
+		utr,
+		exon,
+		gene,
+		intron: intronColor,
+		chevronColor,
+		label: labelColor,
+		labelSecondary,
+		labelBg,
+	};
+}
+
+/**
+ * Simple color adjustment (darken/lighten)
+ * Positive amount = lighten, negative = darken
+ */
+function adjustColor(hex: string, amount: number): string {
+	// Parse hex color
+	const num = parseInt(hex.slice(1), 16);
+	const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+	const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00ff) + amount));
+	const b = Math.max(0, Math.min(255, (num & 0x0000ff) + amount));
+	return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+}
+
+// =============================================================================
+// LEGACY API (for backward compatibility)
+// =============================================================================
+
+/**
+ * Set gene model style (legacy API - now affects geometry only)
+ * @deprecated Use theme store for colors, this only affects geometry
  */
 export function setGeneModelTheme(themeName: string): void {
-	if (THEMES[themeName]) {
-		currentTheme = THEMES[themeName];
+	// Legacy themes mapped to geometry settings
+	if (themeName === 'dark') {
+		currentStyle = {
+			...DEFAULT_STYLE,
+			useGlow: true,
+			useGradients: true,
+		};
+	} else if (themeName === 'flat') {
+		currentStyle = {
+			...DEFAULT_STYLE,
+			useGlow: false,
+			useGradients: false,
+			cornerRadius: 2,
+		};
 	}
 }
 
 /**
- * Get available theme names
+ * Get available style names (legacy API)
+ * @deprecated Theme names are now just geometry presets
  */
 export function getGeneModelThemes(): string[] {
-	return Object.keys(THEMES);
+	return ['flat', 'dark'];
 }
 
 /**
- * Get current theme name
+ * Get current theme name (legacy API)
+ * @deprecated
  */
 export function getCurrentThemeName(): string {
-	return currentTheme.name;
+	return currentStyle.useGradients ? 'dark' : 'flat';
 }
 
 /**
- * Get the current theme object (for use in other renderers)
+ * Get current style
  */
-export function getCurrentTheme(): GeneModelTheme {
-	return currentTheme;
+export function getCurrentStyle(): GeneModelStyle {
+	return currentStyle;
 }
 
-// Export types for use in other modules
-export type { GeneModelTheme, ColorDef };
+/**
+ * Get theme-like object for backward compatibility
+ * Used by TrackView.svelte for label rendering
+ */
+export function getCurrentTheme() {
+	const colors = getColors();
+	return {
+		...currentStyle,
+		...colors,
+		// Map old interface properties to new
+		gene: colors.gene,
+		cds: colors.cds,
+		utr: colors.utr,
+		exon: colors.exon,
+	};
+}
+
+// Export types
+export type { GeneModelStyle };
 
 // =============================================================================
 // EXPORTED DRAWING HELPERS (for BigBed and other renderers)
@@ -202,7 +213,7 @@ function parseGff3(content: string): ParseResult<GeneModelFeature> {
 			continue;
 		}
 
-		const [seqid, source, type, startStr, endStr, scoreStr, strandStr, phaseStr, attrStr] = fields;
+		const [seqid, _source, type, startStr, endStr, _scoreStr, strandStr, _phaseStr, attrStr] = fields;
 
 		// Convert 1-based to 0-based
 		const start = parseInt(startStr, 10) - 1;
@@ -273,7 +284,8 @@ function parseGff3(content: string): ParseResult<GeneModelFeature> {
 
 function renderGeneModels(features: GeneModelFeature[], ctx: RenderContext): void {
 	const { ctx: c, viewport, toPixelX, trackY, trackHeight, basesPerPixel, dimmedIds } = ctx;
-	const theme = currentTheme;
+	const style = currentStyle;
+	const colors = getColors();
 
 	// Get top-level features (genes or transcripts without parents)
 	const topLevel = features.filter(f =>
@@ -307,21 +319,21 @@ function renderGeneModels(features: GeneModelFeature[], ctx: RenderContext): voi
 		if (!placed) rows.push([feature]);
 	}
 
-	const maxRows = Math.floor((trackHeight - theme.labelHeight) / (theme.rowHeight + theme.labelHeight));
+	const maxRows = Math.floor((trackHeight - style.labelHeight) / (style.rowHeight + style.labelHeight));
 	const displayRows = rows.slice(0, maxRows);
 
 	// Render each row
 	for (let rowIdx = 0; rowIdx < displayRows.length; rowIdx++) {
-		const baseY = trackY + theme.labelHeight + rowIdx * (theme.rowHeight + theme.labelHeight);
+		const baseY = trackY + style.labelHeight + rowIdx * (style.rowHeight + style.labelHeight);
 
 		for (const gene of displayRows[rowIdx]) {
-			renderGeneOrTranscript(c, gene, viewport, toPixelX, baseY, basesPerPixel, dimmedIds);
+			renderGeneOrTranscript(c, gene, viewport, toPixelX, baseY, basesPerPixel, dimmedIds, style, colors);
 		}
 	}
 
 	// Overflow indicator
 	if (rows.length > maxRows) {
-		c.fillStyle = theme.labelSecondary;
+		c.fillStyle = colors.labelSecondary;
 		c.font = '9px Inter, sans-serif';
 		c.textAlign = 'right';
 		c.fillText(`+${rows.length - maxRows} genes`, ctx.canvasWidth - 8, trackY + trackHeight - 4);
@@ -331,6 +343,12 @@ function renderGeneModels(features: GeneModelFeature[], ctx: RenderContext): voi
 // =============================================================================
 // DRAWING HELPERS
 // =============================================================================
+
+interface ColorDef {
+	fill: string;
+	stroke: string;
+	glow?: string;
+}
 
 /**
  * Draw a rounded rectangle (pill shape)
@@ -358,7 +376,7 @@ function roundedRect(
 }
 
 /**
- * Draw a pill with theme-aware styling (gradient, glow, etc.)
+ * Draw a pill with style-aware rendering
  */
 function drawPill(
 	c: CanvasRenderingContext2D,
@@ -366,50 +384,50 @@ function drawPill(
 	y: number,
 	width: number,
 	height: number,
-	colors: ColorDef,
+	colorDef: ColorDef,
 	addGlow: boolean = true
 ): void {
 	if (width < 1) width = 1;
-	const theme = currentTheme;
+	const style = currentStyle;
 
-	// Add glow effect if theme supports it
-	if (theme.useGlow && addGlow && colors.glow && width > 4) {
+	// Add glow effect if style supports it
+	if (style.useGlow && addGlow && colorDef.glow && width > 4) {
 		c.save();
-		c.shadowColor = colors.glow;
+		c.shadowColor = colorDef.glow;
 		c.shadowBlur = 8;
 		c.shadowOffsetY = 2;
-		roundedRect(c, x, y, width, height, theme.cornerRadius);
-		c.fillStyle = colors.fill;
+		roundedRect(c, x, y, width, height, style.cornerRadius);
+		c.fillStyle = colorDef.fill;
 		c.fill();
 		c.restore();
 	}
 
-	// Fill - gradient or solid based on theme
-	roundedRect(c, x, y, width, height, theme.cornerRadius);
-	if (theme.useGradients && colors.gradient) {
+	// Fill - gradient or solid based on style
+	roundedRect(c, x, y, width, height, style.cornerRadius);
+	if (style.useGradients && width > 6) {
 		const gradient = c.createLinearGradient(x, y, x, y + height);
-		gradient.addColorStop(0, colors.gradient[0]);
-		gradient.addColorStop(0.5, colors.fill);
-		gradient.addColorStop(1, colors.gradient[1]);
+		gradient.addColorStop(0, adjustColor(colorDef.fill, 20));
+		gradient.addColorStop(0.5, colorDef.fill);
+		gradient.addColorStop(1, adjustColor(colorDef.fill, -20));
 		c.fillStyle = gradient;
 	} else {
-		c.fillStyle = colors.fill;
+		c.fillStyle = colorDef.fill;
 	}
 	c.fill();
 
 	// Stroke
 	if (width > 3) {
-		c.strokeStyle = colors.stroke;
+		c.strokeStyle = colorDef.stroke;
 		c.lineWidth = 1;
 		c.stroke();
 	}
 
-	// Highlight on top edge (gradient themes only)
-	if (theme.useGradients && width > 6 && height > 4) {
+	// Highlight on top edge (gradient styles only)
+	if (style.useGradients && width > 6 && height > 4) {
 		const highlightGradient = c.createLinearGradient(x, y, x, y + height * 0.4);
 		highlightGradient.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
 		highlightGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-		roundedRect(c, x + 1, y + 1, width - 2, height * 0.4, theme.cornerRadius - 1);
+		roundedRect(c, x + 1, y + 1, width - 2, height * 0.4, style.cornerRadius - 1);
 		c.fillStyle = highlightGradient;
 		c.fill();
 	}
@@ -429,13 +447,14 @@ function drawIntronConnector(
 	const width = endX - startX;
 	if (width < 2) return;
 
-	const theme = currentTheme;
-	c.strokeStyle = theme.intron;
+	const style = currentStyle;
+	const colors = getColors();
+	c.strokeStyle = colors.intron;
 	c.lineWidth = 1.5;
 	c.lineCap = 'round';
 	c.lineJoin = 'round';
 
-	if (theme.intronStyle === 'peaked') {
+	if (style.intronStyle === 'peaked') {
 		// GBrowse-style peaked intron (hat shape)
 		const peakHeight = Math.min(exonHeight * 0.6, 8);
 		const midX = (startX + endX) / 2;
@@ -446,7 +465,7 @@ function drawIntronConnector(
 		c.lineTo(midX, peakY);
 		c.lineTo(endX, centerY);
 		c.stroke();
-	} else if (theme.intronStyle === 'dashed') {
+	} else if (style.intronStyle === 'dashed') {
 		// Dashed line
 		c.setLineDash([4, 3]);
 		c.beginPath();
@@ -474,14 +493,15 @@ function drawInnerChevrons(
 	height: number,
 	strand: '+' | '-' | '.'
 ): void {
-	if (!currentTheme.useInnerChevrons) return;
+	if (!currentStyle.useInnerChevrons) return;
 	if (strand === '.' || width < 20) return;
 
 	const chevronSpacing = 12;
 	const chevronSize = Math.min(4, height * 0.25);
 	const centerY = y + height / 2;
 
-	c.strokeStyle = currentTheme.chevronColor;
+	const colors = getColors();
+	c.strokeStyle = colors.chevronColor;
 	c.lineWidth = 1.5;
 	c.lineCap = 'round';
 	c.lineJoin = 'round';
@@ -511,10 +531,11 @@ function renderGeneOrTranscript(
 	toPixelX: (pos: number) => number,
 	baseY: number,
 	_basesPerPixel: number,
-	dimmedIds?: Set<string>,
+	dimmedIds: Set<string> | undefined,
+	style: GeneModelStyle,
+	colors: ReturnType<typeof getColors>,
 	skipLabel?: boolean
 ): void {
-	const theme = currentTheme;
 	const x = toPixelX(feature.start);
 	const endX = toPixelX(feature.end);
 	const width = Math.max(1, endX - x);
@@ -536,11 +557,11 @@ function renderGeneOrTranscript(
 	if (transcripts.length > 0) {
 		const transcript = transcripts[0];
 		// Pass skipLabel=true to prevent transcript from drawing its own label
-		renderGeneOrTranscript(c, transcript, viewport, toPixelX, baseY, _basesPerPixel, dimmedIds, true);
+		renderGeneOrTranscript(c, transcript, viewport, toPixelX, baseY, _basesPerPixel, dimmedIds, style, colors, true);
 
 		// Draw gene label above (only the gene label, not transcript)
 		if (feature.name && width > 20) {
-			c.fillStyle = theme.label;
+			c.fillStyle = colors.label;
 			c.font = '600 10px Inter, system-ui, sans-serif';
 			c.textAlign = 'left';
 			c.fillText(feature.name, x, baseY - 4);
@@ -548,7 +569,7 @@ function renderGeneOrTranscript(
 		return;
 	}
 
-	const centerY = baseY + theme.rowHeight / 2;
+	const centerY = baseY + style.rowHeight / 2;
 	const strand = feature.strand ?? '.';
 
 	// Collect all exon-like regions for intron drawing
@@ -563,12 +584,12 @@ function renderGeneOrTranscript(
 			const intronStart = toPixelX(current.end);
 			const intronEnd = toPixelX(next.start);
 			if (intronEnd > intronStart + 2) {
-				drawIntronConnector(c, intronStart, intronEnd, centerY, theme.cdsHeight);
+				drawIntronConnector(c, intronStart, intronEnd, centerY, style.cdsHeight);
 			}
 		}
 	} else if (width > 10 && allExonRegions.length === 0) {
 		// Single span with no structure - draw line
-		drawIntronConnector(c, x, x + width, centerY, theme.exonHeight);
+		drawIntronConnector(c, x, x + width, centerY, style.exonHeight);
 	}
 
 	// Helper to apply dimming for a feature
@@ -589,7 +610,7 @@ function renderGeneOrTranscript(
 		const dimmedExons = exons.filter(isDimmed);
 		const visibleExons = exons.filter(e => !isDimmed(e));
 		const dimmedCds = cdss.filter(isDimmed);
-		const visibleCds = cdss.filter(c => !isDimmed(c));
+		const visibleCds = cdss.filter(cds => !isDimmed(cds));
 
 		// FIRST PASS: Draw all dimmed features (behind)
 		c.save();
@@ -599,17 +620,17 @@ function renderGeneOrTranscript(
 		for (const exon of dimmedExons) {
 			const ex = toPixelX(exon.start);
 			const ew = Math.max(1, toPixelX(exon.end) - ex);
-			const ey = centerY - theme.utrHeight / 2;
-			drawPill(c, ex, ey, ew, theme.utrHeight, theme.utr, false);
+			const ey = centerY - style.utrHeight / 2;
+			drawPill(c, ex, ey, ew, style.utrHeight, colors.utr, false);
 		}
 
 		// Dimmed CDS
 		for (const cds of dimmedCds) {
 			const cx = toPixelX(cds.start);
 			const cw = Math.max(1, toPixelX(cds.end) - cx);
-			const cy = centerY - theme.cdsHeight / 2;
-			drawPill(c, cx, cy, cw, theme.cdsHeight, theme.cds);
-			drawInnerChevrons(c, cx, cy, cw, theme.cdsHeight, strand);
+			const cy = centerY - style.cdsHeight / 2;
+			drawPill(c, cx, cy, cw, style.cdsHeight, colors.cds);
+			drawInnerChevrons(c, cx, cy, cw, style.cdsHeight, strand);
 		}
 
 		c.restore();
@@ -621,13 +642,13 @@ function renderGeneOrTranscript(
 			const ew = Math.max(1, toPixelX(exon.end) - ex);
 			// Use full exon style if CDS is being filtered out
 			if (dimmedCds.length > 0 && visibleCds.length === 0) {
-				const ey = centerY - theme.exonHeight / 2;
-				drawPill(c, ex, ey, ew, theme.exonHeight, theme.exon);
-				drawInnerChevrons(c, ex, ey, ew, theme.exonHeight, strand);
+				const ey = centerY - style.exonHeight / 2;
+				drawPill(c, ex, ey, ew, style.exonHeight, colors.exon);
+				drawInnerChevrons(c, ex, ey, ew, style.exonHeight, strand);
 			} else {
 				// Normal UTR style when both visible
-				const ey = centerY - theme.utrHeight / 2;
-				drawPill(c, ex, ey, ew, theme.utrHeight, theme.utr, false);
+				const ey = centerY - style.utrHeight / 2;
+				drawPill(c, ex, ey, ew, style.utrHeight, colors.utr, false);
 			}
 		}
 
@@ -635,9 +656,9 @@ function renderGeneOrTranscript(
 		for (const cds of visibleCds) {
 			const cx = toPixelX(cds.start);
 			const cw = Math.max(1, toPixelX(cds.end) - cx);
-			const cy = centerY - theme.cdsHeight / 2;
-			drawPill(c, cx, cy, cw, theme.cdsHeight, theme.cds);
-			drawInnerChevrons(c, cx, cy, cw, theme.cdsHeight, strand);
+			const cy = centerY - style.cdsHeight / 2;
+			drawPill(c, cx, cy, cw, style.cdsHeight, colors.cds);
+			drawInnerChevrons(c, cx, cy, cw, style.cdsHeight, strand);
 		}
 	} else if (exons.length > 0) {
 		// Just exons with inner chevrons
@@ -645,9 +666,9 @@ function renderGeneOrTranscript(
 			withDimming(exon, () => {
 				const ex = toPixelX(exon.start);
 				const ew = Math.max(1, toPixelX(exon.end) - ex);
-				const ey = centerY - theme.exonHeight / 2;
-				drawPill(c, ex, ey, ew, theme.exonHeight, theme.exon);
-				drawInnerChevrons(c, ex, ey, ew, theme.exonHeight, strand);
+				const ey = centerY - style.exonHeight / 2;
+				drawPill(c, ex, ey, ew, style.exonHeight, colors.exon);
+				drawInnerChevrons(c, ex, ey, ew, style.exonHeight, strand);
 			});
 		}
 	} else if (cdss.length > 0) {
@@ -656,9 +677,9 @@ function renderGeneOrTranscript(
 			withDimming(cds, () => {
 				const cx = toPixelX(cds.start);
 				const cw = Math.max(1, toPixelX(cds.end) - cx);
-				const cy = centerY - theme.cdsHeight / 2;
-				drawPill(c, cx, cy, cw, theme.cdsHeight, theme.cds);
-				drawInnerChevrons(c, cx, cy, cw, theme.cdsHeight, strand);
+				const cy = centerY - style.cdsHeight / 2;
+				drawPill(c, cx, cy, cw, style.cdsHeight, colors.cds);
+				drawInnerChevrons(c, cx, cy, cw, style.cdsHeight, strand);
 			});
 		}
 	} else if (utrs.length > 0) {
@@ -667,15 +688,15 @@ function renderGeneOrTranscript(
 			withDimming(utr, () => {
 				const ux = toPixelX(utr.start);
 				const uw = Math.max(1, toPixelX(utr.end) - ux);
-				drawPill(c, ux, centerY - theme.utrHeight / 2, uw, theme.utrHeight, theme.utr);
+				drawPill(c, ux, centerY - style.utrHeight / 2, uw, style.utrHeight, colors.utr);
 			});
 		}
 	} else {
 		// No children - draw as single pill with chevrons (check parent feature)
 		withDimming(feature, () => {
-			const gy = centerY - theme.exonHeight / 2;
-			drawPill(c, x, gy, width, theme.exonHeight, theme.gene);
-			drawInnerChevrons(c, x, gy, width, theme.exonHeight, strand);
+			const gy = centerY - style.exonHeight / 2;
+			drawPill(c, x, gy, width, style.exonHeight, colors.gene);
+			drawInnerChevrons(c, x, gy, width, style.exonHeight, strand);
 		});
 	}
 
@@ -701,12 +722,12 @@ function renderGeneOrTranscript(
 
 		// Subtle background pill for label
 		if (measuredWidth > 10) {
-			c.fillStyle = theme.labelBg;
+			c.fillStyle = colors.labelBg;
 			roundedRect(c, labelX - 3, labelY - 10, measuredWidth + 6, 13, 3);
 			c.fill();
 		}
 
-		c.fillStyle = theme.label;
+		c.fillStyle = colors.label;
 		c.fillText(label, labelX, labelY, maxWidth);
 	}
 }

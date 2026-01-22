@@ -40,24 +40,17 @@ export const ZOOM_THRESHOLDS = {
 
 /**
  * Base colors for sequence display
- * Using distinct, colorblind-friendly colors
+ * Using accessible colors that avoid red-green confusion
+ * Imported from centralized palette system
  */
-export const BASE_COLORS: Record<string, string> = {
-	A: '#22c55e', // Green
-	C: '#3b82f6', // Blue
-	G: '#f59e0b', // Amber/Orange
-	T: '#ef4444', // Red
-	U: '#ef4444', // Red (for RNA)
-	N: '#888888', // Gray (unknown)
-};
+import { NUCLEOTIDE_COLORS, BAM_COLORS } from '$lib/services/palette';
+
+export const BASE_COLORS: Record<string, string> = NUCLEOTIDE_COLORS;
 
 /**
  * Mismatch indicator color (for bases that differ from reference)
  */
-export const MISMATCH_COLORS = {
-	background: '#7c3aed40', // Semi-transparent purple
-	text: '#ffffff',
-};
+export const MISMATCH_COLORS = BAM_COLORS.mismatch;
 
 /**
  * Quality score thresholds for BAM read coloring

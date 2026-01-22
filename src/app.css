@@ -1,25 +1,140 @@
 @import 'tailwindcss';
 
-/* GBetter Dark Theme */
-:root {
-	--color-bg-primary: #0f0f0f;
-	--color-bg-secondary: #1a1a1a;
-	--color-bg-tertiary: #252525;
-	--color-border: #333333;
-	--color-text-primary: #e5e5e5;
-	--color-text-secondary: #a0a0a0;
-	--color-text-muted: #666666;
+/* =============================================================================
+   THEME DEFINITIONS
+   Light theme is default (print-ready). Dark and high-contrast are optional.
+   ============================================================================= */
+
+/* Light Theme (Default) - Publication-ready, print-friendly */
+:root,
+:root.light {
+	/* Backgrounds */
+	--color-bg-primary: #ffffff;
+	--color-bg-secondary: #f8f9fa;
+	--color-bg-tertiary: #f1f3f5;
+	--color-border: #dee2e6;
+
+	/* Text */
+	--color-text-primary: #212529;
+	--color-text-secondary: #495057;
+	--color-text-muted: #6c757d;
+
+	/* Accent */
+	--color-accent: #4f46e5;
+	--color-accent-hover: #4338ca;
+
+	/* Canvas/Track backgrounds */
+	--color-canvas-bg: #ffffff;
+	--color-track-bg: #fafafa;
+	--color-grid-lines: #e9ecef;
+
+	/* Selection */
+	--color-selection: rgba(79, 70, 229, 0.15);
+	--color-highlight: rgba(79, 70, 229, 0.1);
+
+	/* Shadows */
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+	--shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+	/* Genomic feature colors (from Set2 palette) */
+	--color-cds: #66c2a5;
+	--color-utr: #fc8d62;
+	--color-exon: #8da0cb;
+	--color-gene: #e78ac3;
+	--color-intron: #9ca3af;
+
+	/* Legacy colors for backward compatibility */
+	--color-strand-plus: #22c55e;
+	--color-strand-minus: #ef4444;
+}
+
+/* Dark Theme */
+:root.dark {
+	/* Backgrounds */
+	--color-bg-primary: #1a1a2e;
+	--color-bg-secondary: #16213e;
+	--color-bg-tertiary: #1f2937;
+	--color-border: #2d3748;
+
+	/* Text */
+	--color-text-primary: #e2e8f0;
+	--color-text-secondary: #a0aec0;
+	--color-text-muted: #718096;
+
+	/* Accent */
 	--color-accent: #6366f1;
 	--color-accent-hover: #818cf8;
 
-	/* Genomic feature colors */
+	/* Canvas/Track backgrounds */
+	--color-canvas-bg: #0f0f1a;
+	--color-track-bg: #1a1a2e;
+	--color-grid-lines: #2d3748;
+
+	/* Selection */
+	--color-selection: rgba(99, 102, 241, 0.25);
+	--color-highlight: rgba(99, 102, 241, 0.15);
+
+	/* Shadows (more subtle on dark) */
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+	--shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+
+	/* Genomic feature colors (same hues, adjusted for dark bg) */
+	--color-cds: #66c2a5;
+	--color-utr: #fc8d62;
+	--color-exon: #8da0cb;
+	--color-gene: #e78ac3;
+	--color-intron: #475569;
+
+	/* Legacy colors */
 	--color-strand-plus: #22c55e;
 	--color-strand-minus: #ef4444;
-	--color-exon: #3b82f6;
-	--color-intron: #64748b;
-	--color-utr: #a855f7;
-	--color-cds: #f59e0b;
 }
+
+/* High Contrast Theme (Accessibility) */
+:root.high-contrast {
+	/* Backgrounds - maximum contrast */
+	--color-bg-primary: #ffffff;
+	--color-bg-secondary: #ffffff;
+	--color-bg-tertiary: #f0f0f0;
+	--color-border: #000000;
+
+	/* Text - pure black for maximum readability */
+	--color-text-primary: #000000;
+	--color-text-secondary: #000000;
+	--color-text-muted: #333333;
+
+	/* Accent - high saturation */
+	--color-accent: #0000ff;
+	--color-accent-hover: #0000cc;
+
+	/* Canvas/Track backgrounds */
+	--color-canvas-bg: #ffffff;
+	--color-track-bg: #ffffff;
+	--color-grid-lines: #cccccc;
+
+	/* Selection */
+	--color-selection: rgba(0, 0, 255, 0.2);
+	--color-highlight: rgba(0, 0, 255, 0.1);
+
+	/* Shadows */
+	--shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+	--shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+
+	/* Genomic feature colors - high saturation, thick borders */
+	--color-cds: #1b9e77;
+	--color-utr: #d95f02;
+	--color-exon: #7570b3;
+	--color-gene: #e7298a;
+	--color-intron: #666666;
+
+	/* Legacy colors */
+	--color-strand-plus: #008000;
+	--color-strand-minus: #cc0000;
+}
+
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
 
 html {
 	background-color: var(--color-bg-primary);
@@ -33,7 +148,10 @@ body {
 	min-height: 100vh;
 }
 
-/* Scrollbar styling */
+/* =============================================================================
+   SCROLLBAR STYLING
+   ============================================================================= */
+
 ::-webkit-scrollbar {
 	width: 8px;
 	height: 8px;
@@ -50,4 +168,42 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
 	background: var(--color-text-muted);
+}
+
+/* =============================================================================
+   HIGH CONTRAST SPECIFIC STYLES
+   ============================================================================= */
+
+:root.high-contrast button,
+:root.high-contrast input,
+:root.high-contrast select {
+	border-width: 2px;
+}
+
+:root.high-contrast a {
+	text-decoration: underline;
+}
+
+/* Focus styles for high contrast */
+:root.high-contrast *:focus {
+	outline: 3px solid #0000ff;
+	outline-offset: 2px;
+}
+
+/* =============================================================================
+   PRINT STYLES
+   ============================================================================= */
+
+@media print {
+	:root {
+		--color-bg-primary: #ffffff;
+		--color-bg-secondary: #ffffff;
+		--color-text-primary: #000000;
+		--color-text-secondary: #333333;
+	}
+
+	body {
+		background: white;
+		color: black;
+	}
 }

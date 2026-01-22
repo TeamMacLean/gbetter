@@ -6,6 +6,7 @@
 	import { useLocalBinaryTracks, getLocalBinaryRawFeatures } from '$lib/stores/localBinaryTracks.svelte';
 	import { useAssembly } from '$lib/stores/assembly.svelte';
 	import { useReferenceSequence } from '$lib/stores/referenceSequence.svelte';
+	import { useTheme } from '$lib/stores/theme.svelte';
 	import { formatCoordinate } from '$lib/types/genome';
 	import type { SignalFeature, BAMReadFeature } from '$lib/types/tracks';
 	import { getTrackType } from '$lib/services/trackRegistry';
@@ -24,6 +25,36 @@
 		qualityToOpacity,
 		getReadRenderingMode,
 	} from '$lib/constants/zoom';
+
+	// Theme for canvas colors
+	const themeStore = useTheme();
+
+	// Helper to get canvas colors based on current theme
+	function getCanvasColors() {
+		const isDark = themeStore.isDark;
+		return {
+			// Backgrounds
+			canvasBg: isDark ? '#0f0f1a' : '#ffffff',
+			trackBg: isDark ? '#1a1a2e' : '#fafafa',
+			rulerBg: isDark ? '#252535' : '#f1f3f5',
+			// Text
+			textPrimary: isDark ? '#e2e8f0' : '#212529',
+			textSecondary: isDark ? '#a0aec0' : '#495057',
+			textMuted: isDark ? '#718096' : '#6c757d',
+			// Borders
+			border: isDark ? '#333344' : '#dee2e6',
+			borderLight: isDark ? '#444455' : '#e9ecef',
+			// Accents
+			accent: isDark ? '#6366f1' : '#4f46e5',
+			error: isDark ? '#ef4444' : '#dc2626',
+			// BAM colors
+			readForward: isDark ? '#3f3f46' : '#d1d5db',
+			readReverse: isDark ? '#44403c' : '#e5e7eb',
+			insertion: '#22c55e',
+			deletion: isDark ? '#888888' : '#9ca3af',
+			mismatch: '#dc2626',
+		};
+	}
 
 	const viewport = useViewport();
 	const tracks = useTracks();
@@ -179,11 +210,17 @@
 		// Track reference sequence state for reactivity
 		const _refSeq = referenceSequence.sequence;
 		const _refLoading = referenceSequence.isLoading;
+		// Track theme for re-render on theme change
+		const _themeMode = themeStore.mode;
+		const _palette = themeStore.paletteName;
 
 		if (!canvasEl) return;
 
 		const ctx = canvasEl.getContext('2d');
 		if (!ctx) return;
+
+		// Get colors for current theme
+		const colors = getCanvasColors();
 
 		// Set canvas size with DPR for crisp rendering
 		const dpr = window.devicePixelRatio || 1;
@@ -197,7 +234,7 @@
 		ctx.scale(dpr, dpr);
 
 		// Clear with background color
-		ctx.fillStyle = '#0f0f0f';
+		ctx.fillStyle = colors.canvasBg;
 		ctx.fillRect(0, 0, width, height);
 
 		// Draw ruler
@@ -307,6 +344,7 @@
 		bamLayouts: BamTrackLayout[]
 	): number {
 		let currentY = startY;
+		const colors = getCanvasColors();
 
 		for (const track of remoteTracks.visible) {
 			if (track.features.length === 0 && !track.isLoading) continue;
@@ -334,31 +372,31 @@
 			}
 
 			// Draw track label background
-			ctx.fillStyle = '#1a1a1a';
+			ctx.fillStyle = colors.trackBg;
 			ctx.fillRect(0, currentY, width, trackHeight);
 
 			// Draw track label
-			ctx.fillStyle = '#666666';
+			ctx.fillStyle = colors.textMuted;
 			ctx.font = '11px Inter, sans-serif';
 			ctx.textAlign = 'left';
 			ctx.fillText(track.name, 8, currentY + 11);
 
 			// Draw loading indicator
 			if (track.isLoading) {
-				ctx.fillStyle = '#6366f1';
+				ctx.fillStyle = colors.accent;
 				ctx.font = '10px Inter, sans-serif';
 				ctx.fillText('Loading...', 8, currentY + 24);
 			}
 
 			// Draw error if any
 			if (track.error) {
-				ctx.fillStyle = '#ef4444';
+				ctx.fillStyle = colors.error;
 				ctx.font = '10px Inter, sans-serif';
 				ctx.fillText(`Error: ${track.error}`, 8, currentY + 24);
 			}
 
 			// Draw badge (based on track type)
-			ctx.fillStyle = '#444444';
+			ctx.fillStyle = colors.borderLight;
 			ctx.font = '9px Inter, sans-serif';
 			let badge = track.id === 'transcripts' ? 'TRANSCRIPTS' : 'GENES';
 			if (track.type === 'bigwig') {
@@ -366,7 +404,7 @@
 			}
 			const badgeWidth = ctx.measureText(badge).width + 8;
 			ctx.fillRect(width - badgeWidth - 8, currentY + 2, badgeWidth, 14);
-			ctx.fillStyle = '#888888';
+			ctx.fillStyle = colors.textMuted;
 			ctx.textAlign = 'center';
 			ctx.fillText(badge, width - badgeWidth / 2 - 8, currentY + 11);
 
@@ -396,7 +434,7 @@
 			// Draw bottom border (thicker when being hovered for resize)
 			const borderY = currentY + trackHeight;
 			const isHoveredBorder = isNearBorder && resizeTrackId === track.id;
-			ctx.strokeStyle = isHoveredBorder ? '#666666' : '#333333';
+			ctx.strokeStyle = isHoveredBorder ? colors.textMuted : colors.border;
 			ctx.lineWidth = isHoveredBorder ? 2 : 1;
 			ctx.beginPath();
 			ctx.moveTo(0, borderY);
@@ -428,6 +466,7 @@
 		bamLayouts: BamTrackLayout[]
 	): number {
 		let currentY = startY;
+		const colors = getCanvasColors();
 
 		for (const track of localBinaryTracks.visible) {
 			if (track.features.length === 0 && !track.isLoading) continue;
@@ -453,36 +492,37 @@
 			}
 
 			// Draw track label background
-			ctx.fillStyle = '#1a1a1a';
+			ctx.fillStyle = colors.trackBg;
 			ctx.fillRect(0, currentY, width, trackHeight);
 
 			// Draw track label
-			ctx.fillStyle = '#666666';
+			ctx.fillStyle = colors.textMuted;
 			ctx.font = '11px Inter, sans-serif';
 			ctx.textAlign = 'left';
 			ctx.fillText(track.name, 8, currentY + 11);
 
 			// Draw loading indicator
 			if (track.isLoading) {
-				ctx.fillStyle = '#6366f1';
+				ctx.fillStyle = colors.accent;
 				ctx.font = '10px Inter, sans-serif';
 				ctx.fillText('Loading...', 8, currentY + 24);
 			}
 
 			// Draw error if any
 			if (track.error) {
-				ctx.fillStyle = '#ef4444';
+				ctx.fillStyle = colors.error;
 				ctx.font = '10px Inter, sans-serif';
 				ctx.fillText(`Error: ${track.error}`, 8, currentY + 24);
 			}
 
 			// Draw badge
-			ctx.fillStyle = '#444444';
+			ctx.fillStyle = colors.borderLight;
 			ctx.font = '9px Inter, sans-serif';
 			const badgeMap: Record<string, string> = {
 				bigwig: 'SIGNAL',
 				bigbed: 'BIGBED',
 				bam: 'BAM',
+				cram: 'CRAM',
 				vcf: 'VCF',
 				gff: 'GFF',
 				bed: 'BED',
@@ -490,7 +530,7 @@
 			const badge = (badgeMap[track.type] || track.type.toUpperCase()) + ' (local)';
 			const badgeWidth = ctx.measureText(badge).width + 8;
 			ctx.fillRect(width - badgeWidth - 8, currentY + 2, badgeWidth, 14);
-			ctx.fillStyle = '#888888';
+			ctx.fillStyle = colors.textMuted;
 			ctx.textAlign = 'center';
 			ctx.fillText(badge, width - badgeWidth / 2 - 8, currentY + 11);
 
@@ -518,7 +558,7 @@
 			// Draw bottom border
 			const borderY = currentY + trackHeight;
 			const isHoveredBorder = isNearBorder && resizeTrackId === track.id;
-			ctx.strokeStyle = isHoveredBorder ? '#666666' : '#333333';
+			ctx.strokeStyle = isHoveredBorder ? colors.textMuted : colors.border;
 			ctx.lineWidth = isHoveredBorder ? 2 : 1;
 			ctx.beginPath();
 			ctx.moveTo(0, borderY);
@@ -696,6 +736,7 @@
 		trackHeight: number,
 		color: string
 	): void {
+		const colors = getCanvasColors();
 		const labelOffset = 16;
 		const plotHeight = trackHeight - labelOffset - 8;
 		const plotY = trackY + labelOffset;
@@ -728,7 +769,7 @@
 
 		// Draw baseline at 0
 		const zeroY = valueToY(0);
-		ctx.strokeStyle = '#333333';
+		ctx.strokeStyle = colors.border;
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		ctx.moveTo(0, zeroY);
@@ -815,7 +856,7 @@
 		ctx.stroke();
 
 		// Draw Y-axis labels
-		ctx.fillStyle = '#666666';
+		ctx.fillStyle = colors.textMuted;
 		ctx.font = '9px Inter, sans-serif';
 		ctx.textAlign = 'left';
 		ctx.fillText(maxVal.toFixed(1), 4, plotY + 8);
@@ -836,18 +877,19 @@
 			return startY;
 		}
 
+		const colors = getCanvasColors();
 		const trackHeight = 30;
 
 		// Check if reference is available
 		if (!referenceSequence.isAvailable) {
 			// Show message that reference is not available
-			ctx.fillStyle = '#1a1a1a';
+			ctx.fillStyle = colors.trackBg;
 			ctx.fillRect(0, startY, width, trackHeight);
-			ctx.fillStyle = '#666666';
+			ctx.fillStyle = colors.textMuted;
 			ctx.font = '11px Inter, sans-serif';
 			ctx.textAlign = 'left';
 			ctx.fillText('Reference sequence not available for this assembly', 8, startY + 18);
-			ctx.strokeStyle = '#333333';
+			ctx.strokeStyle = colors.border;
 			ctx.beginPath();
 			ctx.moveTo(0, startY + trackHeight);
 			ctx.lineTo(width, startY + trackHeight);
@@ -858,9 +900,9 @@
 		const sequence = referenceSequence.sequence;
 		if (!sequence) {
 			// Loading or not yet fetched
-			ctx.fillStyle = '#1a1a1a';
+			ctx.fillStyle = colors.trackBg;
 			ctx.fillRect(0, startY, width, trackHeight);
-			ctx.fillStyle = '#666666';
+			ctx.fillStyle = colors.textMuted;
 			ctx.font = '11px Inter, sans-serif';
 			ctx.textAlign = 'left';
 			ctx.fillText('Loading reference sequence...', 8, startY + 18);
@@ -870,11 +912,11 @@
 		const labelOffset = 14;
 
 		// Draw track background
-		ctx.fillStyle = '#1a1a1a';
+		ctx.fillStyle = colors.trackBg;
 		ctx.fillRect(0, startY, width, trackHeight);
 
 		// Draw track label
-		ctx.fillStyle = '#666666';
+		ctx.fillStyle = colors.textMuted;
 		ctx.font = '11px Inter, sans-serif';
 		ctx.textAlign = 'left';
 		ctx.fillText('Reference', 8, startY + 11);
@@ -907,7 +949,7 @@
 		}
 
 		// Draw bottom border
-		ctx.strokeStyle = '#333333';
+		ctx.strokeStyle = colors.border;
 		ctx.lineWidth = 1;
 		ctx.beginPath();
 		ctx.moveTo(0, startY + trackHeight);
@@ -963,6 +1005,7 @@
 		plotY: number,
 		plotHeight: number
 	): void {
+		const colors = getCanvasColors();
 		const fontSize = Math.min(12, Math.max(6, pixelsPerBase * 0.7));
 		ctx.font = `${fontSize}px monospace`;
 		ctx.textAlign = 'center';
@@ -1013,7 +1056,7 @@
 			const endX = (read.end - viewport.current.start) * pixelsPerBase;
 			const readWidth = endX - startX;
 
-			ctx.fillStyle = read.isReversed ? '#44403c' : '#3f3f46'; // Different shade for strand
+			ctx.fillStyle = read.isReversed ? colors.readReverse : colors.readForward;
 			ctx.fillRect(startX, readY, readWidth, readHeight);
 
 			// Draw each base with quality-based opacity
@@ -1047,7 +1090,7 @@
 
 							if (isMismatch) {
 								// Highlight mismatches
-								ctx.fillStyle = '#dc2626'; // Red
+								ctx.fillStyle = colors.mismatch;
 								ctx.fillRect(x - pixelsPerBase / 2, readY, pixelsPerBase, readHeight);
 								ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
 							} else {
@@ -1066,7 +1109,7 @@
 					} else if (op === 'I') {
 						// Insertion - two right triangles forming a notch at the insertion point
 						const x = (refPos - viewport.current.start) * pixelsPerBase;
-						ctx.fillStyle = '#22c55e'; // Green
+						ctx.fillStyle = colors.insertion;
 						const triHeight = Math.min(readHeight * 0.8, 12);
 						const triWidth = triHeight * 0.58; // Width of each half
 						// Left triangle (slopes from top-left down to insertion point)
@@ -1088,7 +1131,7 @@
 						// Deletion/skip - draw gap line
 						const x1 = (refPos - viewport.current.start) * pixelsPerBase;
 						const x2 = (refPos + len - viewport.current.start) * pixelsPerBase;
-						ctx.strokeStyle = '#888888';
+						ctx.strokeStyle = colors.deletion;
 						ctx.lineWidth = 1;
 						ctx.setLineDash([2, 2]);
 						ctx.beginPath();
@@ -1118,6 +1161,7 @@
 		plotHeight: number,
 		color: string
 	): void {
+		const colors = getCanvasColors();
 		const readHeight = 8;
 		const readSpacing = 2;
 
@@ -1169,7 +1213,7 @@
 				} else if (op === 'I') {
 					// Insertion - two right triangles forming a notch at the insertion point
 					const x = (refPos - viewport.current.start) * pixelsPerBase;
-					ctx.fillStyle = '#22c55e';
+					ctx.fillStyle = colors.insertion;
 					const triHeight = Math.min(readHeight * 0.9, 10);
 					const triWidth = triHeight * 0.58; // Width of each half
 					// Left triangle
@@ -1190,7 +1234,7 @@
 					// Deletion/intron line
 					const x1 = (refPos - viewport.current.start) * pixelsPerBase;
 					const x2 = (refPos + len - viewport.current.start) * pixelsPerBase;
-					ctx.strokeStyle = '#666666';
+					ctx.strokeStyle = colors.deletion;
 					ctx.lineWidth = 1;
 					ctx.beginPath();
 					ctx.moveTo(x1, readY + readHeight / 2);
@@ -1304,6 +1348,7 @@
 		plotHeight: number,
 		color: string
 	): void {
+		const colors = getCanvasColors();
 		if (reads.length === 0) return;
 
 		const vpStart = viewport.current.start;
@@ -1390,7 +1435,7 @@
 		ctx.stroke();
 
 		// Draw Y-axis labels (max coverage)
-		ctx.fillStyle = '#666666';
+		ctx.fillStyle = colors.textMuted;
 		ctx.font = '9px Inter, sans-serif';
 		ctx.textAlign = 'left';
 		ctx.fillText(`${maxCoverage}x`, 4, plotY + 8);
@@ -1464,6 +1509,7 @@
 		width: number,
 		startY: number
 	): void {
+		const colors = getCanvasColors();
 		let currentY = startY;
 
 		for (const track of trackList) {
@@ -1474,22 +1520,22 @@
 			}
 
 			// Draw track label background
-			ctx.fillStyle = '#1a1a1a';
+			ctx.fillStyle = colors.trackBg;
 			ctx.fillRect(0, currentY, width, track.height);
 
 			// Draw track label
-			ctx.fillStyle = '#666666';
+			ctx.fillStyle = colors.textMuted;
 			ctx.font = '11px Inter, sans-serif';
 			ctx.textAlign = 'left';
 			ctx.fillText(track.name, 8, currentY + 11);
 
 			// Draw track type badge
-			ctx.fillStyle = '#444444';
+			ctx.fillStyle = colors.borderLight;
 			ctx.font = '9px Inter, sans-serif';
 			const badge = trackType.name.split(' ')[0].toUpperCase();
 			const badgeWidth = ctx.measureText(badge).width + 8;
 			ctx.fillRect(width - badgeWidth - 8, currentY + 2, badgeWidth, 14);
-			ctx.fillStyle = '#888888';
+			ctx.fillStyle = colors.textMuted;
 			ctx.textAlign = 'center';
 			ctx.fillText(badge, width - badgeWidth / 2 - 8, currentY + 11);
 
@@ -1512,7 +1558,7 @@
 			trackType.render(track.features, renderCtx);
 
 			// Draw bottom border
-			ctx.strokeStyle = '#333333';
+			ctx.strokeStyle = colors.border;
 			ctx.beginPath();
 			ctx.moveTo(0, currentY + track.height);
 			ctx.lineTo(width, currentY + track.height);
@@ -1524,13 +1570,14 @@
 
 	function drawRuler(ctx: CanvasRenderingContext2D, width: number): number {
 		const rulerHeight = 30;
+		const colors = getCanvasColors();
 
 		// Background
-		ctx.fillStyle = '#252525';
+		ctx.fillStyle = colors.rulerBg;
 		ctx.fillRect(0, 0, width, rulerHeight);
 
 		// Chromosome label
-		ctx.fillStyle = '#a0a0a0';
+		ctx.fillStyle = colors.textSecondary;
 		ctx.font = 'bold 11px Inter, sans-serif';
 		ctx.textAlign = 'left';
 		ctx.fillText(viewport.current.chromosome, 8, 12);
@@ -1549,8 +1596,8 @@
 
 		const firstTick = Math.ceil(viewport.current.start / tickInterval) * tickInterval;
 
-		ctx.strokeStyle = '#444444';
-		ctx.fillStyle = '#888888';
+		ctx.strokeStyle = colors.borderLight;
+		ctx.fillStyle = colors.textMuted;
 		ctx.font = '10px Inter, sans-serif';
 		ctx.textAlign = 'center';
 
@@ -1568,7 +1615,7 @@
 		}
 
 		// Bottom border
-		ctx.strokeStyle = '#333333';
+		ctx.strokeStyle = colors.border;
 		ctx.beginPath();
 		ctx.moveTo(0, rulerHeight);
 		ctx.lineTo(width, rulerHeight);
@@ -1578,15 +1625,17 @@
 	}
 
 	function drawPlaceholder(ctx: CanvasRenderingContext2D, width: number, height: number, rulerHeight: number): void {
+		const colors = getCanvasColors();
+
 		// Background
-		ctx.fillStyle = '#1a1a1a';
+		ctx.fillStyle = colors.trackBg;
 		ctx.fillRect(0, rulerHeight, width, height - rulerHeight);
 
 		// Drop zone indicator
 		const centerY = rulerHeight + (height - rulerHeight) / 2;
 
-		ctx.fillStyle = isDragOver ? '#6366f1' : '#333333';
-		ctx.strokeStyle = isDragOver ? '#6366f1' : '#444444';
+		ctx.fillStyle = isDragOver ? colors.accent : colors.border;
+		ctx.strokeStyle = isDragOver ? colors.accent : colors.borderLight;
 		ctx.setLineDash([8, 4]);
 		ctx.lineWidth = 2;
 
@@ -1601,13 +1650,13 @@
 		ctx.setLineDash([]);
 
 		// Icon
-		ctx.fillStyle = isDragOver ? '#818cf8' : '#666666';
+		ctx.fillStyle = isDragOver ? colors.accent : colors.textMuted;
 		ctx.font = '32px sans-serif';
 		ctx.textAlign = 'center';
 		ctx.fillText('📁', width / 2, centerY - 20);
 
 		// Text
-		ctx.fillStyle = isDragOver ? '#a5b4fc' : '#888888';
+		ctx.fillStyle = isDragOver ? colors.accent : colors.textMuted;
 		ctx.font = '14px Inter, sans-serif';
 		ctx.fillText(
 			isDragOver ? 'Drop to load track' : 'Drop BED or GFF3 files here',
@@ -1615,7 +1664,7 @@
 			centerY + 20
 		);
 
-		ctx.fillStyle = '#666666';
+		ctx.fillStyle = colors.textMuted;
 		ctx.font = '12px Inter, sans-serif';
 		ctx.fillText(
 			formatCoordinate(viewport.current.chromosome, viewport.current.start, viewport.current.end),
@@ -1625,11 +1674,13 @@
 	}
 
 	function drawNoDataMessage(ctx: CanvasRenderingContext2D, width: number, height: number, rulerHeight: number, message: string): void {
-		ctx.fillStyle = '#1a1a1a';
+		const colors = getCanvasColors();
+
+		ctx.fillStyle = colors.trackBg;
 		ctx.fillRect(0, rulerHeight, width, height - rulerHeight);
 
 		const centerY = rulerHeight + (height - rulerHeight) / 2;
-		ctx.fillStyle = '#666666';
+		ctx.fillStyle = colors.textMuted;
 		ctx.font = '14px Inter, sans-serif';
 		ctx.textAlign = 'center';
 		ctx.fillText(message, width / 2, centerY);
