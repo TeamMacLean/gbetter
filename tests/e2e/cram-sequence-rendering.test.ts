@@ -39,7 +39,7 @@ async function navigateTo(page: import('@playwright/test').Page, coords: string)
 	await page.waitForTimeout(2000);
 }
 
-test.describe('CRAM Sequence Rendering', () => {
+test.describe('Visual Regression - CRAM Sequence Rendering', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/?assembly=ecoli-k12');
 		await page.waitForSelector('canvas');

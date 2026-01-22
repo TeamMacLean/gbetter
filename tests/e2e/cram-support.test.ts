@@ -43,7 +43,7 @@ async function navigateTo(page: import('@playwright/test').Page, coords: string)
 	await page.waitForTimeout(1500); // Wait for data to load and render
 }
 
-test.describe('CRAM Support', () => {
+test.describe('Visual Regression - CRAM Support', () => {
 	test.beforeEach(async ({ page }) => {
 		// Start with E. coli K-12 assembly (has 2bit reference)
 		await page.goto('/?assembly=ecoli-k12');

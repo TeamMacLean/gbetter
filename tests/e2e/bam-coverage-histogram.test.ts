@@ -44,7 +44,7 @@ async function navigateTo(page: import('@playwright/test').Page, coords: string)
 	await page.waitForTimeout(1500); // Wait for data to load and render
 }
 
-test.describe('BAM Coverage Histogram', () => {
+test.describe('Visual Regression - BAM Coverage Histogram', () => {
 	test.beforeEach(async ({ page }) => {
 		// Start with E. coli K-12 assembly
 		await page.goto('/?assembly=ecoli-k12');

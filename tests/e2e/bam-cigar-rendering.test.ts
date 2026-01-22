@@ -51,7 +51,7 @@ async function navigateTo(page: import('@playwright/test').Page, coords: string)
 	await page.waitForTimeout(1500); // Wait for data to load and render
 }
 
-test.describe('BAM CIGAR Rendering', () => {
+test.describe('Visual Regression - BAM CIGAR Rendering', () => {
 	test.beforeEach(async ({ page }) => {
 		// Start with E. coli K-12 assembly
 		await page.goto('/?assembly=ecoli-k12');
@@ -209,7 +209,7 @@ test.describe('BAM CIGAR Rendering', () => {
 	});
 });
 
-test.describe('BAM Rendering Without Reference', () => {
+test.describe('Visual Regression - BAM Rendering Without Reference', () => {
 	test('renders reads even when reference sequence unavailable', async ({ page }) => {
 		// Use assembly without reference (or before it loads)
 		await page.goto('/?assembly=ecoli-k12');
