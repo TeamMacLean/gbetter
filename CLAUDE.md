@@ -262,3 +262,19 @@ Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 5. `src/lib/services/trackTypes/geneModel.ts` - Gene model renderer
 6. `src/lib/stores/viewport.svelte.ts` - Viewport state + URL sync
 7. `docs/VISUAL-DESIGN.md` - Visual design specification
+8. `docs/TUTORIAL-STYLE-GUIDE.md` - Tutorial writing standards
+
+## Tutorial Update Plans
+
+Tutorial plans are in `docs/plans/`. After executing a plan, delete it.
+
+| Plan | Target | Status |
+|------|--------|--------|
+| `PLAN-tutorial-01-getting-started.md` | Update existing | Pending |
+| `PLAN-tutorial-02-exploring-genes.md` | Update existing | Pending |
+| `PLAN-tutorial-03-advanced-queries.md` | Update existing | Pending |
+| `PLAN-tutorial-04-non-model-genomes.md` | Update existing | Pending |
+| `PLAN-tutorial-05-reproducible-analysis.md` | Update existing | Pending |
+| `PLAN-tutorial-06-remote-tracks.md` | Create new | Pending |
+| `PLAN-tutorial-07-reading-alignments.md` | Create new | Pending |
+| `PLAN-tutorial-08-customizing-themes.md` | Create new | Pending |
