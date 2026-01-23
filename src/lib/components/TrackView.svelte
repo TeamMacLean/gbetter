@@ -8,7 +8,7 @@
 	import { useReferenceSequence } from '$lib/stores/referenceSequence.svelte';
 	import { useTheme } from '$lib/stores/theme.svelte';
 	import { formatCoordinate } from '$lib/types/genome';
-	import type { SignalFeature, BAMReadFeature } from '$lib/types/tracks';
+	import type { SignalFeature, BAMReadFeature, VariantFeature } from '$lib/types/tracks';
 	import { getTrackType } from '$lib/services/trackRegistry';
 	import { createRenderContext } from '$lib/types/tracks';
 	import {
@@ -402,6 +402,10 @@
 			let badge = track.id === 'transcripts' ? 'TRANSCRIPTS' : 'GENES';
 			if (track.type === 'bigwig') {
 				badge = 'SIGNAL';
+			} else if (track.type === 'vcf') {
+				badge = 'VCF';
+			} else if (track.type === 'bam') {
+				badge = 'BAM';
 			}
 			const badgeWidth = ctx.measureText(badge).width + 8;
 			ctx.fillRect(width - badgeWidth - 8, currentY + 2, badgeWidth, 14);
@@ -427,6 +431,10 @@
 						y: currentY,
 						height: trackHeight
 					});
+				} else if (track.type === 'vcf') {
+					// VCF tracks use variant rendering (lollipops/detailed)
+					const rawFeatures = getRawFeatures(track.id) as VariantFeature[];
+					renderVariantFeatures(ctx, rawFeatures, width, currentY, trackHeight, track.color);
 				} else {
 					renderBedFeatures(ctx, track.features as import('$lib/types/genome').BedFeature[], width, currentY, trackHeight, track.color);
 				}
@@ -551,6 +559,10 @@
 						y: currentY,
 						height: trackHeight
 					});
+				} else if (track.type === 'vcf') {
+					// VCF tracks use variant rendering (lollipops/detailed)
+					const rawFeatures = getLocalBinaryRawFeatures(track.id) as VariantFeature[];
+					renderVariantFeatures(ctx, rawFeatures, width, currentY, trackHeight, track.color);
 				} else {
 					renderBedFeatures(ctx, track.features as import('$lib/types/genome').BedFeature[], width, currentY, trackHeight, track.color);
 				}
@@ -851,6 +863,159 @@
 		ctx.textAlign = 'left';
 		ctx.fillText(maxVal.toFixed(1), 4, plotY + 8);
 		ctx.fillText(minVal.toFixed(1), 4, plotY + plotHeight - 2);
+	}
+
+	// Variant type colors
+	const VARIANT_COLORS = {
+		snp: '#3b82f6',        // blue
+		insertion: '#22c55e',  // green
+		deletion: '#ef4444',   // red
+		mnp: '#f59e0b',        // amber
+		complex: '#8b5cf6',    // violet
+	};
+
+	function getVariantType(ref: string, alt: string): keyof typeof VARIANT_COLORS {
+		if (ref.length === 1 && alt.length === 1) return 'snp';
+		if (ref.length < alt.length) return 'insertion';
+		if (ref.length > alt.length) return 'deletion';
+		if (ref.length === alt.length && ref.length > 1) return 'mnp';
+		return 'complex';
+	}
+
+	/**
+	 * Render variant features (VCF)
+	 * Zoom-dependent: density → lollipops → detailed ref/alt
+	 */
+	function renderVariantFeatures(
+		ctx: CanvasRenderingContext2D,
+		features: VariantFeature[],
+		width: number,
+		trackY: number,
+		trackHeight: number,
+		color: string
+	): void {
+		const colors = getCanvasColors();
+		const labelOffset = 18;
+		const plotHeight = trackHeight - labelOffset - 8;
+		const plotY = trackY + labelOffset;
+		const centerY = plotY + plotHeight / 2;
+
+		// Calculate zoom level
+		const vpStart = viewport.current.start;
+		const vpEnd = viewport.current.end;
+		const bpp = (vpEnd - vpStart) / width; // bases per pixel
+		const ppb = width / (vpEnd - vpStart); // pixels per base
+
+		// Filter to visible
+		const visible = features.filter(f =>
+			f.chromosome === viewport.current.chromosome &&
+			f.end > vpStart &&
+			f.start < vpEnd
+		);
+
+		if (visible.length === 0) return;
+
+		// Thresholds for display modes
+		const LOLLIPOP_THRESHOLD = 5; // bases per pixel
+
+		if (bpp > LOLLIPOP_THRESHOLD) {
+			// Lollipop mode
+			const stickHeight = plotHeight * 0.4;
+			const headRadius = 4;
+
+			// Draw baseline
+			ctx.strokeStyle = colors.border;
+			ctx.lineWidth = 1;
+			ctx.beginPath();
+			ctx.moveTo(0, centerY);
+			ctx.lineTo(width, centerY);
+			ctx.stroke();
+
+			// Limit to avoid overdraw
+			const maxToRender = 500;
+			const toRender = visible.slice(0, maxToRender);
+
+			for (const v of toRender) {
+				const x = (v.start - vpStart) * ppb;
+				const varType = getVariantType(v.ref, v.alt[0]);
+				const varColor = VARIANT_COLORS[varType];
+
+				// Stick
+				ctx.strokeStyle = varColor;
+				ctx.lineWidth = 2;
+				ctx.beginPath();
+				ctx.moveTo(x, centerY);
+				ctx.lineTo(x, centerY - stickHeight);
+				ctx.stroke();
+
+				// Diamond head for SNPs, circle for others
+				ctx.fillStyle = varColor;
+				if (varType === 'snp') {
+					// Diamond
+					ctx.beginPath();
+					ctx.moveTo(x, centerY - stickHeight - headRadius);
+					ctx.lineTo(x + headRadius, centerY - stickHeight);
+					ctx.lineTo(x, centerY - stickHeight + headRadius);
+					ctx.lineTo(x - headRadius, centerY - stickHeight);
+					ctx.closePath();
+					ctx.fill();
+				} else {
+					// Circle for indels
+					ctx.beginPath();
+					ctx.arc(x, centerY - stickHeight, headRadius, 0, Math.PI * 2);
+					ctx.fill();
+				}
+			}
+
+			if (visible.length > maxToRender) {
+				ctx.fillStyle = colors.textMuted;
+				ctx.font = '9px Inter, sans-serif';
+				ctx.textAlign = 'right';
+				ctx.fillText(`Showing ${maxToRender}/${visible.length}`, width - 4, centerY + 12);
+			}
+		} else {
+			// Detailed mode - show ref>alt
+			const fontSize = Math.min(12, Math.max(8, ppb * 0.8));
+			ctx.font = `bold ${fontSize}px monospace`;
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+
+			const boxHeight = fontSize + 6;
+
+			for (const v of visible) {
+				const x = (v.start - vpStart) * ppb + ppb / 2;
+				const varType = getVariantType(v.ref, v.alt[0]);
+				const varColor = VARIANT_COLORS[varType];
+
+				// Label (variant type)
+				ctx.fillStyle = varColor;
+				ctx.font = '8px Inter, sans-serif';
+				ctx.fillText(varType.toUpperCase(), x, plotY + 6);
+
+				// Background box
+				const text = `${v.ref}>${v.alt[0]}`;
+				ctx.font = `bold ${fontSize}px monospace`;
+				const textWidth = ctx.measureText(text).width + 10;
+
+				ctx.fillStyle = varColor + '30';
+				ctx.fillRect(x - textWidth / 2, centerY - boxHeight / 2, textWidth, boxHeight);
+
+				ctx.strokeStyle = varColor;
+				ctx.lineWidth = 2;
+				ctx.strokeRect(x - textWidth / 2, centerY - boxHeight / 2, textWidth, boxHeight);
+
+				// Text
+				ctx.fillStyle = colors.textPrimary;
+				ctx.fillText(text, x, centerY);
+
+				// Variant ID if room and different from ref>alt
+				if (v.name && bpp < 1 && v.name !== text && !v.name.startsWith('var_')) {
+					ctx.fillStyle = colors.textMuted;
+					ctx.font = '9px Inter, sans-serif';
+					ctx.fillText(v.name, x, centerY + boxHeight / 2 + 10);
+				}
+			}
+		}
 	}
 
 	/**
