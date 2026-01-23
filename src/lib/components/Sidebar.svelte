@@ -4,6 +4,8 @@
 	import { useRemoteTracks } from '$lib/stores/remoteTracks.svelte';
 	import { useLocalBinaryTracks } from '$lib/stores/localBinaryTracks.svelte';
 	import { getSupportedExtensions } from '$lib/services/trackRegistry';
+	import { useTheme } from '$lib/stores/theme.svelte';
+	import { SIGNAL_RAMPS } from '$lib/services/palette';
 	import {
 		detectLocalBinaryType,
 		requiresIndexFile,
@@ -16,6 +18,36 @@
 	const viewport = useViewport();
 	const remoteTracks = useRemoteTracks();
 	const localBinaryTracks = useLocalBinaryTracks();
+	const theme = useTheme();
+
+	/**
+	 * Get track indicator color that matches canvas rendering
+	 * Colors are derived from the current theme palette to ensure consistency
+	 */
+	function getTrackIndicatorColor(trackType: string): string {
+		const palette = theme.palette;
+		switch (trackType.toLowerCase()) {
+			case 'bigbed':
+			case 'bed':
+				return palette.exon;
+			case 'bigwig':
+			case 'bedgraph':
+				// Use dark end of Blues ramp (same as signal track rendering)
+				return SIGNAL_RAMPS.blues.colors[4]; // #084594
+			case 'vcf':
+				// SNP blue from variant colors
+				return '#3b82f6';
+			case 'gff':
+			case 'gtf':
+				return palette.cds;
+			case 'bam':
+			case 'cram':
+				// Forward read indigo (matches BAM rendering)
+				return '#6366f1';
+			default:
+				return palette.gene;
+		}
+	}
 
 	// Get supported extensions for file input (text formats + binary formats)
 	const textExtensions = getSupportedExtensions().map(ext => `.${ext}`);
@@ -295,15 +327,17 @@
 				{:else}
 					<!-- Remote tracks (genes, etc.) -->
 					{#each remoteTracks.all as track (track.id)}
+						{@const indicatorColor = getTrackIndicatorColor(track.type)}
 						<div
 							class="p-2 bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border)] group"
+							style="border-left: 3px solid {indicatorColor}"
 						>
 							<div class="flex items-center gap-2">
 								<!-- Visibility toggle -->
 								<button
 									onclick={() => remoteTracks.toggleRemoteTrackVisibility(track.id)}
 									class="w-4 h-4 rounded flex items-center justify-center transition-colors"
-									style="background-color: {track.visible ? track.color : 'transparent'}; border: 2px solid {track.color}"
+									style="background-color: {track.visible ? indicatorColor : 'transparent'}; border: 2px solid {indicatorColor}"
 									title={track.visible ? 'Hide track' : 'Show track'}
 								>
 									{#if track.visible}
@@ -379,15 +413,17 @@
 					{/each}
 					<!-- Local binary tracks (BigBed, BigWig, BAM, etc.) -->
 					{#each localBinaryTracks.all as track (track.id)}
+						{@const indicatorColor = getTrackIndicatorColor(track.type)}
 						<div
 							class="p-2 bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border)] group"
+							style="border-left: 3px solid {indicatorColor}"
 						>
 							<div class="flex items-center gap-2">
 								<!-- Visibility toggle -->
 								<button
 									onclick={() => localBinaryTracks.toggleLocalBinaryTrackVisibility(track.id)}
 									class="w-4 h-4 rounded flex items-center justify-center transition-colors"
-									style="background-color: {track.visible ? track.color : 'transparent'}; border: 2px solid {track.color}"
+									style="background-color: {track.visible ? indicatorColor : 'transparent'}; border: 2px solid {indicatorColor}"
 									title={track.visible ? 'Hide track' : 'Show track'}
 								>
 									{#if track.visible}
@@ -464,15 +500,17 @@
 					<!-- Track list (text files) -->
 					{#each tracks.all as track (track.id)}
 						{@const stats = getTrackStats(track)}
+						{@const indicatorColor = getTrackIndicatorColor(track.typeId)}
 						<div
 							class="p-2 bg-[var(--color-bg-tertiary)] rounded border border-[var(--color-border)] group"
+							style="border-left: 3px solid {indicatorColor}"
 						>
 							<div class="flex items-center gap-2">
 								<!-- Visibility toggle -->
 								<button
 									onclick={() => tracks.toggleTrackVisibility(track.id)}
 									class="w-4 h-4 rounded flex items-center justify-center transition-colors"
-									style="background-color: {track.visible ? track.color : 'transparent'}; border: 2px solid {track.color}"
+									style="background-color: {track.visible ? indicatorColor : 'transparent'}; border: 2px solid {indicatorColor}"
 									title={track.visible ? 'Hide track' : 'Show track'}
 								>
 									{#if track.visible}
@@ -617,7 +655,8 @@
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
 						</svg>
 						<span class="text-xs text-[var(--color-text-secondary)]">Drop or browse</span>
-						<span class="text-[10px] text-[var(--color-text-muted)]">BED, GFF, VCF, BigBed, BigWig, BAM</span>
+						<span class="text-[10px] text-[var(--color-text-secondary)]">.bw, .bb, .bam, .cram, .vcf.gz, .gff.gz, .bed.gz</span>
+						<span class="text-[10px] text-[var(--color-text-muted)]">.bed, .gff, .vcf, .bedgraph</span>
 					</button>
 				{/if}
 			{:else}
