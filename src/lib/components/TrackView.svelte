@@ -138,6 +138,7 @@
 	let canvasEl: HTMLCanvasElement;
 	let isDragging = $state(false);
 	let dragStartX = $state(0);
+	let panAccumulatorPx = $state(0); // Accumulate fractional pixel movement for high-zoom pan
 	let containerWidth = $state(800);
 	let containerHeight = $state(400);
 
@@ -2037,6 +2038,7 @@
 			// Start panning
 			isDragging = true;
 			dragStartX = event.clientX;
+			panAccumulatorPx = 0; // Reset accumulator on new drag
 			document.body.style.cursor = 'grabbing';
 		}
 	}
@@ -2060,10 +2062,18 @@
 		}
 
 		if (isDragging) {
-			// Handle pan drag
+			// Handle pan drag with fractional accumulation for high-zoom
 			const deltaX = event.clientX - dragStartX;
-			viewport.pan(deltaX, pixelsPerBase);
+			panAccumulatorPx += deltaX;
 			dragStartX = event.clientX;
+
+			// Calculate how many whole bases we can pan
+			const deltaBases = Math.trunc(panAccumulatorPx / pixelsPerBase);
+			if (deltaBases !== 0) {
+				// Consume the pixels used for whole bases, keep the remainder
+				panAccumulatorPx -= deltaBases * pixelsPerBase;
+				viewport.pan(deltaBases * pixelsPerBase, pixelsPerBase);
+			}
 			return;
 		}
 

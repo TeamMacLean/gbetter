@@ -322,6 +322,19 @@
 								{#if track.isLoading}
 									<span class="text-xs text-[var(--color-accent)]">Loading...</span>
 								{/if}
+
+								<!-- Delete button (only for user-added tracks, not built-in gene/transcript tracks) -->
+								{#if track.id !== 'genes' && track.id !== 'transcripts'}
+									<button
+										onclick={() => remoteTracks.removeRemoteTrack(track.id)}
+										class="opacity-0 group-hover:opacity-100 p-1 text-[var(--color-text-muted)] hover:text-red-400 transition-all"
+										title="Remove track"
+									>
+										<svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+										</svg>
+									</button>
+								{/if}
 							</div>
 
 							<!-- Track info -->
