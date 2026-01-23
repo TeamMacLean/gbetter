@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 20 (2026-01-22) - Theme system complete
+**Status**: Active development, Session 25 (2026-01-23) - Sidebar UI improvements
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -39,6 +39,7 @@ A modern, lightweight genome browser. Fast, beautiful, AI-native.
 - Accessible nucleotide colors: A=blue, C=orange, G=purple, T=teal
 - Theme and palette persist to localStorage
 - Canvas rendering adapts to current theme
+- Sidebar track indicators match canvas colors (palette-aware)
 
 **Track Types**
 - BED (intervals) - BED3-BED12 support
@@ -193,6 +194,14 @@ Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 
 ### Recent Sessions
 
+**Session 25 (2026-01-23)**: Sidebar track UI improvements
+- Added `getTrackIndicatorColor()` helper for palette-aware track colors
+- Track boxes have colored left border matching canvas rendering
+- Checkbox colors use same indicator color for visual consistency
+- Colors: GFF→CDS, BED→exon, BigWig→blues ramp, VCF→SNP blue, BAM→indigo
+- File picker shows extensions with indexed formats emphasized (.bw, .bb, .bam, etc.)
+- Colors update automatically when switching palettes
+
 **Session 24 (2026-01-23)**: Execute all tutorial plans
 - Updated 5 existing tutorials (01-05) with style guide standards
 - Created 3 new tutorials (06-08): Remote Tracks, Reading Alignments, Customizing Themes
@@ -273,6 +282,7 @@ Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 - **Session 19-20**: Theme system, visual design overhaul
 - **Session 21-22**: CI green, README updated
 - **Session 23-24**: Tutorial documentation complete (8 tutorials)
+- **Session 25**: Sidebar track UI with palette-aware colors
 
 ## Key Files
 1. `src/lib/stores/theme.svelte.ts` - Theme state management
