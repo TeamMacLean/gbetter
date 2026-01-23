@@ -62,20 +62,26 @@ Columns: chromosome, start, end, name (optional)
 
 ## Step 2: Load Your Variants
 
-### Option A: Local VCF file
+### Option A: Tabix-indexed VCF (recommended)
 
-Drag and drop your VCF file onto the GBetter window.
+For best performance, use tabix-indexed VCF files (`.vcf.gz` + `.vcf.gz.tbi`):
 
-### Option B: Remote VCF (tabix-indexed)
-
-For large VCF files, use tabix-indexed remote loading:
-
+**From URL:**
 1. Click the **URL** tab in the sidebar
-2. Paste your `.vcf.gz` URL (index must be at same path as `.vcf.gz.tbi`)
+2. Paste your `.vcf.gz` URL (index auto-discovered at `.vcf.gz.tbi`)
 3. Click **+** to add
 
+**From local files:**
+1. Click the **File** tab in the sidebar
+2. Select both `.vcf.gz` and `.vcf.gz.tbi` together
+3. Or drag and drop both files onto the canvas
+
 > [!TIP]
-> Remote loading only fetches data for the current viewport - much faster for large files!
+> Indexed VCFs only load data for the current viewport - much faster for large files!
+
+### Option B: Plain VCF (small files only)
+
+For small VCF files (under a few MB), you can drag and drop an uncompressed `.vcf` file directly. This loads the entire file into memory.
 
 ### Verify variants loaded
 

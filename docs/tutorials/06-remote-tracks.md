@@ -34,9 +34,12 @@ GBetter supports **remote track loading**, which means you can view data directl
 
 ---
 
-## Supported Remote Formats
+## Supported Indexed Formats
 
-Not all file formats support remote access. Remote loading requires **indexed** formats that allow efficient random access to specific genomic regions.
+Remote loading requires **indexed** formats that allow efficient random access to specific genomic regions. These same formats also work for local files - just drag and drop the data file along with its index.
+
+> [!NOTE]
+> All formats listed here work both remotely (via URL) and locally (via drag and drop).
 
 | Format | Extensions | Index | Description |
 |--------|------------|-------|-------------|

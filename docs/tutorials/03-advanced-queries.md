@@ -39,6 +39,9 @@ Drag and drop your files:
 1. `peaks.bed` - Your ChIP-seq peaks with scores
 2. `signal.bedgraph` - Coverage/signal track (optional)
 
+> [!TIP]
+> For large peak files, use indexed formats: BigBed (`.bb`) for intervals or tabix-indexed BED (`.bed.gz` + `.tbi`). These load instantly regardless of file size.
+
 ### Verify tracks loaded
 
 You should see your tracks in the sidebar below the automatic gene tracks.

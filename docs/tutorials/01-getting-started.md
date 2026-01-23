@@ -157,46 +157,55 @@ GBetter can display your own genomic data. Let's try loading a file.
 
 ### Supported formats
 
-**Text formats** (drag and drop):
+**Indexed formats** (recommended for large files):
 
-| Format | Extension | Contains |
-|--------|-----------|----------|
-| BED | .bed | Genomic intervals |
-| GFF3 | .gff3, .gff | Gene annotations |
-| VCF | .vcf | Variants |
-| bedGraph | .bedgraph, .bg | Signal data |
+| Format | Extensions | Index | Use for |
+|--------|------------|-------|---------|
+| BigBed | .bb, .bigbed | Built-in | Intervals |
+| BigWig | .bw, .bigwig | Built-in | Signal/coverage |
+| BAM | .bam | .bam.bai | Alignments |
+| CRAM | .cram | .cram.crai | Alignments (smaller) |
+| Tabix VCF | .vcf.gz | .vcf.gz.tbi | Variants |
+| Tabix GFF | .gff.gz | .gff.gz.tbi | Gene annotations |
+| Tabix BED | .bed.gz | .bed.gz.tbi | Intervals |
 
-**Binary formats** (drag and drop with index, or paste URL):
+These work both locally (drag and drop) and remotely (paste URL). GBetter only loads the data you're viewing, so even multi-gigabyte files open instantly.
 
-| Format | Extensions | Contains |
-|--------|------------|----------|
-| BigBed | .bb, .bigbed | Indexed intervals |
-| BigWig | .bw, .bigwig | Indexed signal |
-| BAM | .bam + .bai | Alignments |
-| CRAM | .cram + .crai | Alignments (compressed) |
-| Tabix | .vcf.gz + .tbi | Indexed VCF/GFF/BED |
+> [!TIP]
+> For indexed files with external indexes (.bai, .tbi), select both files together when loading locally.
+
+**Plain text formats** (small files only):
+
+| Format | Extension | Use for |
+|--------|-----------|---------|
+| BED | .bed | Small interval lists |
+| GFF3 | .gff3, .gff | Small annotations |
+| VCF | .vcf | Small variant sets |
+| bedGraph | .bedgraph | Small signal data |
+
+These are loaded entirely into memory - fine for files under a few MB, but use indexed formats for larger data.
 
 ### Loading a file
 
-**Option A: Drag and drop**
+**Option A: From URL** (recommended for large files)
 
-1. Find a genomic file on your computer
-2. Drag it onto the GBetter window
-3. Drop it anywhere on the canvas
+1. Click the **URL** tab in the sidebar
+2. Paste a URL to any indexed format (BigBed, BigWig, BAM, tabix, etc.)
+3. Click **+** to add the track
+4. The index file is auto-discovered (must be at same URL path)
 
-**Option B: Sidebar File tab**
+**Option B: Local files**
 
 1. Look at the **Add Tracks** section in the sidebar
 2. The **File** tab is selected by default
 3. Click **Drop or browse** to select files
-4. For BAM/CRAM/tabix, select both the data file AND index file together
+4. For indexed files (BAM, tabix), select both the data file AND index file together
 
-**Option C: Remote URLs**
+**Option C: Drag and drop**
 
-1. Click the **URL** tab in the sidebar
-2. Paste a URL to a BigBed, BigWig, or BAM file
-3. Click **+** to add the track
-4. The index file is auto-discovered (must be at same URL path)
+1. Drag files from your computer onto the GBetter window
+2. For indexed files, drag both the data and index files together
+3. Drop anywhere on the canvas
 
 > [!WARNING]
 > Chromosome names must match between your files and the assembly (e.g., `chr1` vs `1`).
