@@ -1,28 +1,23 @@
 # Tutorial 1: Getting Started
 
-*For first-time users and students learning genomics*
-
-Welcome to GBetter! This tutorial will walk you through the basics of using a genome browser. By the end, you'll be able to navigate the genome, search for genes, and load your own data.
+> **Audience**: First-time users and students learning genomics
+> **Time**: 15-20 minutes
+> **Prerequisites**: A modern web browser (Chrome, Firefox, Safari, Edge)
+> **Last updated**: Session 23 (2026-01-22)
 
 ## What You'll Learn
 
-- Opening GBetter and understanding the interface
-- The difference between the Search Bar and GQL Console
-- Searching for genes
-- Navigating with pan and zoom
-- Loading genomic data files
-- Using basic filters
-
-## Prerequisites
-
-- A modern web browser (Chrome, Firefox, Safari, or Edge)
-- No installation or account required!
+- Understanding the GBetter interface
+- Navigating the genome (search, pan, zoom)
+- Loading local and remote data files
+- Using basic filters and highlights
+- Customizing themes and colors
 
 ---
 
 ## Step 1: Opening GBetter
 
-Open GBetter in your web browser. You'll see a dark-themed interface with:
+Open GBetter in your web browser. You'll see a clean interface with:
 
 - **Header** (top): Search bar and navigation controls
 - **Sidebar** (left): Track list and file loading
@@ -30,6 +25,9 @@ Open GBetter in your web browser. You'll see a dark-themed interface with:
 - **GQL Console tab** (bottom): Click to open the advanced query interface
 
 The browser starts with a default view of chromosome 1 in the human genome.
+
+> [!NOTE]
+> Gene tracks load automatically for most assemblies. You don't need to find gene annotations yourself.
 
 ---
 
@@ -47,11 +45,14 @@ The search bar in the header is perfect for quick navigation:
 
 The search bar uses basic pattern matching - it works offline and responds instantly. Results appear inline next to the search bar.
 
+> [!TIP]
+> Press `/` on your keyboard to quickly focus the search bar.
+
 ### GQL Console (Bottom Panel)
 
 For more complex queries, use the GQL Console:
 
-1. Click the **GQL Console** tab at the bottom of the screen (or press `Cmd+\`` / `Ctrl+\``)
+1. Click the **GQL Console** tab at the bottom of the screen (or press `Cmd+`` / `Ctrl+``)
 2. The console panel slides up, showing:
    - **Natural Language input** (top-left): Type questions in plain English
    - **GQL input** (bottom-left): View and edit the generated query
@@ -106,6 +107,9 @@ When you typed `TP53`, GBetter:
 - **Scroll up** to zoom in
 - **Scroll down** to zoom out
 
+> [!TIP]
+> Scroll with your mouse wheel to zoom in and out quickly.
+
 ### Using commands
 
 Type in the search bar:
@@ -153,12 +157,24 @@ GBetter can display your own genomic data. Let's try loading a file.
 
 ### Supported formats
 
+**Text formats** (drag and drop):
+
 | Format | Extension | Contains |
 |--------|-----------|----------|
 | BED | .bed | Genomic intervals |
 | GFF3 | .gff3, .gff | Gene annotations |
 | VCF | .vcf | Variants |
 | bedGraph | .bedgraph, .bg | Signal data |
+
+**Binary formats** (drag and drop with index, or paste URL):
+
+| Format | Extensions | Contains |
+|--------|------------|----------|
+| BigBed | .bb, .bigbed | Indexed intervals |
+| BigWig | .bw, .bigwig | Indexed signal |
+| BAM | .bam + .bai | Alignments |
+| CRAM | .cram + .crai | Alignments (compressed) |
+| Tabix | .vcf.gz + .tbi | Indexed VCF/GFF/BED |
 
 ### Loading a file
 
@@ -168,11 +184,22 @@ GBetter can display your own genomic data. Let's try loading a file.
 2. Drag it onto the GBetter window
 3. Drop it anywhere on the canvas
 
-**Option B: File picker**
+**Option B: Sidebar File tab**
 
-1. Click the "Load File" button in the sidebar
-2. Select your file
-3. Click Open
+1. Look at the **Add Tracks** section in the sidebar
+2. The **File** tab is selected by default
+3. Click **Drop or browse** to select files
+4. For BAM/CRAM/tabix, select both the data file AND index file together
+
+**Option C: Remote URLs**
+
+1. Click the **URL** tab in the sidebar
+2. Paste a URL to a BigBed, BigWig, or BAM file
+3. Click **+** to add the track
+4. The index file is auto-discovered (must be at same URL path)
+
+> [!WARNING]
+> Chromosome names must match between your files and the assembly (e.g., `chr1` vs `1`).
 
 ### What happens next?
 
@@ -236,6 +263,50 @@ clear highlights
 
 ---
 
+## Step 9: Customizing Appearance
+
+GBetter offers multiple themes and color palettes.
+
+### Opening Settings
+
+Click the **Settings** button (gear icon) in the header.
+
+### Changing theme
+
+In the **Display** tab:
+- **Light** (default) - Clean, print-ready
+- **Dark** - Easier on eyes in low light
+- **High-Contrast** - Maximum readability
+
+### Changing color palette
+
+Choose from colorblind-safe palettes:
+- **Set2** (default) - Soft, distinct colors
+- **Dark2** - Bolder colors
+- **Paired** - High contrast pairs
+
+Changes apply immediately and persist across sessions.
+
+---
+
+## Try It Yourself
+
+Load a remote BAM file to see alignments:
+
+1. Select assembly **E. coli K-12 MG1655** from the assembly dropdown
+2. Click the **URL** tab in the sidebar
+3. Paste this URL:
+   ```
+   https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.bam
+   ```
+4. Click **+** to add the track
+5. Navigate to `NC_000913.3:100000-100500`
+6. Zoom in to see individual reads
+
+You've just loaded remote alignment data without downloading anything!
+
+---
+
 ## Quick Reference
 
 | Action | How |
@@ -246,43 +317,71 @@ clear highlights
 | Zoom out | Scroll down, or type `zoom out` |
 | Pan | Click and drag, or type `pan left 10kb` |
 | Load file | Drag and drop |
+| Load remote file | Sidebar URL tab, paste URL |
 | Filter features | Type `filter type=exon` |
 | Clear filters | Type `clear filters` |
 | Highlight region | Type `highlight chr17:1000-2000` |
+| Change theme | Settings > Display |
 
 ---
 
 ## Common Questions
 
-### Q: Why can't I find my gene?
+<details>
+<summary>Why can't I find my gene?</summary>
 
-GBetter has a built-in index of common human genes. If your gene isn't found:
+GBetter has a built-in index of common genes. If your gene isn't found:
 - Check the spelling
 - Try the official gene symbol (BRCA1, not "breast cancer gene")
 - Load a GFF3 file containing your gene annotations
 
-### Q: My file won't load!
+</details>
+
+<details>
+<summary>My file won't load!</summary>
 
 Check that:
 - The file has the correct extension (.bed, .gff3, .vcf, .bedgraph)
 - The file isn't too large (stay under 100MB for best performance)
 - The chromosome names match (chr1 vs 1)
 
-### Q: Everything disappeared!
+</details>
+
+<details>
+<summary>Everything disappeared!</summary>
 
 You might have zoomed out too far. Try:
 - Searching for a gene to navigate back
 - Type `navigate chr1:1-1000000` for a default view
 
-### Q: The tracks overlap!
+</details>
+
+<details>
+<summary>The tracks overlap!</summary>
 
 Each track needs space. Try:
 - Closing tracks you don't need
 - Zooming out for a wider view
 
+</details>
+
 ---
 
-## What's Next?
+## Summary
+
+You now know how to:
+- Navigate the GBetter interface
+- Search for genes and navigate to coordinates
+- Zoom in/out and pan around the genome
+- Load local files via drag-and-drop or the File tab
+- Load remote files via the URL tab
+- Filter features by type or strand
+- Highlight regions of interest
+- Customize themes and color palettes
+
+---
+
+## Next Steps
 
 Now that you know the basics, explore these topics:
 
@@ -296,11 +395,11 @@ Now that you know the basics, explore these topics:
 
 Try this sequence on your own:
 
-1. Navigate to BRCA1: `search gene BRCA1`
-2. Zoom in 3 times
-3. Filter to show only exons: `filter type=exon`
-4. Pan left to see more of the gene
-5. Clear the filter: `clear filters`
-6. Highlight a region of interest
+- [ ] Navigate to BRCA1: `search gene BRCA1`
+- [ ] Zoom in 3 times
+- [ ] Filter to show only exons: `filter type=exon`
+- [ ] Pan left to see more of the gene
+- [ ] Clear the filter: `clear filters`
+- [ ] Highlight a region of interest
 
 Congratulations! You've learned the fundamentals of genome browsing.

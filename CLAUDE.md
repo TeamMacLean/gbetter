@@ -277,17 +277,17 @@ Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 7. `docs/VISUAL-DESIGN.md` - Visual design specification
 8. `docs/TUTORIAL-STYLE-GUIDE.md` - Tutorial writing standards
 
-## Tutorial Update Plans
+## Tutorials
 
-Tutorial plans are in `docs/plans/`. After executing a plan, delete it.
+8 tutorials in `docs/tutorials/`:
 
-| Plan | Target | Status |
-|------|--------|--------|
-| `PLAN-tutorial-01-getting-started.md` | Update existing | Pending |
-| `PLAN-tutorial-02-exploring-genes.md` | Update existing | Pending |
-| `PLAN-tutorial-03-advanced-queries.md` | Update existing | Pending |
-| `PLAN-tutorial-04-non-model-genomes.md` | Update existing | Pending |
-| `PLAN-tutorial-05-reproducible-analysis.md` | Update existing | Pending |
-| `PLAN-tutorial-06-remote-tracks.md` | Create new | Pending |
-| `PLAN-tutorial-07-reading-alignments.md` | Create new | Pending |
-| `PLAN-tutorial-08-customizing-themes.md` | Create new | Pending |
+| Tutorial | Description |
+|----------|-------------|
+| 01-getting-started.md | Interface basics, file loading, navigation |
+| 02-exploring-genes.md | Gene tracks, VCF analysis, queries |
+| 03-advanced-queries.md | Complex GQL, multi-track analysis |
+| 04-non-model-genomes.md | 27+ assemblies, custom genomes |
+| 05-reproducible-analysis.md | URLs, scripts, documentation |
+| 06-remote-tracks.md | BigWig/BAM URLs, tabix, CORS |
+| 07-reading-alignments.md | BAM/CRAM rendering, CIGAR ops |
+| 08-customizing-themes.md | Themes, palettes, accessibility |

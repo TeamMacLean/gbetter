@@ -1,43 +1,47 @@
 # Tutorial 3: Advanced Queries
 
-*For bioinformaticians doing QC and complex analysis*
-
-You're doing QC on sequencing data or complex multi-track analysis. This tutorial covers advanced GQL queries, working with multiple track types, filtering by numeric values, and efficient analysis workflows.
+> **Audience**: Bioinformaticians doing QC and complex multi-track analysis
+> **Time**: 30-45 minutes
+> **Prerequisites**: Comfortable with GQL basics ([Tutorial 1](01-getting-started.md))
+> **Last updated**: Session 23 (2026-01-22)
 
 ## What You'll Learn
 
 - SELECT query syntax in depth
-- Working with multiple track types
-- Numeric filtering (scores, lengths)
+- Filtering by numeric values (scores, lengths)
 - INTERSECT and WITHIN clauses
-- ORDER BY and LIMIT
-- Counting and summarizing data
+- ORDER BY and LIMIT for result control
+- Combining multiple query conditions
+- Performance optimization tips
 
 ## Scenario
 
 You're a bioinformatician doing QC on ChIP-seq data. You have:
 - Peak calls (BED with scores)
 - Signal track (bedGraph)
-- Gene annotations (GFF3)
+
+The gene annotations load automatically from the selected assembly.
 
 You need to check peak quality and promoter overlap.
 
 ---
 
-## Step 1: Load Multiple Track Types
+## Step 1: Set Up Your Tracks
 
-Load all three files by dragging and dropping:
+### Automatic tracks
 
+GBetter loads gene/transcript tracks automatically. You should see:
+- **Transcripts** in the sidebar
+
+### Load your analysis files
+
+Drag and drop your files:
 1. `peaks.bed` - Your ChIP-seq peaks with scores
-2. `signal.bedgraph` - Coverage/signal track
-3. `genes.gff3` - Gene annotations
+2. `signal.bedgraph` - Coverage/signal track (optional)
 
 ### Verify tracks loaded
 
-You should see three tracks in the sidebar:
-- Interval track (peaks)
-- Signal track (bedGraph)
-- Gene model track (GFF3)
+You should see your tracks in the sidebar below the automatic gene tracks.
 
 ---
 
@@ -61,17 +65,24 @@ SELECT <what> [FROM <track>] [clauses...]
 | * | Everything |
 | ALL | Everything |
 
-### Available clauses
+<details>
+<summary>SELECT Query Syntax Reference</summary>
+
+```
+SELECT <what> [FROM <track>] [WHERE <conditions>] [INTERSECT <track>] [WITHIN <region>] [IN <scope>] [ORDER BY <field>] [LIMIT <n>]
+```
 
 | Clause | Purpose |
 |--------|---------|
-| FROM track | Source track |
-| INTERSECT track | Require overlap |
-| WITHIN region | Inside region |
-| WHERE conditions | Filter by fields |
-| IN scope | Limit to view/chromosome |
-| ORDER BY field | Sort results |
-| LIMIT n | Max results |
+| FROM | Source track |
+| WHERE | Filter conditions |
+| INTERSECT | Require overlap |
+| WITHIN | Inside region/gene |
+| IN | Scope (VIEW, CHROMOSOME) |
+| ORDER BY | Sort results |
+| LIMIT | Max results |
+
+</details>
 
 ---
 
@@ -104,6 +115,9 @@ COUNT FEATURES FROM peaks WHERE score <= 50
 ## Step 4: INTERSECT Queries
 
 Find features that overlap between tracks.
+
+> [!IMPORTANT]
+> Track names in `FROM` clauses must match exactly what's shown in the sidebar.
 
 ### Peaks overlapping genes
 
@@ -162,6 +176,9 @@ SELECT FEATURES FROM peaks WHERE score > 100 WITHIN TP53
 
 Limit queries to current view or chromosome.
 
+> [!TIP]
+> Use `IN VIEW` to limit queries to the current viewport - much faster for large datasets.
+
 ### Current viewport
 
 ```
@@ -194,6 +211,9 @@ SELECT GENES IN chr17:7000000-8000000
 ## Step 7: ORDER BY and LIMIT
 
 Sort and limit results.
+
+> [!TIP]
+> Add `LIMIT 100` to prevent slow queries when exploring unfamiliar data.
 
 ### Sort by name
 
@@ -318,7 +338,8 @@ COUNT GENES WHERE strand = '-'
 Complete workflow for ChIP-seq peak QC:
 
 ```
-# 1. Load tracks (drag and drop peaks.bed, signal.bedgraph, genes.gff3)
+# 1. Load tracks (drag and drop peaks.bed, signal.bedgraph)
+#    Gene tracks load automatically from the assembly
 
 # 2. Check total peak count
 COUNT FEATURES FROM peaks
@@ -352,6 +373,9 @@ SELECT FEATURES FROM peaks WITHIN BRCA1
 
 ## Performance Tips
 
+> [!WARNING]
+> Queries without `IN VIEW` or `LIMIT` may be slow on large datasets.
+
 ### Use IN VIEW for large datasets
 
 ```
@@ -372,6 +396,53 @@ SELECT FEATURES FROM peaks WHERE score > 100 INTERSECT genes
 # Better than:
 SELECT FEATURES FROM peaks INTERSECT genes WHERE score > 100
 ```
+
+---
+
+## Try It Yourself
+
+Practice with E. coli test data:
+
+### Setup
+
+1. Select assembly **E. coli K-12 MG1655**
+2. Load the test GFF (has genes with scores):
+   ```
+   https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.gff3.gz
+   ```
+
+### Practice queries
+
+```
+# Navigate to a gene-rich region
+navigate NC_000913.3:100000-200000
+
+# Count features in view
+COUNT FEATURES IN VIEW
+
+# Find features by type
+SELECT FEATURES WHERE type = 'gene' IN VIEW
+
+# Sort by position
+SELECT FEATURES WHERE type = 'gene' ORDER BY start ASC LIMIT 10
+
+# Count by strand
+COUNT FEATURES WHERE strand = '+'
+COUNT FEATURES WHERE strand = '-'
+```
+
+### Challenge
+
+Write a query to find the 5 longest genes on the positive strand in the current view.
+
+<details>
+<summary>Solution</summary>
+
+```
+SELECT FEATURES WHERE type = 'gene' AND strand = '+' IN VIEW ORDER BY length DESC LIMIT 5
+```
+
+</details>
 
 ---
 
@@ -399,37 +470,22 @@ SELECT * FROM sample-genes.bed    # Use exact filename
 
 ---
 
+## Summary
+
+You now know how to:
+
+- Write complex SELECT queries with multiple clauses
+- Filter features by score, type, and strand
+- Use INTERSECT to find overlapping features between tracks
+- Use WITHIN to find features inside genes or regions
+- Control query scope with IN VIEW/CHROMOSOME
+- Sort and limit results with ORDER BY and LIMIT
+- Optimize query performance for large datasets
+
+---
+
 ## What's Next?
 
 - [Tutorial 4: Non-Model Genomes](04-non-model-genomes.md) - Custom assemblies
 - [Tutorial 5: Reproducible Analysis](05-reproducible-analysis.md) - Save and share
 - [GQL Manual](../GQL-MANUAL.md) - Complete reference
-
----
-
-## Practice Exercises
-
-### Exercise 1: Peak Analysis
-
-```
-# Load peaks.bed with scores
-# Find high-confidence peaks
-SELECT FEATURES FROM peaks WHERE score > 500 ORDER BY score DESC LIMIT 10
-```
-
-### Exercise 2: Gene Overlap
-
-```
-# Load genes.gff3
-# Find genes with peaks
-SELECT GENES INTERSECT peaks ORDER BY length DESC
-```
-
-### Exercise 3: Multi-Filter
-
-```
-# Combine multiple conditions
-SELECT FEATURES WHERE type = 'exon' AND strand = '+' IN VIEW
-```
-
-You're now ready for advanced genomic analysis in GBetter!

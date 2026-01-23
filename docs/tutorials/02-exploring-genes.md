@@ -1,42 +1,50 @@
 # Tutorial 2: Exploring Genes and Variants
 
-*For bench biologists working with gene lists and variants*
-
-You've got results from an experiment - maybe a gene list from RNA-seq or a VCF from variant calling. This tutorial shows you how to explore these results in GBetter, find overlaps between datasets, and visually inspect regions of interest.
+> **Audience**: Bench biologists working with gene lists and variants
+> **Time**: 20-30 minutes
+> **Prerequisites**: Basic familiarity with genome browsers ([Tutorial 1](01-getting-started.md) recommended)
+> **Last updated**: Session 23 (2026-01-22)
 
 ## What You'll Learn
 
-- Loading multiple data tracks
-- Finding genes with variants
-- Querying overlaps between datasets
-- Visual inspection of results
-- Exporting findings
+- Loading variant data (VCF files)
+- Finding genes that contain variants
+- Querying overlaps between genes and variants
+- Visual inspection of variant positions
+- Filtering by clinical significance
 
 ## Scenario
 
 You're a wet lab scientist who just received:
-- A BED file with 20 differentially expressed genes
 - A VCF file with variants from a patient sample
 
-You want to know: **Which of my genes have variants?**
+You want to know: **Which genes have variants, and are any clinically significant?**
+
+> [!NOTE]
+> Gene tracks load automatically for the selected assembly - you only need to load your variant data.
 
 ---
 
-## Step 1: Load Your Gene List
+## Step 1: Verify Gene Tracks Are Loaded
 
-First, load your BED file containing gene regions.
+GBetter automatically loads gene tracks for the selected assembly.
 
-### Drag and drop
+### Check the sidebar
 
-1. Locate your BED file (e.g., `my-genes.bed`)
-2. Drag it onto the GBetter window
-3. Drop it on the canvas
+You should see:
+- **Transcripts** - Shows transcript structures with exons
+- **Genes** (if available) - Shows gene-level features
 
-### Verify it loaded
+If you don't see these tracks:
+1. Check you're on a supported assembly (GRCh38, mm39, etc.)
+2. Wait a moment for remote data to load
+3. Try refreshing the page
 
-- A new track appears in the sidebar
-- The track name shows your filename
-- Features appear on the canvas
+### Optional: Load custom gene annotations
+
+If you have your own gene list (BED or GFF3):
+1. Drag and drop the file onto the canvas
+2. Or use **File** tab in sidebar
 
 ### BED file format reminder
 
@@ -54,16 +62,24 @@ Columns: chromosome, start, end, name (optional)
 
 ## Step 2: Load Your Variants
 
-Now add your VCF file.
+### Option A: Local VCF file
 
-### Drag and drop the VCF
+Drag and drop your VCF file onto the GBetter window.
 
-1. Drag your VCF file onto GBetter
-2. Drop it anywhere
+### Option B: Remote VCF (tabix-indexed)
+
+For large VCF files, use tabix-indexed remote loading:
+
+1. Click the **URL** tab in the sidebar
+2. Paste your `.vcf.gz` URL (index must be at same path as `.vcf.gz.tbi`)
+3. Click **+** to add
+
+> [!TIP]
+> Remote loading only fetches data for the current viewport - much faster for large files!
 
 ### Verify variants loaded
 
-- A second track appears
+- A new track appears in the sidebar
 - Variants display as colored markers
 - The track is named after your VCF file
 
@@ -73,6 +89,9 @@ GBetter supports standard VCF format. Key fields used:
 - CHROM, POS, ID, REF, ALT (required)
 - QUAL, FILTER, INFO (optional but useful)
 - Clinical significance (CLNSIG in INFO) for filtering
+
+> [!IMPORTANT]
+> Ensure your VCF uses the same chromosome naming convention as the assembly (chr1 vs 1).
 
 ---
 
@@ -103,7 +122,8 @@ A results panel appears showing:
 - Chromosomal locations
 - Number of overlapping variants
 
-Click any result to navigate directly to that gene.
+> [!TIP]
+> Click any result in the query output to navigate directly to that location.
 
 ---
 
@@ -131,7 +151,7 @@ Or scroll up with your mouse.
 ### View the overlap
 
 You should see:
-- Your gene annotation (from BED)
+- Your gene annotation (from the assembly or your BED file)
 - Variant markers (from VCF)
 - The overlap is now visually obvious
 
@@ -146,6 +166,9 @@ Get details about variants in a specific gene.
 ```
 list variants in BRCA1
 ```
+
+> [!TIP]
+> Use `COUNT` instead of `list` to quickly see how many matches exist without loading all results.
 
 ### Results show
 
@@ -235,31 +258,66 @@ SELECT GENES FROM my-genes INTERSECT variants IN VIEW
 
 ---
 
-## Workflow Summary
+## Try It Yourself
 
-Here's the complete workflow for analyzing genes with variants:
+Let's analyze real E. coli variant data:
+
+### Load the test VCF
+
+1. Select assembly **E. coli K-12 MG1655** from the dropdown
+2. Click the **URL** tab in sidebar
+3. Paste this URL:
+   ```
+   https://pub-cdedc141a021461d9db8432b0ec926d7.r2.dev/test/ecoli-test.vcf.gz
+   ```
+4. Click **+** to add the track
+
+### Explore the variants
 
 ```
-# 1. Load your files (drag and drop)
+# Navigate to a region with variants
+navigate NC_000913.3:100000-200000
 
-# 2. Get overview
+# Count variants in view
+COUNT VARIANTS IN VIEW
+
+# List all variants
+list variants
+
+# Zoom in to see variant details
+zoom in
+zoom in
+```
+
+### What you should see
+
+- Variant markers on the canvas
+- Click a variant to see its details (position, ref/alt alleles)
+- At high zoom, you can see the exact nucleotide changes
+
+### Exercise: Find genes with variants
+
+Try answering these questions using GQL:
+
+- [ ] How many variants are in the current view?
+- [ ] Which genes have variants?
+- [ ] How many variants are in a specific gene?
+
+<details>
+<summary>Solution</summary>
+
+```
+# Count variants in view
+COUNT VARIANTS IN VIEW
+
+# List genes with variants
 list genes with variants
 
-# 3. Check specific genes
-list variants in TP53
-list variants in BRCA1
-
-# 4. Find pathogenic variants
-list pathogenic variants
-
-# 5. Visual inspection
-search gene BRCA1
-zoom in
-filter type=exon
-
-# 6. Mark interesting regions
-highlight chr17:43091000-43092000
+# Count variants in a specific gene (replace GENENAME)
+list variants in GENENAME
 ```
+
+</details>
 
 ---
 
@@ -294,6 +352,9 @@ Use highlights to mark regions, then take screenshots or note coordinates for yo
 
 ## Common Issues
 
+> [!WARNING]
+> Chromosome naming mismatches are the most common cause of "no results" - check that your VCF uses the same convention as your assembly.
+
 ### "No variants found in gene X"
 
 - The gene might not have variants (good news!)
@@ -319,24 +380,20 @@ Use highlights to mark regions, then take screenshots or note coordinates for yo
 
 ---
 
-## What's Next?
+## Summary
+
+Key points for variant analysis in GBetter:
+
+1. **Gene tracks load automatically** - No need to find gene annotations
+2. **Load your VCF** - Drag & drop or paste URL for tabix-indexed files
+3. **Query overlaps** - Use `list genes with variants` or GQL SELECT
+4. **Visual inspection** - Click results to navigate, zoom in to see details
+5. **Filter by significance** - Use WHERE clauses for clinical filtering
+
+---
+
+## Next Steps
 
 - [Tutorial 3: Advanced Queries](03-advanced-queries.md) - Complex GQL queries
 - [GQL Examples](../GQL-EXAMPLES.md) - More query patterns
 - [GQL Manual](../GQL-MANUAL.md) - Complete reference
-
----
-
-## Practice Exercise
-
-Using sample data:
-
-1. Load `sample-genes.bed` from the test-data folder
-2. Load `sample-variants.vcf` from the test-data folder
-3. Find which genes have variants: `list genes with variants`
-4. Navigate to one of the affected genes
-5. List the specific variants: `list variants in GENENAME`
-6. Zoom in to see the variant position relative to gene structure
-7. Highlight the variant region
-
-You've now mastered the core workflow for variant analysis!

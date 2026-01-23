@@ -1,16 +1,18 @@
 # Tutorial 5: Reproducible Analysis
 
-*For power users who need to save, share, and reproduce their work*
-
-Science requires reproducibility. This tutorial covers how to save your analysis state, share views with collaborators, and create reproducible query workflows in GBetter.
+> **Audience**: Power users who need to save, share, and reproduce their work
+> **Time**: 25-35 minutes
+> **Prerequisites**: Comfortable with GQL queries ([Tutorial 3](03-advanced-queries.md))
+> **Last updated**: Session 23 (2026-01-22)
 
 ## What You'll Learn
 
 - Understanding URL state persistence
-- Sharing views via URL
-- Saving and loading queries
-- Creating analysis scripts
-- Best practices for reproducibility
+- Sharing views with collaborators
+- Using the GQL Console for scientific workflows
+- Saving and organizing queries
+- Creating reproducible analysis scripts
+- Best practices for publication-ready work
 
 ## Why Reproducibility Matters
 
@@ -22,6 +24,9 @@ In genomics research, you need to:
 
 GQL ensures every action is recorded as a reproducible command.
 
+> [!TIP]
+> Save GQL commands, not natural language - GQL is guaranteed to reproduce the same result.
+
 ---
 
 ## Step 1: URL State
@@ -31,13 +36,13 @@ GBetter stores your viewport state in the URL.
 ### What's in the URL
 
 ```
-https://gbetter.example.com/?chr=chr17&start=7668421&end=7687490
+https://teammaclean.github.io/gbetter/?chr=chr17&start=7668421&end=7687490
 ```
 
 This encodes:
-- Current chromosome
-- Start position
-- End position
+- Current chromosome (`chr=chr17`)
+- Start position (`start=7668421`)
+- End position (`end=7687490`)
 
 ### Copying your current view
 
@@ -48,6 +53,47 @@ This encodes:
 ### Opening a shared URL
 
 When someone opens your URL, they see exactly the same genomic region.
+
+> [!IMPORTANT]
+> URL state captures viewport only, not loaded tracks. Share data files separately.
+
+---
+
+## Step 1.5: Settings Persistence
+
+GBetter also persists your display preferences.
+
+### What's saved automatically
+
+- **Theme** (Light/Dark/High-Contrast)
+- **Color palette** (Set2/Dark2/Paired)
+- **Gene model style**
+
+### Where it's stored
+
+Settings are saved in your browser's localStorage:
+- Persists across sessions
+- Specific to this browser
+- Not shared via URL (yet)
+
+> [!NOTE]
+> Settings persist across sessions in the same browser but don't sync across devices.
+
+### For collaboration
+
+When sharing analysis with colleagues, note your settings:
+
+```markdown
+## Display Settings
+- Theme: Light
+- Palette: Set2
+- Assembly: GRCh38
+```
+
+This ensures they see the same visualization style.
+
+> [!IMPORTANT]
+> Display settings (theme, palette) are stored in browser localStorage, not in URLs.
 
 ---
 
@@ -79,7 +125,7 @@ URL state currently captures **viewport only**. For full reproducibility:
 
 Every action in GBetter can be expressed as GQL.
 
-### Natural language → GQL
+### Natural language to GQL
 
 When you type natural language, GBetter shows the GQL translation:
 
@@ -136,6 +182,9 @@ SELECT GENES INTERSECT variants ORDER BY length DESC LIMIT 10
 
 Save your script as `my-analysis.gql` for future reference.
 
+> [!TIP]
+> Use version control (git) for your `.gql` script files.
+
 ### Re-run analysis
 
 Paste commands into GBetter's search bar one at a time to reproduce your workflow.
@@ -148,19 +197,22 @@ The GQL Console is the primary interface for reproducible analysis. Unlike the S
 
 ### Opening the console
 
-- Click the **GQL Console** tab at the bottom of the screen
-- Or press `Cmd+\`` (backtick) / `Ctrl+\``
+- Click the **GQL Console** button in the header
+- Or press `Cmd+`` (backtick) on Mac / `Ctrl+`` on Windows/Linux
+- The keyboard shortcut is shown on the button
 
-### Console layout
+### Console features
 
-The Console has four sections:
+The GQL Console provides:
 
-| Section | Location | Purpose |
-|---------|----------|---------|
-| **Natural Language** | Top-left | Type questions in plain English |
-| **GQL Query** | Bottom-left | View/edit the translated query before running |
-| **Results** | Center | Clickable list of results |
-| **History/Saved** | Right | Session history and saved queries |
+| Feature | Description |
+|---------|-------------|
+| **Natural Language input** | Type questions in plain English (requires AI) |
+| **GQL input** | View/edit the query before running |
+| **Results panel** | Clickable list with navigation |
+| **History tab** | All queries from this session |
+| **Saved tab** | Your saved query collection |
+| **Expand button** | Larger workspace for complex queries |
 
 ### Why use the Console instead of the Search Bar?
 
@@ -288,6 +340,7 @@ Record:
 - Date of analysis
 - Data file versions/sources
 - Genome assembly used
+- Display settings (theme, palette)
 
 ---
 
@@ -318,16 +371,89 @@ git commit -m "Add TP53 variant analysis"
 
 ---
 
+## Try It Yourself
+
+Create a reproducible analysis workflow:
+
+### 1. Set up your session
+
+1. Open GBetter: https://teammaclean.github.io/gbetter/
+2. Set theme to **Light** (Settings > Display) for publication-ready screenshots
+3. Select assembly **GRCh38**
+
+### 2. Navigate and explore
+
+```
+# Go to TP53
+navigate chr17:7668421-7687490
+
+# Zoom to see gene structure
+zoom in
+zoom in
+
+# Filter to exons
+filter type=exon
+```
+
+### 3. Capture your state
+
+1. Copy the URL from your browser - it now contains your exact position
+2. Write down the GQL commands you used
+3. Note your display settings
+
+### 4. Test reproducibility
+
+1. Open a new browser tab
+2. Paste the URL
+3. Verify you're at the same position
+4. Re-run your GQL commands
+5. Confirm you see the same view
+
+### 5. Document for sharing
+
+Create a simple script file `tp53-analysis.gql`:
+
+```
+# TP53 Analysis
+# Author: [Your name]
+# Date: [Today's date]
+# Assembly: GRCh38
+# Theme: Light, Set2 palette
+
+# Navigate to TP53
+navigate chr17:7668421-7687490
+
+# Focus on coding regions
+filter type=exon
+
+# Zoom for detail
+zoom in
+zoom in
+
+# Highlight region of interest
+highlight chr17:7674000-7676000
+```
+
+Share this file with your URL for full reproducibility.
+
+---
+
 ## Complete Reproducibility Checklist
+
+<details>
+<summary>Full Reproducibility Checklist</summary>
 
 For fully reproducible analysis:
 
-- [ ] **Assembly**: Document which genome assembly (GRCh38, etc.)
-- [ ] **Data files**: Share or document sources of all files
-- [ ] **GQL script**: Save all commands used
-- [ ] **URL state**: Capture key viewports
-- [ ] **Results**: Export query results
+- [ ] **Assembly**: Document which genome assembly (e.g., GRCh38)
+- [ ] **Display settings**: Note theme and palette used
+- [ ] **Data files**: Share or document sources of all loaded files
+- [ ] **GQL script**: Save all commands used in order
+- [ ] **URL state**: Capture key viewport positions
+- [ ] **Results**: Export or screenshot query results
 - [ ] **Documentation**: Write README explaining the workflow
+
+</details>
 
 ---
 
@@ -366,6 +492,7 @@ Share this script with your co-authors so they can reproduce the exact view.
 Check:
 - Same data files?
 - Same genome assembly?
+- Same display settings (theme/palette)?
 - URL copied correctly?
 - Filters applied?
 
@@ -384,16 +511,6 @@ For complex state, URLs can get long:
 
 ---
 
-## What's Next?
-
-You've completed all tutorials! For reference:
-
-- [GQL Manual](../GQL-MANUAL.md) - Complete command reference
-- [GQL Examples](../GQL-EXAMPLES.md) - More query patterns
-- [README](../../README.md) - Project overview
-
----
-
 ## Summary
 
 Reproducibility in GBetter:
@@ -401,8 +518,19 @@ Reproducibility in GBetter:
 | What | How |
 |------|-----|
 | Viewport | URL parameters |
+| Display settings | Browser localStorage |
 | Commands | GQL scripts |
 | Results | Export feature |
-| Full session | URL + files + script |
+| Full session | URL + files + script + settings |
 
 Remember: **Save the GQL, share the URL, document everything.**
+
+---
+
+## Next Steps
+
+You've completed all tutorials! For reference:
+
+- [GQL Manual](../GQL-MANUAL.md) - Complete command reference
+- [GQL Examples](../GQL-EXAMPLES.md) - More query patterns
+- [README](../../README.md) - Project overview
