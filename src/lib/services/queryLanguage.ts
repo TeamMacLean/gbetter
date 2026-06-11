@@ -778,6 +778,12 @@ function extractVariantsFromTracks(tracks: LoadedTrack[]): ListResultItem[] {
 		if (track.typeId === 'vcf') {
 			for (const feature of track.features as VariantFeature[]) {
 				const name = feature.name || `${feature.ref}>${feature.alt.join(',')}`;
+				// Surface all VCF INFO fields (lowercased) so WHERE can filter on
+				// them (e.g. WHERE clin = pathogenic, WHERE impact = nonsense).
+				const infoFields: Record<string, string> = {};
+				for (const [k, v] of Object.entries(feature.info ?? {})) {
+					infoFields[k.toLowerCase()] = String(v);
+				}
 				variants.push({
 					id: feature.id,
 					name: name,
@@ -788,6 +794,7 @@ function extractVariantsFromTracks(tracks: LoadedTrack[]): ListResultItem[] {
 					details: {
 						ref: feature.ref,
 						alt: feature.alt.join(','),
+						...infoFields,
 						...(feature.info?.CLNSIG && { significance: feature.info.CLNSIG }),
 						source: track.name
 					}

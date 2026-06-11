@@ -173,6 +173,9 @@ export function buildUserMessage(input: string, context: BrowserContext): string
 			if (track.sampleFeatures && track.sampleFeatures.length > 0) {
 				trackDesc += ` - contains: ${track.sampleFeatures.slice(0, 5).join(', ')}`;
 			}
+			if (track.fields && track.fields.length > 0) {
+				trackDesc += ` - filterable fields (for WHERE): ${track.fields.join(', ')}`;
+			}
 			parts.push(trackDesc);
 		}
 		if (context.tracks.length > MAX_TRACKS) {

@@ -82,6 +82,8 @@ export interface TrackInfo {
 	featureCount: number;
 	/** Sample feature names for context */
 	sampleFeatures?: string[];
+	/** Filterable field names available for WHERE clauses (e.g. VCF INFO keys). */
+	fields?: string[];
 }
 
 export interface TranslationResponse {

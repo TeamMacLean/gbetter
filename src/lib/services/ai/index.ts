@@ -174,11 +174,23 @@ export function buildBrowserContext(
 			'fasta': 'fasta'
 		};
 
+		// For VCF tracks, surface the available INFO field names so the AI can
+		// write WHERE clauses that actually match (e.g. WHERE clin = pathogenic).
+		let fields: string[] | undefined;
+		if (t.typeId === 'vcf') {
+			const keys = new Set<string>(['ref', 'alt']);
+			for (const f of t.features.slice(0, 50) as Array<{ info?: Record<string, unknown> }>) {
+				if (f.info) for (const k of Object.keys(f.info)) keys.add(k.toLowerCase());
+			}
+			fields = [...keys];
+		}
+
 		return {
 			name: t.name,
 			type: typeMap[t.typeId] || 'bed',
 			featureCount: t.features.length,
-			sampleFeatures
+			sampleFeatures,
+			fields
 		};
 	});
 
