@@ -8,7 +8,7 @@
 	import { useViewport } from '$lib/stores/viewport.svelte';
 	import { useTracks } from '$lib/stores/tracks.svelte';
 	import { useAssembly } from '$lib/stores/assembly.svelte';
-	import { executeQueryWithTracks, getAvailableGenes } from '$lib/services/queryLanguage';
+	import { executeQueryWithTracks, getAvailableGenes, type ListResultItem } from '$lib/services/queryLanguage';
 	import { routeQuery } from '$lib/services/queryRouter';
 	import { highlightGene } from '$lib/stores/geneHighlight.svelte';
 	import { translateToGQL, buildBrowserContext, isAIConfigured } from '$lib/services/ai';
@@ -20,9 +20,27 @@
 
 	type Msg =
 		| { role: 'user'; text: string }
-		| { role: 'assistant'; kind: 'gql'; gql: string; reasoning?: string; message: string }
+		| { role: 'assistant'; kind: 'gql'; gql: string; reasoning?: string; message: string; results?: ListResultItem[] }
 		| { role: 'assistant'; kind: 'clarify'; text: string }
 		| { role: 'assistant'; kind: 'error'; text: string };
+
+	// Overlap count a gene carries after INTERSECT (details key like
+	// "variants_overlaps") — lets results be ranked and shown.
+	function overlapCount(item: ListResultItem): number | null {
+		const d = item.details ?? {};
+		for (const k of Object.keys(d)) {
+			if (k.endsWith('_overlaps')) {
+				const n = Number(d[k]);
+				if (!isNaN(n)) return n;
+			}
+		}
+		return null;
+	}
+
+	function navigateToItem(item: ListResultItem) {
+		const padding = Math.round((item.end - item.start) * 0.2);
+		viewport.navigateTo(item.chromosome, Math.max(0, item.start - padding), item.end + padding);
+	}
 
 	let isOpen = $state(false);
 	let input = $state('');
@@ -65,6 +83,12 @@
 					trackGenes: new Set(getAvailableGenes(tracks.all).map((g) => g.toUpperCase()))
 				});
 				if (outcome.chosen) highlightGene(outcome.chosen);
+				// Carry the result rows so they can be browsed and clicked-to-navigate.
+				// Rank by overlap count when present (answers "which has the most?").
+				let results = outcome.result.results ? [...outcome.result.results] : undefined;
+				if (results && results.some((r) => overlapCount(r) !== null)) {
+					results.sort((a, b) => (overlapCount(b) ?? 0) - (overlapCount(a) ?? 0));
+				}
 				messages = [
 					...messages,
 					{
@@ -72,7 +96,8 @@
 						kind: 'gql',
 						gql: res.gql,
 						reasoning: res.explanation,
-						message: outcome.result.message
+						message: outcome.result.message,
+						results
 					}
 				];
 			} else {
@@ -150,6 +175,29 @@
 						{#if m.reasoning}<div class="text-[var(--color-text-secondary)] italic mb-1">💭 {m.reasoning}</div>{/if}
 						<code class="font-mono text-[var(--color-accent)]">{m.gql}</code>
 						<div class="text-[10px] text-[var(--color-text-muted)] mt-0.5">{m.message}</div>
+						{#if m.results && m.results.length > 0}
+							<div class="mt-1.5 max-h-44 overflow-y-auto rounded border border-[var(--color-border)] divide-y divide-[var(--color-border)]">
+								{#each m.results.slice(0, 100) as item}
+									<button
+										type="button"
+										onclick={() => navigateToItem(item)}
+										class="w-full flex items-center justify-between gap-2 px-2 py-1 text-left hover:bg-[var(--color-bg-secondary)]"
+										title="Go to {item.chromosome}:{item.start}-{item.end}"
+									>
+										<span class="truncate">
+											<span class="font-medium">{item.name}</span>
+											<span class="text-[10px] text-[var(--color-text-muted)] ml-1">{item.chromosome}:{item.start.toLocaleString()}-{item.end.toLocaleString()}</span>
+										</span>
+										{#if overlapCount(item) !== null}
+											<span class="shrink-0 text-[10px] px-1 rounded bg-[var(--color-accent)] text-white">{overlapCount(item)} ⌖</span>
+										{/if}
+									</button>
+								{/each}
+							</div>
+							{#if m.results.length > 100}
+								<div class="text-[10px] text-[var(--color-text-muted)] mt-0.5">…and {m.results.length - 100} more</div>
+							{/if}
+						{/if}
 					</div>
 				{:else if m.kind === 'clarify'}
 					<div class="max-w-[90%] rounded-lg px-2.5 py-1.5 bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)]">
