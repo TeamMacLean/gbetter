@@ -75,14 +75,20 @@ const ENSEMBL_BASE = 'https://rest.ensembl.org';
 const TIMEOUT_MS = 5000;
 const MAX_RESULTS = 10;
 
-const COORDINATE_RE = /^[\w.\-]+:[\d,]+-[\d,]+$/;
+const COORDINATE_RE = /^([\w.\-]+):([\d,]+)-([\d,]+)$/;
 
 /**
- * True when the term is already a coordinate (e.g. chr17:1-1000 or
+ * True when the term is a VALID coordinate (e.g. chr17:1-1000 or
  * NC_000913.3:1-1000000) and should be used directly rather than looked up.
+ * Also validates semantics — a reversed range (chr1:5000-1000) is not a usable
+ * coordinate.
  */
 export function isCoordinate(term: string): boolean {
-	return COORDINATE_RE.test(term.trim());
+	const m = term.trim().match(COORDINATE_RE);
+	if (!m) return false;
+	const start = parseInt(m[2].replace(/,/g, ''), 10);
+	const end = parseInt(m[3].replace(/,/g, ''), 10);
+	return !isNaN(start) && !isNaN(end) && end > start;
 }
 
 /** Whether gene lookup is available for an assembly. */
@@ -159,17 +165,27 @@ async function lookupMyGene(
 
 	const results: GeneResult[] = [];
 	for (const hit of hits) {
-		const pos = Array.isArray(hit.genomic_pos) ? hit.genomic_pos[0] : hit.genomic_pos;
-		if (!pos || !hit.symbol) continue; // skip hits without a mapped position
-		results.push({
-			symbol: hit.symbol,
-			name: hit.name ?? hit.symbol,
-			chromosome: normalizeChromosome(pos.chr, assembly),
-			start: pos.start,
-			end: pos.end,
-			strand: pos.strand < 0 ? '-' : '+',
-			source: 'mygene'
-		});
+		if (!hit.symbol) continue;
+		// A gene can map to multiple loci (e.g. pseudoautosomal, alt contigs).
+		// Emit every position rather than silently dropping all but the first —
+		// the picker then lets the user disambiguate.
+		const positions = Array.isArray(hit.genomic_pos)
+			? hit.genomic_pos
+			: hit.genomic_pos
+				? [hit.genomic_pos]
+				: [];
+		for (const pos of positions) {
+			if (!pos) continue;
+			results.push({
+				symbol: hit.symbol,
+				name: hit.name ?? hit.symbol,
+				chromosome: normalizeChromosome(pos.chr, assembly),
+				start: pos.start,
+				end: pos.end,
+				strand: pos.strand < 0 ? '-' : '+',
+				source: 'mygene'
+			});
+		}
 	}
 	return results;
 }

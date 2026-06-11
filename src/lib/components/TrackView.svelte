@@ -1549,9 +1549,17 @@
 			ctx.moveTo(0, plotY + plotHeight);
 
 			for (let i = 0; i < samplesNeeded; i++) {
-				const coverageIndex = Math.min(coverage.length - 1, Math.floor(i * step));
+				// Max-pool over each pixel's bucket so peaks aren't lost when there
+				// are many more coverage points than pixels (nearest-neighbour
+				// sampling would skip between-sample peaks).
+				const lo = Math.floor(i * step);
+				const hi = Math.max(lo + 1, Math.min(coverage.length, Math.floor((i + 1) * step)));
+				let peak = 0;
+				for (let j = lo; j < hi; j++) {
+					if (coverage[j] > peak) peak = coverage[j];
+				}
 				const x = (i / samplesNeeded) * width;
-				const normalizedHeight = (coverage[coverageIndex] / maxCoverage) * plotHeight;
+				const normalizedHeight = (peak / maxCoverage) * plotHeight;
 				ctx.lineTo(x, plotY + plotHeight - normalizedHeight);
 			}
 

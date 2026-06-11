@@ -54,8 +54,9 @@ export function detectGeneTerm(input: string): { command: string; term: string }
 		if (first === 'in' || first === 'out') return null; // relative zoom
 		if (argParts.length === 1 && /^\d*\.?\d+x?$/.test(first ?? '')) return null; // zoom 2x
 	}
-	// Allow "NAVIGATE TO <gene>" / "go to <gene>" phrasing.
-	if (argParts.length > 1 && argParts[0]?.toLowerCase() === 'to') {
+	// Allow "NAVIGATE TO <gene>" / "go to <gene>" phrasing (and tolerate
+	// repeated "to" tokens).
+	while (argParts.length > 1 && argParts[0]?.toLowerCase() === 'to') {
 		argParts = argParts.slice(1);
 	}
 

@@ -39,6 +39,12 @@ export function selectBamStrategy(
 
   const threshold = customThreshold || 30; // Default: gene-level detail (30bp/pixel)
 
+  // NaN/Infinity (e.g. a zero-width viewport) must not silently select reads
+  // mode — treat invalid scales as fully zoomed out (density/coverage).
+  if (!Number.isFinite(pixelsPerBase)) {
+    pixelsPerBase = 0;
+  }
+
   if (pixelsPerBase < threshold) {
     // Density mode - use windowed coverage
     // Target 100-200 windows for optimal performance with quality settings

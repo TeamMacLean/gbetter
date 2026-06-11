@@ -567,6 +567,11 @@ export function findCoverageRegions(
 	minCoverage: number,
 	chromosome: string
 ): CoverageRegion[] {
+	// A coverage threshold below 1 is meaningless (it would match the whole
+	// region); clamp so a negative/zero threshold doesn't yield nonsense regions.
+	if (!Number.isFinite(minCoverage) || minCoverage < 1) {
+		minCoverage = 1;
+	}
 	const regions: CoverageRegion[] = [];
 	let currentStart = -1;
 	let currentSum = 0;
