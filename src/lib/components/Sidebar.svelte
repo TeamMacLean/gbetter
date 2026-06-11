@@ -105,8 +105,36 @@
 		const input = event.target as HTMLInputElement;
 		const files = input.files;
 		if (!files || files.length === 0) return;
+		await processFiles(Array.from(files));
+		// Reset input so same file can be selected again
+		input.value = '';
+	}
 
-		const fileArray = Array.from(files);
+	// Drag-and-drop onto the "Drop or browse" zone
+	let dragActive = $state(false);
+	function handleDragOver(event: DragEvent) {
+		event.preventDefault(); // required for drop to fire
+		dragActive = true;
+	}
+	function handleDragLeave() {
+		dragActive = false;
+	}
+	async function handleDrop(event: DragEvent) {
+		event.preventDefault();
+		dragActive = false;
+		const files = event.dataTransfer?.files;
+		if (files && files.length > 0) await processFiles(Array.from(files));
+	}
+
+	// Stop the browser from navigating to a file dropped anywhere outside a real
+	// drop zone (the default is to open it). Zone handlers still run their own
+	// logic; this only suppresses the browser default for stray drops.
+	function preventStrayDrop(event: DragEvent) {
+		event.preventDefault();
+	}
+
+	async function processFiles(fileArray: File[]) {
+		if (fileArray.length === 0) return;
 
 		// Separate files by type
 		const dataFiles: Array<{ file: File; type: LocalBinaryTrackType }> = [];
@@ -149,9 +177,6 @@
 				await addLocalBinaryTrack(file, type);
 			}
 		}
-
-		// Reset input so same file can be selected again
-		input.value = '';
 	}
 
 	function handleIndexFileSelect(event: Event) {
@@ -298,6 +323,8 @@
 		viewport.navigateTo(chr, Math.max(0, minStart - padding), maxEnd + padding);
 	}
 </script>
+
+<svelte:window ondragover={preventStrayDrop} ondrop={preventStrayDrop} />
 
 <aside
 	class="flex flex-col bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] transition-all duration-200"
@@ -675,7 +702,11 @@
 					<button
 						type="button"
 						onclick={() => fileInputEl?.click()}
-						class="w-full flex flex-col items-center gap-2 p-4 border-2 border-dashed border-[var(--color-border)] rounded-lg hover:border-[var(--color-accent)] hover:bg-[var(--color-bg-tertiary)] transition-colors cursor-pointer"
+						ondragover={handleDragOver}
+						ondragenter={handleDragOver}
+						ondragleave={handleDragLeave}
+						ondrop={handleDrop}
+						class="w-full flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-lg hover:bg-[var(--color-bg-tertiary)] transition-colors cursor-pointer {dragActive ? 'border-[var(--color-accent)] bg-[var(--color-bg-tertiary)]' : 'border-[var(--color-border)] hover:border-[var(--color-accent)]'}"
 					>
 						<svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-[var(--color-text-muted)]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
