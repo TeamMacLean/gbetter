@@ -33,6 +33,7 @@ import { getTrackTypeByExtension, getSupportedExtensions } from '$lib/services/t
 import { initializeTrackTypes } from '$lib/services/trackTypes';
 import { saveSession, loadSession, type TrackMetadata } from '$lib/services/persistence';
 import { useAssembly } from '$lib/stores/assembly.svelte';
+import { normalizeChromosome } from '$lib/services/geneLookup';
 import { browser } from '$app/environment';
 
 // Initialize track types on module load
@@ -106,8 +107,16 @@ async function addTrackFromFile(file: File): Promise<LoadedTrack | null> {
 			throw new Error('No features found in file');
 		}
 
-		// Check chromosome names against current assembly
+		// Normalize feature chromosome names to the current assembly's convention
+		// (e.g. a BED/GFF with bare "1" -> "chr1" on human, or matching an
+		// accession). normalizeChromosome falls back to the raw name when there's
+		// no confident match, so genuine mismatches still surface in the warning.
 		const assembly = useAssembly();
+		for (const f of result.features) {
+			f.chromosome = normalizeChromosome(f.chromosome, assembly.current);
+		}
+
+		// Check chromosome names against current assembly
 		const featureChromosomes = new Set(result.features.map(f => f.chromosome));
 		const assemblyChromosomes = new Set(assembly.chromosomes);
 
