@@ -319,10 +319,8 @@ Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 - Track boxes have colored left border matching canvas rendering
 - Checkbox colors use same indicator color for visual consistency
 - File picker shows extensions with indexed formats emphasized
-- **Gene Lookup Feature** - researched and planned:
-  - Dual-backend: MyGene.info (17 assemblies) + Ensembl REST (6 assemblies)
-  - Spec saved: `docs/specs/gene-lookup.md`
-  - Plan saved: `~/.claude/plans/wise-tumbling-flurry.md`
+- **Gene Lookup Feature** - researched and planned (shipped in Session 27):
+  - Dual-backend: MyGene.info (18 assemblies) + Ensembl REST (fungal/protist)
   - Enables: `NAVIGATE BRCA1`, `SELECT * WITHIN TP53`, etc.
 
 **Session 24 (2026-01-23)**: Execute all tutorial plans
@@ -406,45 +404,6 @@ Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 - **Session 21-22**: CI green, README updated
 - **Session 23-24**: Tutorial documentation complete (8 tutorials)
 - **Session 25**: Sidebar UI + gene lookup feature planned
-
-## Next Steps: Gene Lookup Feature
-
-**Spec:** `docs/specs/gene-lookup.md`
-**Plan:** `~/.claude/plans/wise-tumbling-flurry.md`
-
-### Implementation Phases
-
-1. **Phase 1: Gene Lookup Service** - `src/lib/services/geneLookup.ts` (new)
-   - Assembly-to-API config (taxid for MyGene, species for Ensembl)
-   - `lookupGene(term, assemblyId)` → `GeneResult[]`
-   - MyGene.info client (17 assemblies)
-   - Ensembl REST client (6 assemblies: saccer3, botrytis, magnaporthe, puccinia, zymoseptoria, phytophthora)
-   - Session cache
-
-2. **Phase 2: GenePicker Component** - `src/lib/components/GenePicker.svelte` (new)
-   - Modal for multiple matches
-   - Keyboard navigation (↑/↓, Enter, Esc)
-   - Shows: symbol, name, coordinates
-
-3. **Phase 3: GQL Integration** - `src/lib/services/queryLanguage.ts`
-   - Add `needsGeneLookup` flag to ParsedQuery
-   - Add `executeQueryWithGeneLookup()` async function
-   - Support gene terms in NAVIGATE, HIGHLIGHT, SELECT WITHIN
-
-4. **Phase 4: UI Integration** - `SearchBar.svelte`, `QueryConsole.svelte`
-   - Wire up gene lookup flow
-   - Show GenePicker for multiple results
-   - Error messages for no matches
-
-5. **Phase 5: Testing**
-   - Unit tests for geneLookup.ts
-   - E2E tests for gene search flow
-
-### Key Decisions Made
-- Pattern: `chr*:N-N` = coordinates, anything else = gene lookup
-- Multiple matches → show picker, user selects
-- Session-only cache (no persistence)
-- Current assembly only (no cross-assembly lookup)
 
 ## Key Files
 1. `src/lib/stores/theme.svelte.ts` - Theme state management
