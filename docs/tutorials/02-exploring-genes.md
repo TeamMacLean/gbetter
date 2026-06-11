@@ -207,10 +207,29 @@ list pathogenic variants
 
 ### Or use SELECT syntax
 
+Filter on the VCF's actual INFO field. ClinVar's `CLNSIG` is also exposed as
+`significance`; other files might use `clin`, `impact`, etc. (The Console and the
+Ask AI panel list the available fields for each loaded track.)
+
 ```
-SELECT VARIANTS WHERE significance = 'pathogenic'
-SELECT VARIANTS WHERE significance CONTAINS 'pathogenic'
+SELECT VARIANTS WHERE significance CONTAINS pathogenic   # ClinVar CLNSIG
+SELECT VARIANTS WHERE clin CONTAINS pathogenic           # a 'CLIN' INFO field
+SELECT VARIANTS WHERE impact = nonsense
 ```
+
+### Count and rank by variant load
+
+After an `INTERSECT`, each gene carries a `count` field you can filter and aggregate:
+
+```
+SELECT GENES INTERSECT variants ORDER BY count DESC      # busiest genes first
+SELECT GENES INTERSECT variants WHERE count >= 3         # genes with 3+ variants
+SELECT MAX(count) GENES INTERSECT variants               # the most in any gene
+```
+
+> **Tip — just ask.** Click **💬 Ask AI** (bottom-right) and type *"which genes
+> here have the most variants?"* — it runs the query and gives you a ranked,
+> clickable list.
 
 ---
 

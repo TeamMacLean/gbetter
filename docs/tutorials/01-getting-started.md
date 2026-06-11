@@ -31,9 +31,11 @@ The browser starts with a default view of chromosome 1 in the human genome.
 
 ---
 
-## Step 2: Two Ways to Query
+## Step 2: Ways to Query
 
-gBeta provides two interfaces for entering commands: the **Search Bar** for quick tasks and the **GQL Console** for advanced work.
+gBeta gives you three ways in: the **Search Bar** for quick tasks, the **GQL
+Console** for advanced work, and the **Ask AI** panel for asking questions in
+plain English.
 
 ### Search Bar (Header)
 
@@ -69,7 +71,16 @@ For more complex queries, use the GQL Console:
 
 **Key difference:** The Search Bar is quick and local. The GQL Console is powerful and can use AI for natural language understanding.
 
-For this tutorial, we'll use the Search Bar. You can try the GQL Console later - see [Tutorial 5: Reproducible Analysis](05-reproducible-analysis.md) for advanced usage.
+### Ask AI (Conversational Panel)
+
+Click the floating **💬 Ask AI** button (bottom-right) and chat in plain English:
+*"which genes here have variants?"*, *"show pathogenic variants in TP53"*, *"what's
+the fewest variants in any gene?"* It runs the query for you and shows the results
+as a **ranked, clickable list** — click a row to jump there — and asks a follow-up
+question when your request is ambiguous. Requires [AI setup](../AI-SETUP.md);
+everything deterministic (coordinates, gene lookup, hand-written GQL) works without it.
+
+For this tutorial, we'll use the Search Bar. You can try the Console and Ask AI later — see [Tutorial 5: Reproducible Analysis](05-reproducible-analysis.md) for advanced usage.
 
 ---
 

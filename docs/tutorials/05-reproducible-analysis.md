@@ -166,28 +166,50 @@ navigate chr17:7668421-7687490
 COUNT VARIANTS IN VIEW
 
 # Find genes with variants
-list genes with variants
+SELECT GENES INTERSECT variants
 
-# Check specific gene
-list variants in TP53
+# Check a specific gene
+SELECT VARIANTS WITHIN TP53
 
-# Filter to pathogenic
-SELECT VARIANTS WHERE significance = 'pathogenic'
+# Filter to pathogenic (use your VCF's actual field name)
+SELECT VARIANTS WHERE clin CONTAINS pathogenic
 
-# Top affected genes
-SELECT GENES INTERSECT variants ORDER BY length DESC LIMIT 10
+# Rank genes by variant load, and get the maximum
+SELECT GENES INTERSECT variants ORDER BY count DESC
+SELECT MAX(count) GENES INTERSECT variants
 ```
 
 ### Save as a text file
 
-Save your script as `my-analysis.gql` for future reference.
+Save your script as `my-analysis.gql` for future reference — or generate it
+automatically with **Export .gql** from the Console's History tab (each step is
+annotated with the original question and the AI's reasoning).
 
 > [!TIP]
 > Use version control (git) for your `.gql` script files.
 
 ### Re-run analysis
 
-Paste commands into gBeta's search bar one at a time to reproduce your workflow.
+Paste commands into gBeta's search bar one at a time — or save the whole sequence
+as a re-runnable **Analysis** (see the next step) and press **Run**.
+
+---
+
+## Step 4.5: Re-runnable Analyses (Notebooks)
+
+For an analysis you'll repeat, save it **inside gBeta** as a named notebook
+instead of a loose text file.
+
+1. Run your queries (in the Console or via **💬 Ask AI**). Each lands in the
+   unified **History**.
+2. On the Console's **History** tab, click **Save analysis** and give it a name
+   (e.g. "Cancer gene variant survey").
+3. Switch to the **Analyses** tab. Press **Run** to replay the whole sequence in
+   order — on the same data, or after loading a different sample.
+
+Saved analyses, queries, theme, and AI settings persist in your browser and
+survive upgrades. Combine with **Export .gql** when you want the script in your
+repo, and the shareable URL when you want someone to see the exact view.
 
 ---
 
@@ -318,12 +340,12 @@ Create a README for your analysis:
 
 2. Find variants
    ```
-   list variants in TP53
+   SELECT VARIANTS WITHIN TP53
    ```
 
 3. Filter pathogenic
    ```
-   SELECT VARIANTS WHERE significance = 'pathogenic'
+   SELECT VARIANTS WHERE clin CONTAINS pathogenic
    ```
 
 ## Results

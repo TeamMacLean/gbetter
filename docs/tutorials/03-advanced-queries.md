@@ -141,11 +141,43 @@ COUNT GENES INTERSECT peaks
 COUNT FEATURES FROM peaks INTERSECT genes
 ```
 
+### The `count` field
+
+After an `INTERSECT`, each result carries a numeric **`count`** — the number of
+overlapping features — which you can filter and sort on. Results are shown ranked
+by it.
+
+```
+SELECT GENES INTERSECT peaks ORDER BY count DESC    # busiest genes first
+SELECT GENES INTERSECT peaks WHERE count >= 3       # genes with 3+ peaks
+SELECT GENES INTERSECT peaks WHERE count = 1        # exactly one
+```
+
 ### With score filter
 
 ```
 SELECT FEATURES FROM peaks WHERE score > 100 INTERSECT genes
 ```
+
+---
+
+## Step 4.5: Aggregates
+
+Wrap a numeric field in an aggregate function right after `SELECT` to get a single
+answer over the whole result set. Functions: `MIN`, `MAX`, `AVG` (= `MEAN`),
+`SUM`, `COUNT`.
+
+```
+SELECT MIN(count) GENES INTERSECT peaks    # fewest peaks in any gene
+SELECT MAX(count) GENES INTERSECT peaks    # most peaks in any gene
+SELECT AVG(count) GENES INTERSECT peaks    # mean peaks per gene
+SELECT SUM(count) GENES INTERSECT peaks    # total
+```
+
+`MIN`/`MAX` also report **which** genes hit the extreme, and they stay clickable —
+so "which gene has the most peaks?" is one click from the view. There's no
+`GROUP BY`, but `INTERSECT` already groups overlaps per gene, which covers the
+common per-gene question.
 
 ---
 
