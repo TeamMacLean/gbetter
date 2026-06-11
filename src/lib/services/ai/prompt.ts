@@ -35,8 +35,15 @@ COUNT <what> [WHERE <conditions>]    -- Count features
 \`\`\`
 SELECT GENES INTERSECT <variant_track>           -- Genes with overlapping variants
 SELECT VARIANTS WITHIN <gene_or_region>          -- Variants inside a gene/region
-SELECT GENES INTERSECT variants WHERE count > 5  -- Genes with >5 variants
+SELECT GENES INTERSECT variants WHERE count = 1  -- Genes with exactly 1 variant
+SELECT GENES INTERSECT variants WHERE count < 3  -- Genes with fewer than 3
 \`\`\`
+After INTERSECT, each gene has a \`count\` field (number of overlapping features).
+Filter it with numeric comparisons: \`WHERE count = 1\`, \`count < 3\`, \`count >= 5\`.
+There are NO aggregate functions (MIN, MAX, AVG, SUM) and no GROUP BY — never
+write \`WHERE count = MIN\`. For "the minimum/maximum/most/fewest", just run
+\`SELECT GENES INTERSECT <variants>\`; the result list is ranked by count, so the
+user reads the top (most) or bottom (fewest).
 
 ### WHERE Conditions
 \`\`\`

@@ -51,3 +51,35 @@ describe('query engine recognizes real registry track typeIds', () => {
 		expect(run('SELECT VARIANTS WITHIN "G1"').results?.length).toBe(1);
 	});
 });
+
+describe('WHERE count filters genes by INTERSECT overlap count', () => {
+	// G1 gets 2 variants, G2 gets 1.
+	const GFF2 = [
+		'chr17\tEnsembl\tgene\t100\t200\t.\t+\t.\tID=G1;Name=G1',
+		'chr17\tEnsembl\tgene\t300\t400\t.\t+\t.\tID=G2;Name=G2'
+	].join('\n');
+	const VCF2 = [
+		'##fileformat=VCFv4.2',
+		'#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO',
+		'chr17\t120\tr1\tC\tG\t.\tPASS\tGENE=G1',
+		'chr17\t160\tr2\tC\tT\t.\tPASS\tGENE=G1',
+		'chr17\t320\tr3\tA\tG\t.\tPASS\tGENE=G2'
+	].join('\n');
+	const t = () =>
+		[
+			{ id: 'g', name: 'genes', typeId: geneModelTrackType.id, visible: true, features: geneModelTrackType.parse(GFF2).features },
+			{ id: 'v', name: 'variants', typeId: variantsTrackType.id, visible: true, features: variantsTrackType.parse(VCF2).features }
+		] as any;
+	const r = (q: string) => executeQueryWithTracks(parseQuery(q), t());
+
+	it('exposes a numeric count field and filters with =', () => {
+		const res = r('SELECT GENES INTERSECT variants WHERE count = 1');
+		expect(res.results?.map((x) => x.name)).toEqual(['G2']);
+	});
+	it('filters with < ', () => {
+		expect(r('SELECT GENES INTERSECT variants WHERE count < 2').results?.map((x) => x.name)).toEqual(['G2']);
+	});
+	it('filters with >=', () => {
+		expect(r('SELECT GENES INTERSECT variants WHERE count >= 2').results?.map((x) => x.name)).toEqual(['G1']);
+	});
+});

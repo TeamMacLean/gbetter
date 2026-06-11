@@ -1045,7 +1045,11 @@ function executeSelectQuery(
 					...item,
 					details: {
 						...item.details,
-						[`${intersectTrack.typeId}_overlaps`]: String(overlaps.length)
+						[`${intersectTrack.typeId}_overlaps`]: String(overlaps.length),
+						// Generic 'count' so WHERE can filter by overlap count
+						// (e.g. WHERE count = 1, WHERE count < 3) — matches the
+						// syntax the AI/prompt use.
+						count: String(overlaps.length)
 					}
 				};
 			});
