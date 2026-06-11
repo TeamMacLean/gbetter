@@ -3,7 +3,7 @@
 ## Project Overview
 A modern, lightweight genome browser. Fast, beautiful, AI-native.
 
-**Status**: Active development, Session 28 (2026-06-11) - Adversarial bomb-testing + hardening (46 bugs fixed)
+**Status**: Active development, Session 29 (2026-06-11) - Analysis engine working end-to-end; renamed to gBeta; docs refreshed
 
 ## Key Design Principles
 1. **Fast by default** - Sub-second load, 60fps interactions
@@ -252,6 +252,27 @@ Current bucket: `pub-cdedc141a021461d9db8432b0ec926d7.r2.dev`
 ## Session Log
 
 ### Recent Sessions
+
+**Session 29 (2026-06-11)**: Analysis engine + rename + docs
+- **Retired KNOWN_GENES**: SEARCH/WITHIN/FIND resolve gene names via real
+  tracks + the MyGene/Ensembl lookup (track-first), not a hardcoded map.
+- **Four follow-ups**: parser-keyword gap (prose reaches the AI), cross-assembly
+  chromosome normalization at load, named notebook **Analyses** (Console tab,
+  save history -> re-runnable), and the conversational **Ask AI** panel
+  (`AIChat.svelte`, multi-turn + clarifications, multi-provider history).
+- **Made the AI loop actually work** (from live testing): fixed a critical
+  track-typeId mismatch (engine checked `vcf`/`gff3`, registry uses
+  `variants`/`gene-model`) so SELECT/INTERSECT/FROM over loaded tracks returned
+  empty; quoted track names; surfaced VCF INFO fields + advertised them to the
+  AI; guarded gene lookup against junk multi-word terms; **actionable results**
+  (clickable, ranked, count badges in chat); `WHERE count` after INTERSECT; and
+  **aggregation** (`SELECT MIN/MAX/AVG/SUM/COUNT(field)`).
+- **Renamed GBetter -> gBeta** everywhere user-visible, with a one-time
+  localStorage migration (`services/storage.ts` getMigrated) so saved data +
+  the AI key survive. Repo/Pages URLs + `/gbetter` deploy base left as-is.
+- **Docs**: rewrote README as a full user guide; deleted 9 obsolete plan/
+  handoff docs; updated AI-SETUP/GQL-MANUAL/GQL-EXAMPLES + tutorials for the
+  new features. 504 unit tests pass; `npm run check` clean.
 
 **Session 28 (2026-06-11)**: Adversarial "bomb testing" + hardening
 - Multi-agent find->verify workflow swept 8 surfaces -> **46 confirmed bugs**
