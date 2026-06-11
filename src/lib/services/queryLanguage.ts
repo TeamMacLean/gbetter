@@ -266,13 +266,23 @@ export function parseQuery(input: string): ParsedQuery {
 				return { command: 'list', raw, params: { type: 'coverage', threshold }, valid: true };
 			}
 
-			// Generic list with type
+			// Generic list with a RECOGNIZED type only.
 			const typeMatch = restOfQuery.match(/^(\w+)$/);
-			if (typeMatch) {
+			const KNOWN_LIST_TYPES = ['genes', 'gene', 'variants', 'variant', 'features', 'feature', 'regions', 'region', 'coverage'];
+			if (typeMatch && KNOWN_LIST_TYPES.includes(typeMatch[1])) {
 				return { command: 'list', raw, params: { type: typeMatch[1] }, valid: true };
 			}
 
-			return { command: 'list', raw, params: { query: restOfQuery }, valid: true };
+			// Anything else (e.g. "show me the tumour suppressor") is prose, not a
+			// list/find/show command — mark invalid so the router routes it to the
+			// AI instead of swallowing it as a junk list query.
+			return {
+				command: 'list',
+				raw,
+				params: { query: restOfQuery },
+				valid: false,
+				error: `Unrecognized ${command} target: "${restOfQuery}"`
+			};
 		}
 
 		case 'select': {

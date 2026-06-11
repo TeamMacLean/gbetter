@@ -122,6 +122,11 @@ describe('routeQuery', () => {
 		expect(out.result.message).toMatch(/API key/i);
 	});
 
+	it('routes prose starting with a command word (show/find) to the AI path', async () => {
+		const out = await routeQuery('show me the tumour suppressor', human, ctx, deps({ aiConfigured: () => false }));
+		expect(out.needsAIKey).toBe(true);
+	});
+
 	it('sends genuine NL to the AI and executes the returned GQL', async () => {
 		execStub.mockClear();
 		const aiTranslate = vi.fn(async () => ({ success: true, gql: 'select genes', explanation: 'Listing genes' }) as TranslationResponse);

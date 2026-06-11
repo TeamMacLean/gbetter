@@ -26,3 +26,15 @@ describe('FILTER operator parsing (was losing the operator)', () => {
 		expect(r.valid).toBe(false);
 	});
 });
+
+describe('list/find/show no longer swallow prose (router can reach the AI)', () => {
+	it('marks prose after a command word invalid', () => {
+		expect(parseQuery('show me the tumour suppressor').valid).toBe(false);
+		expect(parseQuery('find the gene near here').valid).toBe(false);
+	});
+	it('still accepts real list commands', () => {
+		expect(parseQuery('list genes').valid).toBe(true);
+		expect(parseQuery('list variants').valid).toBe(true);
+		expect(parseQuery('find variants in TP53').valid).toBe(true);
+	});
+});
