@@ -1,0 +1,131 @@
+##gff-version 3
+# Complex human genes with multiple transcripts, UTRs, and CDS
+
+##sequence-region chr17 7668421 7687550
+# TP53 - Tumor protein p53 (with proper UTRs and CDS)
+chr17	Ensembl	gene	7668422	7687491	.	-	.	ID=TP53;Name=TP53;biotype=protein_coding
+chr17	Ensembl	mRNA	7668422	7687491	.	-	.	ID=TP53-201;Parent=TP53;Name=TP53-201
+chr17	Ensembl	five_prime_UTR	7687377	7687491	.	-	.	Parent=TP53-201
+chr17	Ensembl	exon	7687377	7687491	.	-	.	ID=TP53-201.e1;Parent=TP53-201
+chr17	Ensembl	CDS	7676381	7676521	.	-	0	Parent=TP53-201
+chr17	Ensembl	exon	7676381	7676622	.	-	.	ID=TP53-201.e2;Parent=TP53-201
+chr17	Ensembl	CDS	7675994	7676272	.	-	0	Parent=TP53-201
+chr17	Ensembl	exon	7675994	7676272	.	-	.	ID=TP53-201.e3;Parent=TP53-201
+chr17	Ensembl	CDS	7675053	7675236	.	-	0	Parent=TP53-201
+chr17	Ensembl	exon	7675053	7675236	.	-	.	ID=TP53-201.e4;Parent=TP53-201
+chr17	Ensembl	CDS	7674858	7674971	.	-	0	Parent=TP53-201
+chr17	Ensembl	exon	7674858	7674971	.	-	.	ID=TP53-201.e5;Parent=TP53-201
+chr17	Ensembl	CDS	7674180	7674290	.	-	0	Parent=TP53-201
+chr17	Ensembl	exon	7674180	7674290	.	-	.	ID=TP53-201.e6;Parent=TP53-201
+chr17	Ensembl	CDS	7673700	7673837	.	-	0	Parent=TP53-201
+chr17	Ensembl	exon	7673700	7673837	.	-	.	ID=TP53-201.e7;Parent=TP53-201
+chr17	Ensembl	CDS	7673534	7673608	.	-	0	Parent=TP53-201
+chr17	Ensembl	exon	7673534	7673608	.	-	.	ID=TP53-201.e8;Parent=TP53-201
+chr17	Ensembl	CDS	7670608	7670715	.	-	0	Parent=TP53-201
+chr17	Ensembl	exon	7670608	7670715	.	-	.	ID=TP53-201.e9;Parent=TP53-201
+chr17	Ensembl	CDS	7669608	7669690	.	-	0	Parent=TP53-201
+chr17	Ensembl	exon	7669608	7669690	.	-	.	ID=TP53-201.e10;Parent=TP53-201
+chr17	Ensembl	three_prime_UTR	7668422	7669607	.	-	.	Parent=TP53-201
+chr17	Ensembl	exon	7668422	7669689	.	-	.	ID=TP53-201.e11;Parent=TP53-201
+
+# TP53 alternative transcript
+chr17	Ensembl	mRNA	7669608	7687491	.	-	.	ID=TP53-202;Parent=TP53;Name=TP53-202
+chr17	Ensembl	exon	7687377	7687491	.	-	.	ID=TP53-202.e1;Parent=TP53-202
+chr17	Ensembl	exon	7676381	7676622	.	-	.	ID=TP53-202.e2;Parent=TP53-202
+chr17	Ensembl	exon	7674180	7674290	.	-	.	ID=TP53-202.e3;Parent=TP53-202
+chr17	Ensembl	exon	7669608	7669690	.	-	.	ID=TP53-202.e4;Parent=TP53-202
+
+##sequence-region chr17 43044295 43170300
+# BRCA1 - Complex gene with many exons
+chr17	Ensembl	gene	43044296	43170246	.	-	.	ID=BRCA1;Name=BRCA1;biotype=protein_coding
+chr17	Ensembl	mRNA	43044296	43170246	.	-	.	ID=BRCA1-201;Parent=BRCA1;Name=BRCA1-201
+chr17	Ensembl	five_prime_UTR	43124017	43124115	.	-	.	Parent=BRCA1-201
+chr17	Ensembl	exon	43124017	43124115	.	-	.	ID=BRCA1.e1;Parent=BRCA1-201
+chr17	Ensembl	CDS	43115726	43115779	.	-	0	Parent=BRCA1-201
+chr17	Ensembl	exon	43115726	43115779	.	-	.	ID=BRCA1.e2;Parent=BRCA1-201
+chr17	Ensembl	CDS	43106456	43106533	.	-	0	Parent=BRCA1-201
+chr17	Ensembl	exon	43106456	43106533	.	-	.	ID=BRCA1.e3;Parent=BRCA1-201
+chr17	Ensembl	CDS	43104867	43104956	.	-	0	Parent=BRCA1-201
+chr17	Ensembl	exon	43104867	43104956	.	-	.	ID=BRCA1.e4;Parent=BRCA1-201
+chr17	Ensembl	CDS	43104121	43104261	.	-	0	Parent=BRCA1-201
+chr17	Ensembl	exon	43104121	43104261	.	-	.	ID=BRCA1.e5;Parent=BRCA1-201
+chr17	Ensembl	CDS	43099774	43099880	.	-	0	Parent=BRCA1-201
+chr17	Ensembl	exon	43099774	43099880	.	-	.	ID=BRCA1.e6;Parent=BRCA1-201
+chr17	Ensembl	CDS	43097243	43097289	.	-	0	Parent=BRCA1-201
+chr17	Ensembl	exon	43097243	43097289	.	-	.	ID=BRCA1.e7;Parent=BRCA1-201
+chr17	Ensembl	CDS	43095845	43095922	.	-	0	Parent=BRCA1-201
+chr17	Ensembl	exon	43095845	43095922	.	-	.	ID=BRCA1.e8;Parent=BRCA1-201
+chr17	Ensembl	CDS	43094860	43095848	.	-	0	Parent=BRCA1-201
+chr17	Ensembl	exon	43094860	43095848	.	-	.	ID=BRCA1.e9;Parent=BRCA1-201
+chr17	Ensembl	CDS	43091434	43091559	.	-	0	Parent=BRCA1-201
+chr17	Ensembl	exon	43091434	43091559	.	-	.	ID=BRCA1.e10;Parent=BRCA1-201
+chr17	Ensembl	CDS	43090943	43091032	.	-	0	Parent=BRCA1-201
+chr17	Ensembl	exon	43090943	43091032	.	-	.	ID=BRCA1.e11;Parent=BRCA1-201
+chr17	Ensembl	three_prime_UTR	43044296	43044494	.	-	.	Parent=BRCA1-201
+chr17	Ensembl	exon	43044296	43044494	.	-	.	ID=BRCA1.e24;Parent=BRCA1-201
+
+##sequence-region chr7 55019017 55211628
+# EGFR - Epidermal growth factor receptor (very large gene)
+chr7	Ensembl	gene	55019017	55211628	.	+	.	ID=EGFR;Name=EGFR;biotype=protein_coding
+chr7	Ensembl	mRNA	55019017	55211628	.	+	.	ID=EGFR-201;Parent=EGFR;Name=EGFR-201
+chr7	Ensembl	five_prime_UTR	55019017	55019277	.	+	.	Parent=EGFR-201
+chr7	Ensembl	exon	55019017	55019365	.	+	.	ID=EGFR.e1;Parent=EGFR-201
+chr7	Ensembl	CDS	55019278	55019365	.	+	0	Parent=EGFR-201
+chr7	Ensembl	CDS	55142286	55142437	.	+	0	Parent=EGFR-201
+chr7	Ensembl	exon	55142286	55142437	.	+	.	ID=EGFR.e2;Parent=EGFR-201
+chr7	Ensembl	CDS	55143305	55143488	.	+	0	Parent=EGFR-201
+chr7	Ensembl	exon	55143305	55143488	.	+	.	ID=EGFR.e3;Parent=EGFR-201
+chr7	Ensembl	CDS	55146606	55146760	.	+	0	Parent=EGFR-201
+chr7	Ensembl	exon	55146606	55146760	.	+	.	ID=EGFR.e4;Parent=EGFR-201
+chr7	Ensembl	CDS	55151294	55151362	.	+	0	Parent=EGFR-201
+chr7	Ensembl	exon	55151294	55151362	.	+	.	ID=EGFR.e5;Parent=EGFR-201
+chr7	Ensembl	CDS	55152546	55152664	.	+	0	Parent=EGFR-201
+chr7	Ensembl	exon	55152546	55152664	.	+	.	ID=EGFR.e6;Parent=EGFR-201
+chr7	Ensembl	CDS	55154008	55154152	.	+	0	Parent=EGFR-201
+chr7	Ensembl	exon	55154008	55154152	.	+	.	ID=EGFR.e7;Parent=EGFR-201
+chr7	Ensembl	CDS	55155830	55155946	.	+	0	Parent=EGFR-201
+chr7	Ensembl	exon	55155830	55155946	.	+	.	ID=EGFR.e8;Parent=EGFR-201
+chr7	Ensembl	CDS	55156533	55156660	.	+	0	Parent=EGFR-201
+chr7	Ensembl	exon	55156533	55156660	.	+	.	ID=EGFR.e9;Parent=EGFR-201
+chr7	Ensembl	CDS	55157663	55157753	.	+	0	Parent=EGFR-201
+chr7	Ensembl	exon	55157663	55157753	.	+	.	ID=EGFR.e10;Parent=EGFR-201
+chr7	Ensembl	three_prime_UTR	55207950	55211628	.	+	.	Parent=EGFR-201
+chr7	Ensembl	exon	55207950	55211628	.	+	.	ID=EGFR.e28;Parent=EGFR-201
+
+##sequence-region chr12 25205246 25250936
+# KRAS - Kirsten rat sarcoma viral oncogene
+chr12	Ensembl	gene	25205246	25250936	.	-	.	ID=KRAS;Name=KRAS;biotype=protein_coding
+chr12	Ensembl	mRNA	25205246	25250936	.	-	.	ID=KRAS-201;Parent=KRAS;Name=KRAS-201
+chr12	Ensembl	five_prime_UTR	25250750	25250936	.	-	.	Parent=KRAS-201
+chr12	Ensembl	exon	25250750	25250936	.	-	.	ID=KRAS.e1;Parent=KRAS-201
+chr12	Ensembl	CDS	25245274	25245395	.	-	0	Parent=KRAS-201
+chr12	Ensembl	exon	25245274	25245395	.	-	.	ID=KRAS.e2;Parent=KRAS-201
+chr12	Ensembl	CDS	25227234	25227412	.	-	0	Parent=KRAS-201
+chr12	Ensembl	exon	25227234	25227412	.	-	.	ID=KRAS.e3;Parent=KRAS-201
+chr12	Ensembl	CDS	25225614	25225773	.	-	0	Parent=KRAS-201
+chr12	Ensembl	exon	25225614	25225773	.	-	.	ID=KRAS.e4;Parent=KRAS-201
+chr12	Ensembl	three_prime_UTR	25205246	25209798	.	-	.	Parent=KRAS-201
+chr12	Ensembl	exon	25205246	25209911	.	-	.	ID=KRAS.e5;Parent=KRAS-201
+
+##sequence-region chr10 87863438 87971930
+# PTEN - Phosphatase and tensin homolog
+chr10	Ensembl	gene	87863438	87971930	.	+	.	ID=PTEN;Name=PTEN;biotype=protein_coding
+chr10	Ensembl	mRNA	87863438	87971930	.	+	.	ID=PTEN-201;Parent=PTEN;Name=PTEN-201
+chr10	Ensembl	five_prime_UTR	87863438	87864111	.	+	.	Parent=PTEN-201
+chr10	Ensembl	exon	87863438	87864111	.	+	.	ID=PTEN.e1;Parent=PTEN-201
+chr10	Ensembl	CDS	87894077	87894267	.	+	0	Parent=PTEN-201
+chr10	Ensembl	exon	87894077	87894267	.	+	.	ID=PTEN.e2;Parent=PTEN-201
+chr10	Ensembl	CDS	87925523	87925639	.	+	0	Parent=PTEN-201
+chr10	Ensembl	exon	87925523	87925639	.	+	.	ID=PTEN.e3;Parent=PTEN-201
+chr10	Ensembl	CDS	87931051	87931156	.	+	0	Parent=PTEN-201
+chr10	Ensembl	exon	87931051	87931156	.	+	.	ID=PTEN.e4;Parent=PTEN-201
+chr10	Ensembl	CDS	87933009	87933248	.	+	0	Parent=PTEN-201
+chr10	Ensembl	exon	87933009	87933248	.	+	.	ID=PTEN.e5;Parent=PTEN-201
+chr10	Ensembl	CDS	87952126	87952180	.	+	0	Parent=PTEN-201
+chr10	Ensembl	exon	87952126	87952180	.	+	.	ID=PTEN.e6;Parent=PTEN-201
+chr10	Ensembl	CDS	87957915	87958006	.	+	0	Parent=PTEN-201
+chr10	Ensembl	exon	87957915	87958006	.	+	.	ID=PTEN.e7;Parent=PTEN-201
+chr10	Ensembl	CDS	87960930	87961063	.	+	0	Parent=PTEN-201
+chr10	Ensembl	exon	87960930	87961063	.	+	.	ID=PTEN.e8;Parent=PTEN-201
+chr10	Ensembl	three_prime_UTR	87965275	87971930	.	+	.	Parent=PTEN-201
+chr10	Ensembl	exon	87965275	87971930	.	+	.	ID=PTEN.e9;Parent=PTEN-201

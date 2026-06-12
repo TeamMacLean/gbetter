@@ -131,7 +131,7 @@ async function addTrackFromFile(file: File): Promise<LoadedTrack | null> {
 		if (matchingChromosomes.length === 0 && unmatchedChromosomes.length > 0) {
 			const sampleUnmatched = unmatchedChromosomes.slice(0, 3).join(', ');
 			const moreCount = unmatchedChromosomes.length > 3 ? ` (+${unmatchedChromosomes.length - 3} more)` : '';
-			chromosomeMismatchWarning = `Warning: "${file.name}" has chromosomes (${sampleUnmatched}${moreCount}) not found in ${assembly.current.name}. Consider switching assemblies or using "inferred from data".`;
+			chromosomeMismatchWarning = `"${file.name}" loaded, but its chromosomes (${sampleUnmatched}${moreCount}) aren't in ${assembly.current.name}, so it won't appear. Pick the matching genome in the assembly selector (top-left) and it will show up.`;
 		}
 
 		const trackId = generateTrackId();

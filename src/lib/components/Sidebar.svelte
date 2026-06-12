@@ -14,12 +14,42 @@
 		type LocalBinaryTrackType
 	} from '$lib/services/localBinaryTracks';
 	import CoverageQualityControls from '$lib/components/CoverageQualityControls.svelte';
+	import { useAssembly } from '$lib/stores/assembly.svelte';
+	import {
+		EXAMPLE_FILES,
+		EXAMPLE_ASSEMBLY_ID,
+		EXAMPLE_LOCUS,
+		EXAMPLE_QUERY_HINT
+	} from '$lib/examples';
 
 	const tracks = useTracks();
 	const viewport = useViewport();
 	const remoteTracks = useRemoteTracks();
 	const localBinaryTracks = useLocalBinaryTracks();
 	const theme = useTheme();
+	const assembly = useAssembly();
+
+	// One-click example data (bundled, instant — see src/lib/examples).
+	let loadingExample = $state(false);
+	let exampleNudge = $state(false);
+
+	async function loadExample() {
+		if (loadingExample) return;
+		loadingExample = true;
+		try {
+			assembly.setAssemblyById(EXAMPLE_ASSEMBLY_ID);
+			for (const f of EXAMPLE_FILES) {
+				await tracks.addTrackFromFile({
+					name: f.name,
+					text: async () => f.content
+				} as unknown as File);
+			}
+			viewport.navigateTo(EXAMPLE_LOCUS.chromosome, EXAMPLE_LOCUS.start, EXAMPLE_LOCUS.end);
+			exampleNudge = true;
+		} finally {
+			loadingExample = false;
+		}
+	}
 
 	// Combined tracks array for coverage controls (all track types)
 	const allTracksForControls = $derived([
@@ -715,6 +745,26 @@
 						<span class="text-[10px] text-[var(--color-text-secondary)]">.bw, .bb, .bam, .cram, .vcf.gz, .gff.gz, .bed.gz</span>
 						<span class="text-[10px] text-[var(--color-text-muted)]">.bed, .gff, .vcf, .bedgraph</span>
 					</button>
+
+					<!-- One-click example data (no file needed) -->
+					<button
+						type="button"
+						onclick={loadExample}
+						disabled={loadingExample}
+						class="mt-2 w-full text-center text-[11px] text-[var(--color-accent)] hover:underline disabled:opacity-50"
+					>
+						{loadingExample ? 'Loading…' : 'New here? Load example data →'}
+					</button>
+
+					{#if exampleNudge}
+						<div class="mt-2 p-2 rounded bg-[var(--color-bg-tertiary)] border border-[var(--color-accent)] text-[10px] text-[var(--color-text-secondary)] flex items-start gap-1.5">
+							<span class="flex-1">
+								Example loaded at <strong>TP53</strong>. Try the search bar, or click
+								<strong>💬 Ask AI</strong> and type <em>"{EXAMPLE_QUERY_HINT}"</em>.
+							</span>
+							<button onclick={() => (exampleNudge = false)} class="text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]" aria-label="Dismiss">✕</button>
+						</div>
+					{/if}
 				{/if}
 			{:else}
 				<!-- URL input -->

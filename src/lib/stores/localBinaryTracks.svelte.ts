@@ -224,7 +224,7 @@ async function validateTrackChromosomes(track: LocalBinaryTrack): Promise<void> 
 		if (matchingChromosomes.length === 0) {
 			const sampleChroms = fileChromosomes.slice(0, 3).join(', ');
 			const suffix = fileChromosomes.length > 3 ? '...' : '';
-			warning = `Chromosomes in file (${sampleChroms}${suffix}) don't match assembly "${assembly.current.name}". Consider switching assemblies.`;
+			warning = `Loaded, but its chromosomes (${sampleChroms}${suffix}) aren't in "${assembly.current.name}", so it won't appear. Pick the matching genome in the assembly selector (top-left).`;
 		}
 
 		localBinaryTracks = localBinaryTracks.map((t) =>
