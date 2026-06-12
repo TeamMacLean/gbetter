@@ -5,6 +5,7 @@
 	import { isAIConfigured } from '$lib/services/ai';
 	import SearchBar from './SearchBar.svelte';
 	import Settings from './Settings.svelte';
+	import Feedback from './Feedback.svelte';
 
 	const viewport = useViewport();
 	const assembly = useAssembly();
@@ -215,6 +216,9 @@
 	<div class="flex-1">
 		<SearchBar />
 	</div>
+
+	<!-- Feedback Button -->
+	<Feedback />
 
 	<!-- Settings Button -->
 	<button
